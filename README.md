@@ -210,6 +210,18 @@ the paired phone receives its own device key. Rotating that key immediately
 invalidates the previous one. The bridge stores only SHA-256 key digests and
 returns the clear key once, in the pairing or rotation response.
 
+The same screen lists every paired device and can revoke one
+(`POST /devices/revoke {deviceId}`); revoking or rotating a key also closes that
+device's open streams at once. The Lite build no longer carries a token inside
+the APK: on first launch it asks for a pairing code like the full app. Wrong
+pairing codes are rate limited per address, and a burst of wrong codes from
+many addresses invalidates every open code.
+
+Approvals are bound to the request they answer: clients send the pending
+request's `requestId` with `/<backend>/approve`, and the bridge answers **409**
+if a newer request has replaced it, so a stale notification cannot approve a
+different command. Only an explicit `"allow": true` approves.
+
 The bridge reads its runtime configuration from `bridge/config.json`.
 This file is intentionally ignored by Git because it contains the auth token
 and local machine settings. Copy the template to create it:
@@ -219,11 +231,17 @@ copy bridge\config.example.json bridge\config.json
 ```
 
 Then edit it and replace `authToken` with a long random string of your own.
+The bridge refuses to start if the token is shorter than 24 characters or still
+the template's `CHANGE-ME…` value.
 Settings:
 
 - `host` / `port`: bridge listen address (default `0.0.0.0:8787`)
 - `authToken`: shared bearer token used by the phone
-- `workspaceRoots`: extra roots allowed for remote file lookup (optional)
+- `workspaceRoots`: extra roots searched when a client asks for a file by name
+  (optional). This is a search path, not an access boundary: the file API
+  covers the whole Windows account the bridge runs as (see `SECURITY.md`).
+  UNC and device paths (`\\server\share`, `\\?\`) and NTFS alternate data
+  streams are rejected everywhere.
 - `fileAliases`: short name → absolute path shortcuts for `/file` (optional)
 - `zcodePromptCap5h`: 5-hour prompt cap used by usage display (optional)
 

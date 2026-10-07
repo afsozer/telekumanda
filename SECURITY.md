@@ -29,14 +29,44 @@ Doing that with valid credentials is expected behaviour, not a vulnerability.
 What matters is everything that lets someone get there without them, or go
 further than they should. For example:
 
-- bypassing token or device-key authentication, or pairing a device without
-  the owner's approval;
+- bypassing token or device-key authentication, pairing a device without the
+  owner's approval, or keeping access after a device has been revoked;
 - leaking a token, device key or session content (to logs, URLs, the web UI's
-  DOM, notifications or other apps on the phone);
-- reading or writing files outside the configured workspace roots;
+  DOM, notifications, backups or other apps on the phone);
+- running commands on the host through a field that is not meant to carry one
+  (a model name, session id or file name), or getting an agent to act without
+  the approval its permission mode requires;
+- making the bridge read or write a path that is not a local file (UNC and
+  device paths, NTFS alternate data streams);
 - cross-site attacks against the web UI served at `/ui`;
 - tampering with OTA update metadata or packages so that a device installs
-  something the owner did not publish.
+  something the owner did not publish;
+- crashing or exhausting the bridge without credentials.
+
+### Things that are by design
+
+- **The file API covers the bridge user's whole account.** The phone's file
+  manager browses every drive the Windows account can see; `workspaceRoots` in
+  `bridge/config.json` only adds places to search, it is not an access
+  boundary. Reading a file outside a project with valid credentials is not a
+  vulnerability.
+- **MCP servers added from a client are persistent.** The MCP screens write the
+  command you enter into the agent CLIs' own configuration files, so it keeps
+  running from the desktop CLIs even after the device that added it is revoked.
+- **Some agents run without per-tool approval.** Antigravity (`agy`) always runs
+  with permission prompts disabled, and sessions adopted from disk start in
+  the most permissive mode their backend offers; choose a stricter mode in the
+  app if you need approvals.
+
+### Known risks we have accepted for now
+
+- Release APKs are signed with the build machine's debug key. An attacker who
+  controls that machine could sign an APK that installs as an update; Android
+  still asks the user before installing it. Moving to a separate release key
+  needs a one-time reinstall and is planned.
+- The bridge serves plain HTTP and relies on the private network (for example
+  Tailscale, which encrypts traffic) for confidentiality. The app warns when
+  the bridge address is plain HTTP outside Tailscale.
 
 ## What to expect
 
@@ -83,8 +113,10 @@ subject of legal action by the maintainer.
 Güvenlik açıklarını herkese açık issue olarak değil, deponun **Security**
 sekmesindeki **Report a vulnerability** bağlantısıyla ya da konu satırı
 `[SECURITY] telekumanda` ile başlayan bir e-postayla bilgi@avfatihsozer.com
-adresine bildirin. Geçerli token ile komut çalıştırmak tasarım gereğidir;
-kimlik doğrulamayı aşmak, token ya da oturum içeriği sızdırmak, çalışma alanı
-dışına çıkmak ve OTA güncellemesini kurcalamak açık sayılır. Bildirimler 3 iş
+adresine bildirin. Geçerli token ile komut çalıştırmak ve hesaptaki dosyalara erişmek tasarım
+gereğidir; kimlik doğrulamayı aşmak, iptal edilen cihazla erişimi sürdürmek,
+token ya da oturum içeriği sızdırmak, komut taşımaması gereken bir alandan komut
+çalıştırmak, UNC/ADS yollarına eriştirmek, kimliksiz çökertmek ve OTA
+güncellemesini kurcalamak açık sayılır. Bildirimler 3 iş
 günü içinde yanıtlanır; düzeltme yayımlandıktan sonra GitHub güvenlik duyurusu
 çıkar ve uygunsa CVE istenir. Testleri yalnızca kendi kurulumunuzda yapın.
