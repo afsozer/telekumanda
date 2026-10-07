@@ -67,6 +67,9 @@ class NoteActionReceiver : BroadcastReceiver() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(hata ?: "Bilinmeyen hata"))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
+            // Hata metni kilit ekranında görünmez; orada yalnız başlık kalır.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(kilitEkraniSurumu(context, PushChannels.NOTES, R.drawable.ic_stat_note, "Not silinemedi"))
             .setAutoCancel(true)
             .build()
 

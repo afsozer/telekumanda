@@ -504,8 +504,8 @@ suspend fun BridgeClient.claudeAppStop(settings: BridgeSettings, sessionId: Stri
         postJson(settings, "/claude-app/stop", JSONObject().put("sessionId", sessionId))
     }
 
-suspend fun BridgeClient.claudeAppApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, answers: List<ApprovalAnswer> = emptyList()) {
-        val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+suspend fun BridgeClient.claudeAppApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, answers: List<ApprovalAnswer> = emptyList(), requestId: String = "") {
+        val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
         if (answers.isNotEmpty()) {
             val arr = org.json.JSONArray()
             answers.forEach { answer ->
@@ -847,8 +847,8 @@ suspend fun BridgeClient.codexAppStop(settings: BridgeSettings, sessionId: Strin
         postJson(settings, "/codex-app/stop", JSONObject().put("sessionId", sessionId))
     }
 
-suspend fun BridgeClient.codexAppApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, decision: String = "", scope: String = "", answers: List<ApprovalAnswer> = emptyList()) {
-        val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+suspend fun BridgeClient.codexAppApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, decision: String = "", scope: String = "", answers: List<ApprovalAnswer> = emptyList(), requestId: String = "") {
+        val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
         if (decision.isNotBlank()) body.put("decision", decision)
         if (scope.isNotBlank()) body.put("scope", scope)
         if (answers.isNotEmpty()) {
@@ -1564,8 +1564,9 @@ suspend fun BridgeClient.opencodeAppApprove(
     allow: Boolean,
     answers: List<ApprovalAnswer> = emptyList(),
     backend: String = "opencode2-app",
+    requestId: String = "",
 ) {
-    val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+    val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
     if (answers.isNotEmpty()) {
         val arr = org.json.JSONArray()
         answers.forEach { answer ->
@@ -1777,8 +1778,8 @@ suspend fun BridgeClient.ompAdopt(settings: BridgeSettings, id: String, cwd: Str
     return json.optString("sessionId")
 }
 
-suspend fun BridgeClient.ompApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, answers: List<ApprovalAnswer> = emptyList()) {
-    val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+suspend fun BridgeClient.ompApprove(settings: BridgeSettings, sessionId: String, allow: Boolean, answers: List<ApprovalAnswer> = emptyList(), requestId: String = "") {
+    val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
     if (answers.isNotEmpty()) {
         val arr = org.json.JSONArray()
         answers.forEach { arr.put(JSONObject().put("id", it.questionId).put("optionId", it.optionId).put("label", it.label)) }

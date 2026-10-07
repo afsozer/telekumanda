@@ -19,6 +19,20 @@ import kotlin.coroutines.resumeWithException
 data class BridgeSettings(val baseUrl: String, val token: String)
 data class PairingStartResult(val code: String, val expiresAt: String)
 data class DeviceKeyResult(val deviceId: String, val key: String)
+/**
+ * Köprüye eşleştirilmiş bir cihaz. İptal edilenler listede kalır ([revokedAt]
+ * dolu); ekranda soluk gösterilir, anahtarları artık geçmez.
+ */
+data class BridgeDevice(
+    val id: String,
+    val name: String = "",
+    val createdAt: String = "",
+    val lastSeenAt: String = "",
+    val revokedAt: String = "",
+    val rotatedAt: String = "",
+) {
+    val revoked: Boolean get() = revokedAt.isNotBlank()
+}
 
 data class SystemMetrics(val cpu: Int = 0, val memory: Int = 0, val platform: String = "", val uptime: Long = 0L)
 data class ModuleHealth(val status: String = "", val pid: Int? = null, val sessionCount: Int = 0)
@@ -38,6 +52,8 @@ data class NotificationPollResult(
     val eventId: String = "",
     val events: List<OperationEvent> = emptyList(),
     val pushEvents: List<PushEvent> = emptyList(),
+    // Bekleyen onayın kimliği (eski bildirim yolu). Bildirimdeki tuşlar bunu taşır.
+    val requestId: String = "",
 )
 data class HealthResult(val ok: Boolean, val protocolVersion: Int = 0, val protocolMinClient: Int = 0) {
     val compatible: Boolean get() = protocolVersion in 2..2 && protocolMinClient <= 2

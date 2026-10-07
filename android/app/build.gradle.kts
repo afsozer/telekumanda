@@ -15,7 +15,9 @@ val liteBridgeHost = runCatching { InetAddress.getLocalHost().hostName.trim().lo
     .getOrDefault("")
 val liteBridgePort = (localBridgeConfig["port"] as? Number)?.toInt() ?: 8787
 val liteBridgeUrl = if (liteBridgeHost.isBlank()) "" else "http://$liteBridgeHost:$liteBridgePort"
-val liteBridgeToken = localBridgeConfig["authToken"] as? String ?: ""
+// config.json'dan YALNIZ port okunur. Köprünün ana token'ı APK'ya gömülmez:
+// APK'yı okuyabilen her uygulama BuildConfig'ten çıkarabilirdi. Lite ilk
+// açılışta eşleştirme koduyla kendi cihaz anahtarını alır (LiteEslestirmeEkrani).
 
 plugins {
     id("com.android.application")
@@ -36,7 +38,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "IS_LITE", "false")
         buildConfigField("String", "LITE_BRIDGE_URL", "".asBuildConfigString())
-        buildConfigField("String", "LITE_BRIDGE_TOKEN", "".asBuildConfigString())
     }
 
     buildTypes {
@@ -58,11 +59,16 @@ android {
         }
         create("lite") {
             initWith(getByName("debug"))
+            // initWith(debug) hata ayıklanabilirliği de miras verir; açık kalırsa
+            // adb `run-as` uygulamanın özel verisini (cihaz anahtarı dahil) okur ve
+            // BuildConfig.DEBUG true olup hata ayıklama loglarını açar.
+            // İmza yapılandırması debug'dan miras kalıyor ve BİLEREK değişmiyor:
+            // yayımlanmış Lite APK'larının üzerine OTA kurulumu aynı anahtarı ister.
+            isDebuggable = false
             applicationIdSuffix = ".lite"
             versionNameSuffix = "-lite"
             buildConfigField("boolean", "IS_LITE", "true")
             buildConfigField("String", "LITE_BRIDGE_URL", liteBridgeUrl.asBuildConfigString())
-            buildConfigField("String", "LITE_BRIDGE_TOKEN", liteBridgeToken.asBuildConfigString())
             matchingFallbacks += listOf("debug")
         }
     }

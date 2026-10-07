@@ -321,6 +321,29 @@ suspend fun BridgeClient.rotateDeviceKey(settings: BridgeSettings): DeviceKeyRes
     return DeviceKeyResult(json.optString("deviceId"), json.optString("key"))
 }
 
+suspend fun BridgeClient.listDevices(settings: BridgeSettings): List<BridgeDevice> {
+    val json = getJson(settings, "/devices")
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Device list failed"))
+    return parseBridgeDevices(json.optJSONArray("devices"))
+}
+
+suspend fun BridgeClient.revokeDevice(settings: BridgeSettings, deviceId: String) {
+    val json = postJson(settings, "/devices/revoke", JSONObject().put("deviceId", deviceId))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Device revoke failed"))
+}
+
+internal fun parseBridgeDevices(array: org.json.JSONArray?): List<BridgeDevice> = buildList {
+    if (array == null) return@buildList
+    for (i in 0 until array.length()) {
+        val item = array.optJSONObject(i) ?: continue
+        val id = item.optString("id")
+        if (id.isBlank()) continue
+        // null alan JSON'da "null" metni olarak okunmasın.
+        fun alan(ad: String) = if (item.isNull(ad)) "" else item.optString(ad)
+        add(BridgeDevice(id, alan("name"), alan("createdAt"), alan("lastSeenAt"), alan("revokedAt"), alan("rotatedAt")))
+    }
+}
+
 /** Paylaşımdan üretilen notun sonucu. */
 data class ShareNoteResult(
     val ok: Boolean,
@@ -502,11 +525,16 @@ suspend fun BridgeClient.pollNotifications(
         eventId = json.optString("eventId"),
         events = parseOperationEvents(json.optJSONArray("events")),
         pushEvents = parsePushEvents(json.optJSONArray("pushEvents")),
+        requestId = json.optString("requestId").ifBlank {
+            json.optJSONObject("approval")?.optString("requestId").orEmpty()
+        },
     )
 }
 
-suspend fun BridgeClient.approve(settings: BridgeSettings, backend: String, sessionId: String, allow: Boolean) {
-    val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+// Bildirim tuşunun yolu. `requestId` bildirimin ÜRETİLDİĞİ andaki onayın
+// kimliği; köprü artık başka bir onay bekliyorsa 409 döner (bkz. OnayIstegi.kt).
+suspend fun BridgeClient.approve(settings: BridgeSettings, backend: String, sessionId: String, allow: Boolean, requestId: String = "") {
+    val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
     val path = when (backend.trim().lowercase()) {
         "codex-app" -> "/codex-app/approve"
         // Bildirim kartindaki onay tusu: dal olmadan v2 oturumunun onayi

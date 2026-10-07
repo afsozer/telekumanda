@@ -132,20 +132,23 @@ class OpencodeAppActionsDelegate(
             .onFailure { reportError("Oturum devam ettirilemedi", it) }
     }
 
-    fun approve(allow: Boolean) = scope.launch {
+    // `requestId` null ise o an ekrandaki onay kartının kimliği kullanılır.
+    fun approve(allow: Boolean, requestId: String? = null) = scope.launch {
         val sid = fam().sessionId
         if (sid.isBlank()) return@launch
-        runCatching { client.opencodeAppApprove(state().settings, sid, allow, backend = backendId) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.opencodeAppApprove(state().settings, sid, allow, backend = backendId, requestId = kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Onay gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Onay gonderilemedi", e) } }
     }
 
-    fun answerQuestions(answers: List<ApprovalAnswer>) = scope.launch {
+    fun answerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) = scope.launch {
         val sid = fam().sessionId
         if (sid.isBlank() || answers.isEmpty()) return@launch
-        runCatching { client.opencodeAppApprove(state().settings, sid, true, answers, backendId) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.opencodeAppApprove(state().settings, sid, true, answers, backendId, kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Cevap gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Cevap gonderilemedi", e) } }
     }
 
     /**

@@ -18,6 +18,7 @@ object PushNotifications {
         putExtra("backendLabel", event.backendLabel)
         putExtra("sessionId", event.sessionId)
         putExtra("startedAt", event.startedAt)
+        putExtra("requestId", event.requestId)
     })
 
     // Intent yalnız alan taşıyıcısı (eski broadcast yolundan kalma okuma kodu).
@@ -47,6 +48,7 @@ object PushNotifications {
         // bir NOTA bağlıdır (docs/ekran-goruntusu-hatirlatici-plani.md, E5.6).
         val noteId = intent.getStringExtra("noteId").orEmpty()
         val hamBaslik = intent.getStringExtra("title").orEmpty()
+        val requestId = intent.getStringExtra("requestId").orEmpty()
 
         // Kapsül (Android 16 Live Updates, docs/kapsul-live-updates-plani.md):
         // makbuz kontrolünden SONRA — tekrar oynatma kapsülü yanlış duruma
@@ -58,6 +60,7 @@ object PushNotifications {
             context, kind = kind, backend = backend, backendLabel = backendLabel,
             sessionId = sessionId, baslik = hamBaslik, ozet = summary,
             startedAt = intent.getStringExtra("startedAt").orEmpty(),
+            requestId = requestId,
         )
         // `started` SESSİZ: kapsülü günceller, gölgeye satır ATMAZ. Makbuzu
         // yine de yazıyoruz ki köprünün yeniden denemesi kapsülü tekrar
@@ -155,7 +158,9 @@ object PushNotifications {
                 if (urgent) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT,
             )
             .setCategory(if (urgent) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_STATUS)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Başlık ve özet (oturum, komut, not başlığı) kilit ekranında görünmez;
+            // orada yalnız türü söyleyen içeriksiz sürüm kalır.
+            .kilitEkranindaGizle(context, channel, icon, kind)
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(tap)
@@ -165,15 +170,15 @@ object PushNotifications {
             // dokunuşla yok ederdi.
             .apply {
                 if (kind == "attention") {
-                    for ((allow, label) in listOf(true to "İzin ver", false to "Reddet")) {
-                        val action = Intent(context, ApprovalReceiver::class.java)
-                            .setAction("com.agent.bridge.ACTION_APPROVE")
-                            .putExtra("sessionId", sessionId).putExtra("backend", backend).putExtra("allow", allow)
-                        addAction(android.R.drawable.ic_dialog_alert, label, PendingIntent.getBroadcast(
-                            context, "$backend:$sessionId:$allow".hashCode(), action,
-                            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                        ))
-                    }
+                    OnayBildirimi.eylemleriEkle(
+                        this, context,
+                        backend = backend,
+                        sessionId = sessionId,
+                        requestId = requestId,
+                        istekAnahtari = "$backend:$sessionId",
+                        bildirimEtiketi = tag,
+                        bildirimId = id,
+                    )
                 }
                 if (kind == "note" && noteId.isNotBlank()) {
                     val silIntent = Intent(context, NoteActionReceiver::class.java)

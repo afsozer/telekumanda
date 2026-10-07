@@ -195,4 +195,23 @@ class KapsulDurumuTest {
         val geride = simdi - 1
         assertEquals(geride, kapsulZamani(java.time.Instant.ofEpochMilli(geride).toString(), simdi))
     }
+
+    // Kapsüldeki onay tuşu, onayın kimliğini taşır; tur ve yeni onay eski
+    // kimliği silmeli — yoksa bayat kapsül yeni isteği onaylardı.
+    @Test
+    fun onayKimligiYalnizBekleyenOnaydaTasinir() {
+        var m = kapsulOlayiUygula(emptyMap(), "omp", "s1", "attention", 1_000L, requestId = "r1")
+        assertEquals("r1", kapsulDurumu(m)!!.requestId)
+
+        m = kapsulOlayiUygula(m, "omp", "s1", "started", 2_000L)
+        assertEquals("", m.values.single().requestId)
+        assertEquals("", kapsulDurumu(m)!!.requestId)
+
+        m = kapsulOlayiUygula(m, "omp", "s1", "attention", 3_000L, requestId = "r2")
+        assertEquals("r2", kapsulDurumu(m)!!.requestId)
+
+        // Kimliksiz yeni attention (eski köprü) önceki kimliği MİRAS ALMAZ.
+        m = kapsulOlayiUygula(m, "omp", "s1", "attention", 4_000L)
+        assertEquals("", kapsulDurumu(m)!!.requestId)
+    }
 }

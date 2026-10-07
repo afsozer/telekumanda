@@ -256,7 +256,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         prefs = prefs,
         defaultUrl = if (BuildConfig.IS_LITE) BuildConfig.LITE_BRIDGE_URL else DEFAULT_URL,
         liteEdition = BuildConfig.IS_LITE,
-        embeddedToken = if (BuildConfig.IS_LITE) BuildConfig.LITE_BRIDGE_TOKEN else "",
     )
     private val client = BridgeClient(if (BuildConfig.IS_LITE) "lite" else "")
     private val updateManager = AndroidUpdateManager(application.applicationContext)
@@ -879,9 +878,31 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                         .copy(device = state.device.copy(paired = true, authLoading = false, pairingCode = ""))
                 }
                 settingsViewModel.saveSettings(_uiState.value)
+                // Kimlik değişti: kimliksiz açılışta (Lite ilk kurulum) boş kalan
+                // ekran verisi yeni anahtarla dolsun.
+                refreshAll()
             }
             .onFailure { _uiState.update { it.copy(device = it.device.copy(authLoading = false)) }; reportError("Cihaz eşleştirilemedi", it) }
     }
+
+    fun loadDevices() = viewModelScope.launch {
+        _uiState.update { it.copy(device = it.device.copy(devicesLoading = true)) }
+        runCatching { client.listDevices(_uiState.value.settings) }
+            .onSuccess { list -> _uiState.update { it.copy(device = it.device.copy(devices = list, devicesLoading = false)) } }
+            .onFailure { _uiState.update { it.copy(device = it.device.copy(devicesLoading = false)) }; reportError("Cihaz listesi alınamadı", it) }
+    }
+
+    // İptal edilen cihazın anahtarı köprüde anında geçersiz olur; cihaz listede
+    // `revokedAt` dolu olarak kalır, liste köprüden yeniden çekilir.
+    fun revokeDevice(deviceId: String) = viewModelScope.launch {
+        _uiState.update { it.copy(device = it.device.copy(devicesLoading = true)) }
+        runCatching { client.revokeDevice(_uiState.value.settings, deviceId) }
+            .onSuccess { loadDevices() }
+            .onFailure { _uiState.update { it.copy(device = it.device.copy(devicesLoading = false)) }; reportError("Cihaz iptal edilemedi", it) }
+    }
+
+    /** Bu telefonun köprüdeki cihaz kimliği (eşleştirmede kaydedilir); yoksa boş. */
+    fun currentDeviceId(): String = prefs.getString("device_id", null).orEmpty()
 
     fun rotateDeviceKey() = viewModelScope.launch {
         _uiState.update { it.copy(device = it.device.copy(authLoading = true)) }
@@ -4284,15 +4305,19 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     // Adopt an on-disk claude-app session and continue it.
     fun resumeClaudeAppDiskSession(session: ClaudeDiskSession) = claudeAppDelegate.resumeClaudeAppDiskSession(session)
     fun exitClaudeAppMode() = claudeAppDelegate.exitClaudeAppMode()
-    fun claudeAppApprove(allow: Boolean) = claudeAppDelegate.claudeAppApprove(allow)
+    // Onay çağrılarındaki `requestId`: kartın çizildiği durumdaki onay kimliği
+    // (ApprovalActionRouter geçer); null ise delege o anki kimliği okur.
+    fun claudeAppApprove(allow: Boolean, requestId: String? = null) = claudeAppDelegate.claudeAppApprove(allow, requestId)
     fun claudeAppAnswerQuestion(question: ApprovalQuestion, option: ApprovalOption) =
         claudeAppDelegate.claudeAppAnswerQuestion(question, option)
-    fun claudeAppAnswerQuestions(answers: List<ApprovalAnswer>) = claudeAppDelegate.claudeAppAnswerQuestions(answers)
+    fun claudeAppAnswerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) =
+        claudeAppDelegate.claudeAppAnswerQuestions(answers, requestId)
 
-    fun codexAppApprove(allow: Boolean, decision: String = "", scope: String = "") =
-        codexAppActionsDelegate.approve(allow, decision, scope)
-    fun codexAppApproveSession() = codexAppApprove(true, "acceptForSession", "session")
-    fun codexAppAnswerQuestions(answers: List<ApprovalAnswer>) = codexAppActionsDelegate.answerQuestions(answers)
+    fun codexAppApprove(allow: Boolean, decision: String = "", scope: String = "", requestId: String? = null) =
+        codexAppActionsDelegate.approve(allow, decision, scope, requestId)
+    fun codexAppApproveSession(requestId: String? = null) = codexAppApprove(true, "acceptForSession", "session", requestId)
+    fun codexAppAnswerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) =
+        codexAppActionsDelegate.answerQuestions(answers, requestId)
     fun loadCodexAppInfo() = codexAppActionsDelegate.loadInfo()
     fun codexAppForkCurrent() = codexAppActionsDelegate.forkCurrent()
     fun showCodexAppSteerToggle(enabled: Boolean) = codexAppActionsDelegate.setSteerMode(enabled)
@@ -4396,15 +4421,17 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun ompArchive(id: String) = ompActionsDelegate.archive(id)
     fun ompUnarchive(id: String) = ompActionsDelegate.unarchive(id)
     fun resumeOmpDiskSession(session: AppDiskSession) = ompActionsDelegate.resumeDiskSession(session)
-    fun ompApprove(allow: Boolean) = ompActionsDelegate.approve(allow)
-    fun ompAnswerQuestions(answers: List<ApprovalAnswer>) = ompActionsDelegate.approve(true, answers)
+    fun ompApprove(allow: Boolean, requestId: String? = null) = ompActionsDelegate.approve(allow, requestId = requestId)
+    fun ompAnswerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) =
+        ompActionsDelegate.approve(true, answers, requestId)
     fun setOmpPermissionMode(mode: String) = ompActionsDelegate.setPermissionMode(mode)
     fun loadOmpPermissionModes() = ompActionsDelegate.loadPermissionModes()
     fun loadOmpInfo() = ompActionsDelegate.loadInfo()
     fun setOmpEffort(effort: String) = ompActionsDelegate.setEffort(effort)
 
-    fun opencodeAppApprove(allow: Boolean) = ocDelegate.approve(allow)
-    fun opencodeAppAnswerQuestions(answers: List<ApprovalAnswer>) = ocDelegate.answerQuestions(answers)
+    fun opencodeAppApprove(allow: Boolean, requestId: String? = null) = ocDelegate.approve(allow, requestId)
+    fun opencodeAppAnswerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) =
+        ocDelegate.answerQuestions(answers, requestId)
     fun loadOpencodeAppInfo() = ocDelegate.loadInfo()
     // Görev panosundaki "Sıkıştır" — doluluk çubuğu eşiği geçince beliriyor.
     fun opencodeAppCompact() = ocDelegate.compact()

@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.agent.bridge.ui3.nav.Ui3Root
+import com.agent.bridge.ui3.shell.LiteEslestirmeEkrani
 
 class MainActivity : ComponentActivity() {
     private val viewModel: RemoteViewModel by viewModels()
@@ -133,7 +134,12 @@ class MainActivity : ComponentActivity() {
                         pencere.isNavigationBarContrastEnforced = false
                     }
                 }
-                Ui3Root(uiState, alertHostState, viewModel)
+                // Lite köprü kimliğini APK'da taşımaz: kimlik yoksa önce eşleştirme.
+                if (uiState.liteEslestirmeGerekli) {
+                    LiteEslestirmeEkrani(uiState, viewModel, alertHostState)
+                } else {
+                    Ui3Root(uiState, alertHostState, viewModel)
+                }
             }
         }
     }
@@ -168,16 +174,32 @@ class MainActivity : ComponentActivity() {
         val uri = intent.data ?: return
         intent.action = Intent.ACTION_MAIN
         lifecycleScope.launch {
+            // Önce süzgeç: dışarıdan gelen URI bizim özel dosyamıza işaret
+            // edebilir (bkz. GelenUriDenetimi.kt). Sağlayıcının bildirdiği
+            // gerçek yol bir kez çözülür; hem süzgeç hem düzenlenebilir açma onu
+            // kullanır.
+            val (karar, saglayiciYolu) = withContext(Dispatchers.IO) {
+                val ilk = disUriKarari(uri)
+                if (ilk != GelenUriKarari.KABUL) ilk to null
+                else {
+                    val yol = saglayiciYolu(uri)
+                    (if (yol != null && ozelDizinde(yol)) GelenUriKarari.RED_OZEL_DIZIN else GelenUriKarari.KABUL) to yol
+                }
+            }
+            if (karar != GelenUriKarari.KABUL) {
+                viewModel.notifyUser(gelenUriRetMesaji(karar))
+                return@launch
+            }
             val gorunenAd = resolveDisplayName(this@MainActivity, uri)
-            // Ad hem yolun sonundan hem sağlayıcıdan denenir: file:// URI'de
-            // sağlayıcı sorgusu boş döner, content:// URI'de yol anlamsızdır.
             val ad = gorunenAd.ifBlank { uri.lastPathSegment.orEmpty().substringAfterLast('/') }
             val blokEditoru = isBlockEditorFile(ad)
             val ac: (String) -> Unit = { yol ->
                 if (blokEditoru) viewModel.openPhoneDocx(yol) else viewModel.openPhoneMarkdown(yol)
                 viewModel.requestOpenFileViewer()
             }
-            val cozulen = withContext(Dispatchers.IO) { resolveEditablePath(uri) }
+            val cozulen = saglayiciYolu?.let { yol ->
+                withContext(Dispatchers.IO) { java.io.File(yol).takeIf { it.isFile && it.canWrite() }?.absolutePath }
+            }
             if (cozulen != null) {
                 ac(cozulen)
                 return@launch
@@ -203,24 +225,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** content:// veya file:// -> yazılabilir gerçek yol; çözülemezse null. */
-    private fun resolveEditablePath(uri: Uri): String? {
-        val yol = when (uri.scheme) {
-            "file" -> uri.path
-            "content" -> {
-                // Dosya yöneticilerinin çoğu MediaStore ya da kendi
-                // sağlayıcısını kullanıyor; ikisinde de _data sütunu gerçek
-                // yolu taşıyabiliyor (kullanımdan kalkmış ama hâlâ dolu).
-                runCatching {
-                    contentResolver.query(uri, arrayOf("_data"), null, null, null)?.use { c ->
-                        if (c.moveToFirst() && c.columnCount > 0) c.getString(0) else null
-                    }
-                }.getOrNull()
-            }
-            else -> null
-        } ?: return null
-        val f = java.io.File(yol)
-        return if (f.isFile && f.canWrite()) f.absolutePath else null
+    /** Şema ve sağlayıcıya göre ilk karar (dosya sistemine dokunmaz). */
+    private fun disUriKarari(uri: Uri): GelenUriKarari =
+        gelenUriKarari(uri.scheme, uri.authority, "$packageName.fileprovider")
+
+    /**
+     * Sağlayıcının `_data` sütunundaki gerçek yol; yoksa null. Dosya
+     * yöneticilerinin çoğu MediaStore ya da kendi sağlayıcısını kullanıyor;
+     * ikisinde de bu sütun gerçek yolu taşıyabiliyor (kullanımdan kalkmış ama
+     * hâlâ dolu). Kötü niyetli bir sağlayıcı da buraya BİZİM özel dosyamızın
+     * yolunu yazabilir — [ozelDizinde] o yüzden her çözülen yola uygulanır.
+     */
+    private fun saglayiciYolu(uri: Uri): String? = runCatching {
+        contentResolver.query(uri, arrayOf("_data"), null, null, null)?.use { c ->
+            if (c.moveToFirst() && c.columnCount > 0) c.getString(0) else null
+        }
+    }.getOrNull()?.takeIf { it.isNotBlank() }
+
+    /** Yol (sembolik bağlar çözülerek) uygulamanın özel dizinlerinden birinin altında mı? */
+    private fun ozelDizinde(yol: String): Boolean {
+        val gercek = runCatching { java.io.File(yol).canonicalPath }.getOrNull() ?: return true
+        val kokler = listOfNotNull(
+            dataDir, filesDir, cacheDir, noBackupFilesDir, codeCacheDir,
+            runCatching { createDeviceProtectedStorageContext().dataDir }.getOrNull(),
+        ).mapNotNull { runCatching { it.canonicalPath }.getOrNull() }
+        return yolOzelDizinAltinda(gercek, kokler)
     }
 
     // Paylaş menüsünden gelen dosyaları ÖNBELLEĞE yazar ve hedefi ViewModel'e
@@ -251,6 +280,7 @@ class MainActivity : ComponentActivity() {
         val metinBasligi = intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty().trim()
         intent.action = Intent.ACTION_MAIN
         lifecycleScope.launch {
+            var ret: GelenUriKarari? = null
             val shared = withContext(Dispatchers.IO) {
                 val dir = java.io.File(cacheDir, "share").apply { mkdirs() }
                 if (duzMetin.isNotBlank()) {
@@ -265,7 +295,17 @@ class MainActivity : ComponentActivity() {
                         listOf(SharedFile(target.absolutePath, "paylasilan-metin.txt", "text/plain", target.length()))
                     }.getOrDefault(emptyList())
                 }
-                uris.mapNotNull { uri ->
+                // Dışarıdan gelen her URI süzülür (bkz. GelenUriDenetimi.kt):
+                // reddedilen sessizce atılmaz, kullanıcıya nedeni söylenir.
+                val kabul = uris.filter { uri ->
+                    val ilk = disUriKarari(uri)
+                    val karar = if (ilk != GelenUriKarari.KABUL) ilk
+                    else if (saglayiciYolu(uri)?.let(::ozelDizinde) == true) GelenUriKarari.RED_OZEL_DIZIN
+                    else GelenUriKarari.KABUL
+                    if (karar != GelenUriKarari.KABUL) ret = karar
+                    karar == GelenUriKarari.KABUL
+                }
+                kabul.mapNotNull { uri ->
                     val name = resolveDisplayName(this@MainActivity, uri).ifBlank { "paylasilan" }
                     val mime = contentResolver.getType(uri) ?: ""
                     runCatching {
@@ -278,8 +318,10 @@ class MainActivity : ComponentActivity() {
                     }.getOrNull()
                 }
             }
-            if (shared.isEmpty()) viewModel.notifyUser("Paylaşılan dosya okunamadı")
-            else viewModel.offerSharedFiles(shared)
+            ret?.let { viewModel.notifyUser(gelenUriRetMesaji(it)) }
+            if (shared.isEmpty()) {
+                if (ret == null) viewModel.notifyUser("Paylaşılan dosya okunamadı")
+            } else viewModel.offerSharedFiles(shared)
         }
     }
 

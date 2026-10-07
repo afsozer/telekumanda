@@ -7,21 +7,27 @@ class ApprovalActionRouter(
     private val approvalBackend: String
         get() = if (state.backend == Backend.COWORK.id) state.coworkProvider else state.backend.orEmpty()
 
+    // Kartın ÇİZİLDİĞİ durumdaki onayın kimliği. Kullanıcı bu kartı görüp bastı;
+    // arada köprüde yeni bir onay belirdiyse köprü bunu reddeder (409) ve yeni
+    // isteği kullanıcı görmeden onaylamış olmayız.
+    private val requestId: String
+        get() = state.bekleyenOnayKimligi
+
     fun answerQuestions(answers: List<ApprovalAnswer>) {
         when (approvalBackend) {
-            Backend.CODEX_APP.id -> actions.codexAppAnswerQuestions(answers)
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppAnswerQuestions(answers)
-            Backend.OMP.id -> actions.ompAnswerQuestions(answers)
-            else -> actions.claudeAppAnswerQuestions(answers)
+            Backend.CODEX_APP.id -> actions.codexAppAnswerQuestions(answers, requestId)
+            Backend.OPENCODE2_APP.id -> actions.opencodeAppAnswerQuestions(answers, requestId)
+            Backend.OMP.id -> actions.ompAnswerQuestions(answers, requestId)
+            else -> actions.claudeAppAnswerQuestions(answers, requestId)
         }
     }
 
     fun approve(allow: Boolean) {
         when (approvalBackend) {
-            Backend.CODEX_APP.id -> actions.codexAppApprove(allow)
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(allow)
-            Backend.OMP.id -> actions.ompApprove(allow)
-            else -> actions.claudeAppApprove(allow)
+            Backend.CODEX_APP.id -> actions.codexAppApprove(allow, requestId = requestId)
+            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(allow, requestId)
+            Backend.OMP.id -> actions.ompApprove(allow, requestId)
+            else -> actions.claudeAppApprove(allow, requestId)
         }
     }
 
@@ -32,15 +38,15 @@ class ApprovalActionRouter(
         val session = id in setOf("allowforsession", "acceptforsession", "session") || consequence == "session"
         when (approvalBackend) {
             Backend.CODEX_APP.id -> when {
-                session -> actions.codexAppApproveSession()
-                deny -> actions.codexAppApprove(false, if (id == "cancel" || consequence == "cancel") "cancel" else "deny")
-                else -> actions.codexAppApprove(true, id.ifBlank { "accept" })
+                session -> actions.codexAppApproveSession(requestId)
+                deny -> actions.codexAppApprove(false, if (id == "cancel" || consequence == "cancel") "cancel" else "deny", requestId = requestId)
+                else -> actions.codexAppApprove(true, id.ifBlank { "accept" }, requestId = requestId)
             }
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(!deny)
-            Backend.OMP.id -> actions.ompApprove(!deny)
+            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(!deny, requestId)
+            Backend.OMP.id -> actions.ompApprove(!deny, requestId)
             // ACP secenekleri (allow_once/allow_always/reject_once/reject_always)
             // bridge tarafinda allow bayragina indirgeniyor.
-            else -> actions.claudeAppApprove(!deny)
+            else -> actions.claudeAppApprove(!deny, requestId)
         }
     }
 
@@ -49,5 +55,5 @@ class ApprovalActionRouter(
     }
 
     fun allowForSession(): (() -> Unit)? =
-        if (approvalBackend == Backend.CODEX_APP.id) ({ actions.codexAppApproveSession() }) else null
+        if (approvalBackend == Backend.CODEX_APP.id) ({ actions.codexAppApproveSession(requestId) }) else null
 }

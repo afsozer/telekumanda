@@ -1,6 +1,14 @@
 package com.agent.bridge.ui2.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.input.KeyboardType
+import com.agent.bridge.BridgeDevice
+import com.agent.bridge.DUZ_HTTP_UYARISI
+import com.agent.bridge.duzHttpUyarisiGerekli
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,8 +71,13 @@ import com.agent.bridge.ui2.theme.Ui2Tokens
 
 @Composable
 fun SettingsConnectionScreen(uiState: RemoteUiState, actions: RemoteViewModel, onBack: () -> Unit) {
-    var pairingCode by remember(uiState.pairingCode) { mutableStateOf(uiState.pairingCode) }
     var confirmRotate by remember { mutableStateOf(false) }
+    var revokeTarget by remember { mutableStateOf<BridgeDevice?>(null) }
+    val thisDeviceId = remember(uiState.devicePaired) { actions.currentDeviceId() }
+    // Cihaz listesi ekran açılınca köprüden çekilir (kimlik yoksa sessizce boş kalır).
+    LaunchedEffect(uiState.activeBridgeProfileId, uiState.settings.token.isNotBlank()) {
+        if (uiState.settings.token.isNotBlank()) actions.loadDevices()
+    }
     var confirmRestart by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val activeProfile = uiState.bridgeProfiles.firstOrNull { it.id == uiState.activeBridgeProfileId }
@@ -136,6 +149,7 @@ fun SettingsConnectionScreen(uiState: RemoteUiState, actions: RemoteViewModel, o
                     singleLine = true,
                     label = { Text("Bridge URL") },
                 )
+                DuzHttpUyarisi(uiState.settings.baseUrl)
                 OutlinedTextField(
                     value = uiState.settings.token,
                     onValueChange = actions::updateToken,
@@ -182,28 +196,7 @@ fun SettingsConnectionScreen(uiState: RemoteUiState, actions: RemoteViewModel, o
                     style = MaterialTheme.typography.bodyMedium,
                     color = Ui2.colors.ink2,
                 )
-                OutlinedTextField(
-                    value = pairingCode,
-                    onValueChange = { pairingCode = it.filter(Char::isDigit).take(6) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("6 haneli eşleştirme kodu") },
-                )
-                if (uiState.pairingExpiresAt.isNotBlank()) {
-                    Text("Kod geçerlilik sonu: ${uiState.pairingExpiresAt}", style = MaterialTheme.typography.labelSmall, color = Ui2.colors.ink3)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(Ui2Tokens.s8)) {
-                    OutlinedButton(
-                        onClick = actions::startDevicePairing,
-                        enabled = !uiState.deviceAuthLoading,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Kod oluştur") }
-                    Button(
-                        onClick = { actions.completeDevicePairing(pairingCode) },
-                        enabled = pairingCode.length == 6 && !uiState.deviceAuthLoading,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Eşleştir") }
-                }
+                EslestirmeKoduAlani(uiState, actions, kodUretilebilir = true)
                 if (uiState.devicePaired) {
                     OutlinedButton(
                         onClick = { confirmRotate = true },
@@ -212,10 +205,59 @@ fun SettingsConnectionScreen(uiState: RemoteUiState, actions: RemoteViewModel, o
                     ) { Text("Cihaz anahtarını yenile") }
                 }
             }
+
+            SectionHeader("Eşleştirilmiş cihazlar")
+            SurfaceCard {
+                val devices = uiState.device.devices
+                when {
+                    devices.isEmpty() && uiState.device.devicesLoading ->
+                        Text("Yükleniyor…", style = MaterialTheme.typography.bodySmall, color = Ui2.colors.ink3)
+                    devices.isEmpty() ->
+                        Text("Köprüde eşleştirilmiş cihaz yok.", style = MaterialTheme.typography.bodySmall, color = Ui2.colors.ink3)
+                }
+                devices.forEach { device ->
+                    val thisPhone = device.id == thisDeviceId
+                    ListRow(
+                        title = device.name.ifBlank { device.id } + if (thisPhone) " (bu telefon)" else "",
+                        detail = when {
+                            device.revoked -> "İptal edildi · ${device.revokedAt}"
+                            device.lastSeenAt.isNotBlank() -> "Son görülme · ${device.lastSeenAt}"
+                            else -> "Eşleştirme · ${device.createdAt}"
+                        },
+                        // İptal edilenler listede kalır ama soluk: anahtarları artık geçmez.
+                        modifier = if (device.revoked) Modifier.alpha(0.45f) else Modifier,
+                        leading = { Icon(Icons.Outlined.Devices, null, tint = Ui2.colors.ink2) },
+                        trailing = {
+                            if (!device.revoked) {
+                                TextButton(
+                                    onClick = { revokeTarget = device },
+                                    enabled = !uiState.device.devicesLoading,
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Ui2.colors.danger),
+                                ) { Text("İptal et") }
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
     }
 
+    revokeTarget?.let { device ->
+        val thisPhone = device.id == thisDeviceId
+        ConfirmDialog(
+            title = "${device.name.ifBlank { device.id }} iptal edilsin mi?",
+            text = if (thisPhone) {
+                "Bu, şu an kullandığın telefonun anahtarı. İptal edince bu uygulama köprüye bağlanamaz; yeniden eşleştirmen gerekir."
+            } else {
+                "Bu cihazın anahtarı köprüde anında geçersiz olur. Cihaz yeniden bağlanmak için yeni bir eşleştirme koduna ihtiyaç duyar."
+            },
+            confirmLabel = "İptal et",
+            destructive = true,
+            onConfirm = { revokeTarget = null; actions.revokeDevice(device.id) },
+            onDismiss = { revokeTarget = null },
+        )
+    }
     if (confirmRotate) {
         ConfirmDialog(
             title = "Cihaz anahtarı yenilensin mi?",
@@ -350,5 +392,54 @@ fun SettingsUpdateScreen(actions: RemoteViewModel, onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Adres düz HTTP ve Tailscale dışındaysa görünür uyarı (engellemez). Karar
+ * `duzHttpUyarisiGerekli`'de (shared, birim testli).
+ */
+@Composable
+internal fun DuzHttpUyarisi(adres: String) {
+    if (!duzHttpUyarisiGerekli(adres)) return
+    Row(horizontalArrangement = Arrangement.spacedBy(Ui2Tokens.s8)) {
+        Icon(Icons.Outlined.Warning, null, tint = Ui2.colors.danger)
+        Text(DUZ_HTTP_UYARISI, style = MaterialTheme.typography.bodySmall, color = Ui2.colors.danger)
+    }
+}
+
+/**
+ * 6 haneli eşleştirme kodu alanı ve tuşları — Ayarlar'daki cihaz güvenliği ile
+ * Lite'ın ilk açılış ekranı AYNI akışı kullanır (`completeDevicePairing`).
+ * [kodUretilebilir] false iken "Kod oluştur" gizlenir: kod üretmek köprüde
+ * kimlik ister, Lite'ın ilk açılışında ise henüz kimlik yok.
+ */
+@Composable
+internal fun EslestirmeKoduAlani(uiState: RemoteUiState, actions: RemoteViewModel, kodUretilebilir: Boolean) {
+    var pairingCode by remember(uiState.pairingCode) { mutableStateOf(uiState.pairingCode) }
+    OutlinedTextField(
+        value = pairingCode,
+        onValueChange = { pairingCode = it.filter(Char::isDigit).take(6) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        label = { Text("6 haneli eşleştirme kodu") },
+    )
+    if (uiState.pairingExpiresAt.isNotBlank()) {
+        Text("Kod geçerlilik sonu: ${uiState.pairingExpiresAt}", style = MaterialTheme.typography.labelSmall, color = Ui2.colors.ink3)
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(Ui2Tokens.s8)) {
+        if (kodUretilebilir) {
+            OutlinedButton(
+                onClick = actions::startDevicePairing,
+                enabled = !uiState.deviceAuthLoading,
+                modifier = Modifier.weight(1f),
+            ) { Text("Kod oluştur") }
+        }
+        Button(
+            onClick = { actions.completeDevicePairing(pairingCode) },
+            enabled = pairingCode.length == 6 && !uiState.deviceAuthLoading && uiState.settings.baseUrl.isNotBlank(),
+            modifier = Modifier.weight(1f),
+        ) { Text(if (uiState.deviceAuthLoading) "Eşleştiriliyor…" else "Eşleştir") }
     }
 }

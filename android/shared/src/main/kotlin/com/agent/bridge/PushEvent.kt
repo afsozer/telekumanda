@@ -15,6 +15,9 @@ data class PushEvent(
     // `bridge/operations.mjs:98`). Kapsulun kronometresi bunu ms'ye cevirir
     // (`kapsulZamani`). Sayi degil: tasima her extra'yi `--es` ile metin yolluyor.
     val startedAt: String = "",
+    // "attention" olayında bekleyen onayın kimliği. Bildirimdeki onay tuşları
+    // bunu taşır; boşsa tuşlar onay vermez, uygulamayı açar (bkz. OnayIstegi.kt).
+    val requestId: String = "",
 )
 
 fun parsePushEvents(array: JSONArray?): List<PushEvent> = buildList {
@@ -30,6 +33,6 @@ fun parsePushEvents(array: JSONArray?): List<PushEvent> = buildList {
         add(PushEvent(id, kind, item.optString("title"), item.optString("summary"),
             item.optString("noteId"), item.optString("backend"),
             item.optString("backendLabel"), item.optString("sessionId"),
-            item.optString("startedAt")))
+            item.optString("startedAt"), item.optString("requestId")))
     }
 }

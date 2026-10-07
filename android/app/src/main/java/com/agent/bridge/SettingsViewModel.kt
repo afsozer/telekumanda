@@ -17,7 +17,6 @@ class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val defaultUrl: String,
     private val liteEdition: Boolean = false,
-    private val embeddedToken: String = "",
 ) {
     fun loadInitialState(): RemoteUiState {
         val legacyUrl = prefs.getString("url", null)
@@ -42,20 +41,20 @@ class SettingsViewModel(
         }
         val savedActiveId = prefs.getString(ACTIVE_BRIDGE_PROFILE_ID_KEY, null)
         val savedProfile = profiles.firstOrNull { it.id == savedActiveId } ?: profiles.first()
-        // Lite ilk kurulumda ayar istemesin. Önceki Lite APK bir kez açılmış ve
-        // localhost/boş token kaydetmişse de gömülü değerle tek seferde onarılır;
-        // kullanıcı sonradan geçerli başka bir köprü yazdıysa üzerine çıkılmaz.
-        val seedEmbedded = liteEdition && embeddedToken.isNotBlank() &&
-            (savedProfile.token.isBlank() || savedProfile.baseUrl == DEFAULT_URL)
-        val activeProfile = if (seedEmbedded) {
-            savedProfile.copy(name = "Lite köprü", baseUrl = defaultUrl, token = embeddedToken)
+        // Lite'ta köprü ADRESİ derlemeden gelir (sır değil); kimlik gelmez, ilk
+        // açılışta eşleştirme koduyla alınır (LiteEslestirmeEkrani). Önceki bir
+        // Lite APK localhost kaydetmişse adres tek seferde onarılır; kullanıcı
+        // sonradan başka bir köprü yazdıysa üzerine çıkılmaz.
+        val seedLiteUrl = liteEdition && defaultUrl.isNotBlank() && savedProfile.baseUrl == DEFAULT_URL
+        val activeProfile = if (seedLiteUrl) {
+            savedProfile.copy(name = "Lite köprü", baseUrl = defaultUrl)
         } else savedProfile
         val configuredProfiles = profiles.map { profile ->
             if (profile.id == activeProfile.id) activeProfile else profile
         }
         if (
             decodedProfiles.isEmpty() ||
-            seedEmbedded ||
+            seedLiteUrl ||
             activeProfile.id != savedActiveId ||
             legacyUrl != activeProfile.baseUrl ||
             legacyToken != activeProfile.token

@@ -384,25 +384,29 @@ class ClaudeAppDelegate(
     }
 
     // ── Onay API'si ─────────────────────────────────────────────────────────
-    fun claudeAppApprove(allow: Boolean) = scope.launch {
+    // `requestId` null ise o an ekrandaki onay kartının kimliği kullanılır;
+    // çağıran (ApprovalActionRouter) kartı ÇİZDİĞİ durumdaki kimliği geçer.
+    fun claudeAppApprove(allow: Boolean, requestId: String? = null) = scope.launch {
         val sid = state().claudeAppSessionId
         if (sid.isBlank()) return@launch
-        runCatching { client.claudeAppApprove(state().settings, sid, allow) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.claudeAppApprove(state().settings, sid, allow, requestId = kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Onay gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Onay gonderilemedi", e) } }
     }
 
     fun claudeAppAnswerQuestion(question: ApprovalQuestion, option: ApprovalOption) = scope.launch {
         claudeAppAnswerQuestions(listOf(ApprovalAnswer(question.id, option.id, option.label)))
     }
 
-    fun claudeAppAnswerQuestions(answers: List<ApprovalAnswer>) = scope.launch {
+    fun claudeAppAnswerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) = scope.launch {
         val sid = state().claudeAppSessionId
         if (sid.isBlank()) return@launch
         if (answers.isEmpty()) return@launch
-        runCatching { client.claudeAppApprove(state().settings, sid, true, answers) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.claudeAppApprove(state().settings, sid, true, answers, kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Cevap gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Cevap gonderilemedi", e) } }
     }
 
     // onCleared'den çağrılır — polling işini ViewModel yok edilirken iptal eder.

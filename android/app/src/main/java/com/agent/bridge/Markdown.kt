@@ -3,6 +3,7 @@ package com.agent.bridge
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.provider.OpenableColumns
 import android.widget.TextView
 import androidx.compose.foundation.background
@@ -552,11 +553,15 @@ internal fun buildMarkwon(context: Context, onFileClick: (String) -> Unit): Mark
                     if (filePath != null) {
                         onFileClick(filePath)
                     } else {
-                        // Şemasız "www.…" linki ACTION_VIEW'da eşleşen uygulama bulamaz
-                        // ve runCatching sessizce yutar; tarayıcı için şema şart.
-                        val target = if (link.startsWith("www.", ignoreCase = true)) "https://$link" else link
-                        runCatching {
-                            view.context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                        // Yalnız http/https/mailto/tel dışarıda açılır; şemasız
+                        // "www.…" https'e tamamlanır (karar: markdownBaglantiHedefi).
+                        val target = markdownBaglantiHedefi(link)
+                        if (target == null) {
+                            Toast.makeText(view.context, ACILMAYAN_BAGLANTI_MESAJI, Toast.LENGTH_SHORT).show()
+                        } else {
+                            runCatching {
+                                view.context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                            }
                         }
                     }
                 }

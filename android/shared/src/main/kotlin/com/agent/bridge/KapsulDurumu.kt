@@ -20,6 +20,9 @@ data class KapsulOturumu(
     val baslik: String = "",
     val ozet: String = "",
     val backendLabel: String = "",
+    // ONAY'da bekleyen onayın kimliği (attention push'u); TUR'da boş. Kapsüldeki
+    // "İzin ver"/"Reddet" bunu taşır ki bayat kapsül yeni isteği onaylamasın.
+    val requestId: String = "",
 )
 
 // Kapsülün tek karesi. `null` dönmesi "bildirimi iptal et" demektir.
@@ -41,6 +44,7 @@ data class Kapsul(
     val baslik: String,
     val ozet: String,
     val baslangicMs: Long,
+    val requestId: String = "",
 )
 
 // Kapsül durumu tüm oturumların birleşimidir:
@@ -76,6 +80,7 @@ fun kapsulDurumu(oturumlar: Map<String, KapsulOturumu>): Kapsul? {
         baslik = oncelikli.baslik,
         ozet = oncelikli.ozet,
         baslangicMs = oncelikli.baslangicMs,
+        requestId = if (onay) oncelikli.requestId else "",
     )
 }
 
@@ -144,6 +149,7 @@ fun kapsulOlayiUygula(
     baslik: String = "",
     ozet: String = "",
     backendLabel: String = "",
+    requestId: String = "",
 ): Map<String, KapsulOturumu> {
     if (sessionId.isBlank()) return oturumlar
     val anahtar = notificationKey(backend, sessionId)
@@ -168,5 +174,9 @@ fun kapsulOlayiUygula(
         baslik = baslik.ifBlank { mevcut?.baslik ?: "" },
         ozet = ozet.ifBlank { mevcut?.ozet ?: "" },
         backendLabel = backendLabel.ifBlank { mevcut?.backendLabel ?: "" },
+        // Kimlik ÖNCEKİNDEN KORUNMAZ: yeni attention yeni onaydır, tur ise
+        // onayın bittiği demektir. Eski kimliği taşımak tam önlenmek istenen
+        // "bayat tuş yeni isteği onaylar" durumunu doğururdu.
+        requestId = if (durum == OturumDurumu.ONAY) requestId else "",
     ))
 }

@@ -124,55 +124,34 @@ class BridgeMonitorService : Service() {
             clearApprovalNotification()
             return
         }
-        val intentAllow = Intent(this, ApprovalReceiver::class.java).apply {
-            action = "com.agent.bridge.ACTION_APPROVE"
-            putExtra("sessionId", result.sessionId)
-            putExtra("backend", result.backend)
-            putExtra("allow", true)
-        }
-        val pendingAllow = PendingIntent.getBroadcast(
-            this,
-            1,
-            intentAllow,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val intentDeny = Intent(this, ApprovalReceiver::class.java).apply {
-            action = "com.agent.bridge.ACTION_APPROVE"
-            putExtra("sessionId", result.sessionId)
-            putExtra("backend", result.backend)
-            putExtra("allow", false)
-        }
-        val pendingDeny = PendingIntent.getBroadcast(
-            this,
-            2,
-            intentDeny,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
+        val tag = notificationKey(result.backend, result.sessionId)
         val builder = NotificationCompat.Builder(this, APPROVAL_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("İzin İsteği")
             .setContentText(result.summary)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Onayın özeti (komut, dosya yolu) kilit ekranında görünmez.
+            .kilitEkranindaGizle(this, APPROVAL_CHANNEL, android.R.drawable.ic_dialog_alert, "attention")
             .setOngoing(true)
-            .addAction(android.R.drawable.ic_media_play, "İzin ver", pendingAllow)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Reddet", pendingDeny)
             .setContentIntent(
                 PendingIntent.getActivity(
                     this,
                     0,
-                    Intent(this, MainActivity::class.java)
-                        .putExtra("approvalBackend", result.backend)
-                        .putExtra("approvalSessionId", result.sessionId)
-                        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    OnayBildirimi.onayEkraniNiyeti(this, result.backend, result.sessionId),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
             )
+        OnayBildirimi.eylemleriEkle(
+            builder, this,
+            backend = result.backend,
+            sessionId = result.sessionId,
+            requestId = result.requestId,
+            istekAnahtari = "eski:$tag",
+            bildirimEtiketi = tag,
+            bildirimId = APPROVAL_ID,
+        )
 
-        val tag = notificationKey(result.backend, result.sessionId)
         lastApprovalTag = tag
         NotificationManagerCompat.from(this).notify(tag, APPROVAL_ID, builder.build())
     }
@@ -192,6 +171,7 @@ class BridgeMonitorService : Service() {
                 .setChannelId(EVENT_CHANNEL)
                 .setContentTitle(title)
                 .setContentText(text)
+                .kilitEkranindaGizle(this, EVENT_CHANNEL, android.R.drawable.stat_notify_sync, event.kind)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .build(),

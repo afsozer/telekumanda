@@ -64,6 +64,7 @@ object KapsulDenetleyici {
         baslik: String,
         ozet: String,
         startedAt: String,
+        requestId: String = "",
     ) {
         if (!terfiMumkun(context)) return
         if (sessionId.isBlank()) return
@@ -72,7 +73,7 @@ object KapsulDenetleyici {
         val eski = oku(context)
         val yeni = kapsulOlayiUygula(
             eski, backend = backend, sessionId = sessionId, kind = kind, zamanMs = zaman,
-            baslik = baslik, ozet = ozet, backendLabel = backendLabel,
+            baslik = baslik, ozet = ozet, backendLabel = backendLabel, requestId = requestId,
         )
         if (yeni === eski) return
         yaz(context, yeni)
@@ -84,18 +85,23 @@ object KapsulDenetleyici {
      * Köprünün `started` push'u gerçeği 0-2 sn içinde getirir ve üzerine yazar;
      * bu yalnız o aradaki "hâlâ onay bekliyor" yalanını kapatır. Oturum
      * haritada yoksa hiçbir şey yapmaz (yeni tur uydurmaz).
+     *
+     * Kapsül BAŞKA bir onayı bekliyorsa (bayat bildirime basıldı, arada yeni
+     * istek geldi) dokunulmaz: o onay hâlâ açık ve kapsül onu göstermeli.
      */
     @Synchronized
-    fun onayCozuldu(context: Context, backend: String, sessionId: String) {
+    fun onayCozuldu(context: Context, backend: String, sessionId: String, requestId: String) {
         if (!terfiMumkun(context)) return
         if (sessionId.isBlank()) return
         val eski = oku(context)
         val anahtar = notificationKey(backend, sessionId)
         val mevcut = eski[anahtar] ?: return
         if (mevcut.durum != OturumDurumu.ONAY) return
+        if (mevcut.requestId.isNotBlank() && mevcut.requestId != requestId) return
         val yeni = eski + (anahtar to mevcut.copy(
             durum = OturumDurumu.TUR,
             baslangicMs = System.currentTimeMillis(),
+            requestId = "",
         ))
         yaz(context, yeni)
         ciz(context, kapsulDurumu(yeni))
@@ -149,12 +155,9 @@ object KapsulDenetleyici {
             .filter { it.isNotBlank() }
             .joinToString(" · ")
             .ifBlank { etiket }
-        val tapIntent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-            // Mevcut onay bildirimleriyle AYNI extra sözleşmesi
-            // (PushNotifications.kt:93, MainActivity bunları işliyor).
-            .putExtra("approvalBackend", kapsul.backend)
-            .putExtra("approvalSessionId", kapsul.sessionId)
+        // Mevcut onay bildirimleriyle AYNI extra sözleşmesi (OnayBildirimi,
+        // MainActivity bunları işliyor).
+        val tapIntent = OnayBildirimi.onayEkraniNiyeti(context, kapsul.backend, kapsul.sessionId)
         val tap = PendingIntent.getActivity(
             context, KAPSUL_ID, tapIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -169,7 +172,17 @@ object KapsulDenetleyici {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Kilit ekranında içeriksiz sürüm: oturum başlığı ve özet ancak kilit
+            // açılınca görünür. Kapsülün başlığı (kaç oturum, onay mı tur mu)
+            // hassas değil, kilit ekranı sürümünde de o kalıyor.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(
+                kilitEkraniSurumu(
+                    context, PushChannels.CAPSULE,
+                    if (kapsul.onay) R.drawable.ic_stat_onay else R.drawable.ic_stat_tur,
+                    kapsulBasligi(kapsul.onay, kapsul.sayi),
+                ),
+            )
             .setRequestPromotedOngoing(true)
             .setTimeoutAfter(ZAMAN_ASIMI_MS)
             .setContentIntent(tap)
@@ -177,20 +190,17 @@ object KapsulDenetleyici {
             // Rozet sayacı eziyor; onay bekleyen tur önceliklidir (bilinçli).
             builder.setShortCriticalText(kapsul.kisaMetin)
             builder.setUsesChronometer(false).setShowWhen(false)
-            for ((izin, etiketMetni) in listOf(true to "İzin ver", false to "Reddet")) {
-                val eylem = Intent(context, ApprovalReceiver::class.java)
-                    .setAction("com.agent.bridge.ACTION_APPROVE")
-                    .putExtra("sessionId", kapsul.sessionId)
-                    .putExtra("backend", kapsul.backend)
-                    .putExtra("allow", izin)
-                builder.addAction(
-                    android.R.drawable.ic_dialog_alert, etiketMetni,
-                    PendingIntent.getBroadcast(
-                        context, "kapsul:${kapsul.backend}:${kapsul.sessionId}:$izin".hashCode(), eylem,
-                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                    ),
-                )
-            }
+            // Kapsül kendi kimliğiyle duruyor; tuşa basılınca iptal edilmez,
+            // `onayCozuldu` onu TUR'a çevirir (etiket boş = alıcı dokunmaz).
+            OnayBildirimi.eylemleriEkle(
+                builder, context,
+                backend = kapsul.backend,
+                sessionId = kapsul.sessionId,
+                requestId = kapsul.requestId,
+                istekAnahtari = "kapsul:${kapsul.backend}:${kapsul.sessionId}",
+                bildirimEtiketi = "",
+                bildirimId = KAPSUL_ID,
+            )
         } else {
             // setShortCriticalText HİÇ çağrılmıyor: sağ slot boş kalınca
             // kapsülde canlı sayaç akıyor (SONUC2 §2a, ölçüldü).
@@ -262,6 +272,7 @@ object KapsulDenetleyici {
                             baslik = o.optString("baslik"),
                             ozet = o.optString("ozet"),
                             backendLabel = o.optString("backendLabel"),
+                            requestId = o.optString("requestId"),
                         ),
                     )
                 }
@@ -280,7 +291,8 @@ object KapsulDenetleyici {
                     .put("baslangicMs", o.baslangicMs)
                     .put("baslik", o.baslik)
                     .put("ozet", o.ozet)
-                    .put("backendLabel", o.backendLabel),
+                    .put("backendLabel", o.backendLabel)
+                    .put("requestId", o.requestId),
             )
         }
         // commit(): push alıcısı goAsync olmadan dönebiliyor, apply() yazmadan
