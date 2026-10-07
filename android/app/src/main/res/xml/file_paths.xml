@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="apk" path="." />
+    <files-path name="files" path="." />
+    <external-path name="downloads" path="Download/AgentBridge" />
+    <!-- Telefon gezgini /sdcard'ın her yerine gidebiliyor; açılan dosyayı dış
+         uygulamaya verebilmek için kökü paylaşıyoruz. Paylaşım URI BAZINDA ve
+         tek seferlik (FLAG_GRANT_READ_URI_PERMISSION) — burada "external" demek
+         başka uygulamaların diski tarayabilmesi anlamına gelmiyor, yalnızca
+         bizim açıkça verdiğimiz dosyayı okuyabilmeleri anlamına geliyor. -->
+    <external-path name="external" path="." />
+</paths>

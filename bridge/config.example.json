@@ -1,0 +1,27 @@
+{
+  "host": "0.0.0.0",
+  "port": 8787,
+  "authToken": "CHANGE-ME-generate-a-long-random-string",
+  "workspaceRoots": [],
+  "fileAliases": {},
+  "zcodePromptCap5h": 80,
+  "noteExtract": {
+    "model": "gemini-3.7-flash-medium",
+    "retentionDays": 3
+  },
+  "agy": {
+    "sessionRetentionDays": 7
+  },
+  "sessionPrune": {
+    "retentionDays": 7,
+    "intervalHours": 6
+  },
+  "runpod": {
+    "enabled": false,
+    "scriptDir": "C:/Users/YOU/runpod"
+  },
+  "oturumImha": {
+    "enabled": true,
+    "script": "C:/Users/YOU/CoworkSpaces/opencode-v2/scripts/oturum-imha.ps1"
+  }
+}

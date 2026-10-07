@@ -1,0 +1,155 @@
+.panel {
+  margin: 0 0 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #333);
+  border-radius: 10px;
+  background: var(--surface, #16181d);
+  font-size: 0.92rem;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.close {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+}
+
+.hint {
+  margin: 0 0 0.75rem;
+  color: var(--muted, #8b93a1);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.item {
+  border: 1px solid var(--line, #2a2d34);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fileHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+}
+
+.fileHeader:hover {
+  background: var(--line-subtle);
+}
+
+.status {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--line, #2a2d34);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  flex-shrink: 0;
+}
+
+.filePath {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.adds {
+  color: #4cc38a;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.dels {
+  color: #e5484d;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.patch {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--line, #2a2d34);
+  background: var(--bg, #0f1115);
+  font-family: ui-monospace, monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.lineAdd {
+  color: #4cc38a;
+  display: block;
+}
+
+.lineDel {
+  color: #e5484d;
+  display: block;
+}
+
+.lineHunk {
+  color: var(--muted, #8b93a1);
+  display: block;
+}
+
+.truncated {
+  display: block;
+  color: var(--muted, #8b93a1);
+  font-style: italic;
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  color: var(--danger, #e5484d);
+  font-size: 0.85rem;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted, #8b93a1);
+  font-size: 0.85rem;
+}
+
+.loading {
+  margin: 0;
+  color: var(--muted, #8b93a1);
+  font-size: 0.85rem;
+}

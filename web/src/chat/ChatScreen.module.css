@@ -1,0 +1,378 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) 1fr;
+  /* Kabuğun (AppShell) hücresini doldurur, aralarında Tahoe ada boşluğu bırakılır */
+  height: 100%;
+  min-height: 0;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--glass-bg-primary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+}
+
+.sidebarHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: rgba(13, 17, 28, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.new {
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #080a10;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.new:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.main {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--glass-bg-primary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+  overflow: hidden;
+}
+
+.searchNotice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  color: #e0f2fe;
+  font-size: 0.78rem;
+  background: rgba(56, 189, 248, 0.14);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.searchNotice button {
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.searchHit {
+  position: relative;
+  margin: 0 -0.55rem;
+  padding: 0 0.55rem;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.04));
+  border-left: 2px solid var(--accent-azure);
+  border-radius: 0.4rem;
+  animation: searchPulse 1.6s ease-in-out 2;
+}
+
+@keyframes searchPulse {
+  50% { box-shadow: 0 0 1.2rem rgba(56, 189, 248, 0.28); }
+}
+
+.titleBar {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.65rem 1.2rem;
+  background: rgba(13, 17, 28, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.titleAgent {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--accent-azure);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 999px;
+}
+
+/*
+  Yüzen Rıhtım (Floating Island Dock).
+  Sohbet akışının altında bağımsız bir cam ada olarak süzülür.
+*/
+.dock {
+  margin: 0.5rem auto 0.75rem;
+  width: calc(100% - 1.5rem);
+  max-width: 62rem;
+  background: rgba(13, 17, 28, 0.78);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: var(--glass-border);
+  border-radius: 1.5rem;
+  box-shadow: var(--glass-shadow-lg), var(--glass-specular);
+  padding: 0.75rem 1rem 0.55rem;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.dockBar {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 0.45rem 0.65rem;
+  align-items: center;
+  padding: 0.45rem 0 0.15rem;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.dockBar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Durdurma kontrolleri rıhtımın sağ ucuna itilir. */
+.dockBar > :last-child {
+  margin-left: auto;
+}
+
+.column {
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+}
+
+/* Kurallar aç/kapa — dockBar'daki ince şerit düğmesi (UsageChip ölçüsünde). */
+.rulesToggle {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rulesToggle:hover {
+  background: var(--line-subtle);
+}
+
+.rulesToggleActive {
+  background: var(--line-subtle);
+  font-weight: 600;
+}
+
+.live,
+.offline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.live {
+  color: var(--status-live);
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.45);
+}
+
+.offline {
+  color: var(--muted);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.older {
+  padding: 0.5rem 0 0.75rem;
+  text-align: center;
+}
+
+.link {
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.muted {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.toBottom {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 8.5rem;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--fg);
+  background: var(--glass-bg-secondary);
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  border: var(--glass-border);
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), var(--glass-specular);
+  cursor: pointer;
+  z-index: 15;
+  transition: all 0.15s ease;
+}
+
+.toBottom:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.25), var(--glass-specular);
+}
+
+.empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--error);
+}
+
+.backendBar {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sessionSegments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2rem;
+  margin: 0.55rem 0.7rem 0.3rem;
+  padding: 0.25rem;
+  background: rgba(18, 24, 40, 0.7);
+  border: var(--glass-border-subtle);
+  border-radius: 999px;
+}
+
+.segment,
+.segmentOn {
+  padding: 0.3rem 0.25rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segment:hover {
+  color: var(--fg);
+}
+
+.segmentOn {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.backendLabel {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.backendSelect {
+  flex: 1;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--fg);
+  background: rgba(18, 23, 38, 0.7);
+  border: var(--glass-border);
+  border-radius: 0.5rem;
+}
+
+.cost {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

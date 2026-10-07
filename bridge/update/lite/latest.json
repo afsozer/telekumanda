@@ -1,0 +1,8 @@
+{
+  "applicationId": "com.agent.bridge.lite",
+  "versionCode": 439,
+  "versionName": "1.1-lite",
+  "notes": "Lite güncelleme ekranında X, geri oku ve sistem geri hareketiyle sohbete dönüş düzeltildi; yinelenen güncelleme ekranları engellendi.",
+  "apkPath": "/update/lite/app-latest.apk",
+  "sha256": "013ce762363728d5194fe8ce29e0874f47bff4059f8cb4a3926df03b10f879b3"
+}

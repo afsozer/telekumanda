@@ -1,0 +1,156 @@
+.panel {
+  margin: 0 0 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #333);
+  border-radius: 10px;
+  background: var(--surface, #16181d);
+  font-size: 0.92rem;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.close {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+}
+
+.hint {
+  margin: 0 0 0.9rem;
+  color: var(--muted, #8b93a1);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.section {
+  margin-top: 0.9rem;
+}
+
+.sectionTitle {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #8b93a1);
+  margin: 0 0 0.4rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line, #2a2d34);
+  border-radius: 8px;
+}
+
+.itemKey {
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.itemValue {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.remove {
+  border: none;
+  background: none;
+  color: var(--danger, #e5484d);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.keyInput {
+  flex: 0 1 9rem;
+  min-width: 7rem;
+}
+
+.valueInput {
+  flex: 1 1 14rem;
+  min-width: 10rem;
+}
+
+.input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line, #333);
+  border-radius: 8px;
+  background: var(--bg, #0f1115);
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--line, #333);
+  background: var(--bg, #0f1115);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.add:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  color: var(--danger, #e5484d);
+  font-size: 0.85rem;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted, #8b93a1);
+  font-size: 0.85rem;
+}
+
+.loading {
+  margin: 0;
+  color: var(--muted, #8b93a1);
+  font-size: 0.85rem;
+}

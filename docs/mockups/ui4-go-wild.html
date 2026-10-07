@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>go wild — agentbridge konsept</title>
+<style>
+  /* ============ TOKENLER (yeni dil) ============ */
+  :root {
+    --bg0: #08080D;            /* saf siyaha yakın zemin */
+    --bg1: #0C0B14;
+    --ink: #F5F3FB;
+    --ink2: #A6A1C0;
+    --ink3: #625D7E;
+    --vio: #8B5CF6;
+    --vio-soft: #A78BFA;
+    --cyn: #22D3EE;
+    --amber: #FBBF24;
+    --mint: #34D399;
+    --rose: #FB7185;
+    --grad: linear-gradient(135deg, #8B5CF6 0%, #22D3EE 100%);
+    --glass: rgba(255,255,255,.045);
+    --glass-hi: rgba(255,255,255,.08);
+    --edge: rgba(255,255,255,.09);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(900px 600px at 12% 0%, rgba(139,92,246,.10), transparent 60%),
+      radial-gradient(800px 600px at 88% 100%, rgba(34,211,238,.07), transparent 60%),
+      #050508;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "Cascadia Code", "Cascadia Mono", Consolas, monospace; }
+
+  .stage {
+    min-height: 100vh; display: flex; flex-wrap: wrap;
+    align-items: flex-start; justify-content: center;
+    gap: 44px; padding: 44px 28px 72px;
+  }
+  .shot { display: flex; flex-direction: column; align-items: center; }
+  .caption {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ink3); margin: 18px 0 12px;
+  }
+
+  /* ============ CİHAZ ============ */
+  .device {
+    padding: 9px; border-radius: 52px;
+    background: #030308; border: 1px solid #1E1B2C;
+    box-shadow: 0 50px 120px rgba(0,0,0,.8), 0 0 0 1px rgba(139,92,246,.06);
+  }
+  .phone {
+    width: 393px; height: 852px; border-radius: 44px; overflow: hidden;
+    background: linear-gradient(180deg, #0D0B16 0%, #08080D 30%, #070709 100%);
+    display: flex; flex-direction: column; position: relative;
+  }
+
+  /* ışık lekeleri */
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); pointer-events: none; }
+  .b1 { width: 280px; height: 280px; left: -80px; top: -60px;
+        background: radial-gradient(circle, rgba(139,92,246,.34), transparent 70%);
+        animation: drift1 16s ease-in-out infinite alternate; }
+  .b2 { width: 300px; height: 300px; right: -100px; top: 200px;
+        background: radial-gradient(circle, rgba(34,211,238,.20), transparent 70%);
+        animation: drift2 20s ease-in-out infinite alternate; }
+  @keyframes drift1 { to { transform: translate(50px, 40px); } }
+  @keyframes drift2 { to { transform: translate(-40px, 70px); } }
+
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 26px 2px; font-size: 12.5px; font-weight: 600; color: var(--ink2);
+    position: relative; z-index: 3;
+  }
+  .sb-r { display: flex; gap: 6px; align-items: center; }
+
+  /* ============ SOHBET ÜST ============ */
+  .chead { padding: 10px 20px 6px; position: relative; z-index: 3; }
+  .chead-row { display: flex; align-items: center; gap: 12px; }
+  .gbtn {
+    width: 38px; height: 38px; border-radius: 14px; flex: none;
+    background: var(--glass); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center; color: var(--ink2);
+    backdrop-filter: blur(14px);
+  }
+  .title-block { flex: 1; min-width: 0; }
+  .title {
+    font-size: 27px; font-weight: 700; letter-spacing: -.8px; line-height: 1.15;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .title .chev { font-size: 12px; color: var(--ink3); }
+  .sub-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 5px;
+    font-size: 11.5px; color: var(--ink3);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.cyn { background: var(--cyn); box-shadow: 0 0 10px rgba(34,211,238,.8); }
+  .dot.done { background: var(--mint); }
+  .dot.amber { background: var(--amber); }
+  .dot.rose { background: var(--rose); }
+  .live-pill {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; color: var(--cyn);
+  }
+
+  /* ============ AKIŞ ============ */
+  .flow {
+    flex: 1; overflow-y: auto; scrollbar-width: none; position: relative; z-index: 2;
+    display: flex; flex-direction: column; gap: 14px; padding: 6px 20px 10px;
+  }
+  .flow::-webkit-scrollbar { display: none; }
+  .daysep { text-align: center; font-size: 10.5px; letter-spacing: 2px; color: var(--ink3); font-weight: 600; }
+
+  /* kullanıcı: cam hap, sağda */
+  .user {
+    align-self: flex-end; max-width: 80%;
+    background: linear-gradient(135deg, rgba(139,92,246,.16), rgba(34,211,238,.10));
+    border: 1px solid rgba(139,92,246,.28);
+    border-radius: 22px 22px 6px 22px;
+    padding: 11px 16px; font-size: 15px; line-height: 21px;
+    backdrop-filter: blur(10px);
+  }
+
+  /* ajan etiketi */
+  .alabel {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.6px; color: var(--ink3);
+  }
+
+  /* tur: ışık rayı */
+  .turn { position: relative; padding-left: 26px; display: flex; flex-direction: column; gap: 10px; }
+  .rail {
+    position: absolute; left: 7px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px;
+    background: linear-gradient(180deg, rgba(139,92,246,.5), rgba(255,255,255,.06) 45%, rgba(255,255,255,.03));
+    overflow: hidden;
+  }
+  .rail::after {
+    content: ""; position: absolute; left: 0; width: 100%; height: 34%; top: -36%;
+    background: linear-gradient(180deg, transparent, var(--cyn), transparent);
+    animation: flow 1.5s linear infinite;
+  }
+  @keyframes flow { to { top: 140%; } }
+  .seg { position: relative; }
+
+  .node { position: absolute; left: -24px; top: 3px; }
+  .node.hollow {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1.5px solid var(--ink3); background: var(--bg0); margin-top: 1px;
+  }
+  .node.tool {
+    width: 11px; height: 11px; border-radius: 4px;
+    border: 1.5px solid rgba(255,255,255,.22); background: var(--bg0);
+  }
+  .node.amber {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--amber);
+    box-shadow: 0 0 12px rgba(251,191,36,.7); margin-top: 1px;
+  }
+  .node.end {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--grad); margin-top: 2px;
+    animation: pulse 1.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34,211,238,.5); }
+    75%,100% { box-shadow: 0 0 0 11px rgba(34,211,238,0); }
+  }
+
+  .thought {
+    font-size: 13px; line-height: 18px; color: var(--ink3); font-style: italic;
+  }
+
+  .atext { font-size: 15px; line-height: 23px; color: var(--ink); }
+  .atext b { font-weight: 650; }
+  .atext code {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px;
+    color: var(--vio-soft); background: rgba(139,92,246,.10);
+    border: 1px solid rgba(139,92,246,.18); border-radius: 6px; padding: 1px 6px;
+  }
+  .atext .dim { color: var(--ink2); }
+
+  /* araç çipi */
+  .chip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--glass); border: 1px solid var(--edge);
+    border-radius: 14px; padding: 9px 13px;
+    font-size: 12.5px; backdrop-filter: blur(12px);
+  }
+  .chip .name { color: var(--ink); font-weight: 600; flex: none; }
+  .chip .path { color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .chip .dur { color: var(--ink3); font-size: 11px; flex: none; }
+  .chip .chev { color: var(--ink3); font-size: 10px; flex: none; }
+  .chip.live { border-color: rgba(34,211,238,.30); }
+  .chip.live .name { color: var(--cyn); }
+  .chip.live .name::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cyn); margin-right: 7px; vertical-align: 1px;
+    animation: pulse 1.8s ease-out infinite;
+  }
+
+  /* onay kartı: kehribar halka */
+  .approval {
+    background: rgba(251,191,36,.05);
+    border: 1px solid rgba(251,191,36,.35);
+    border-radius: 18px; padding: 14px 15px; position: relative;
+    box-shadow: 0 0 34px rgba(251,191,36,.10), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(12px);
+  }
+  .ap-head { display: flex; align-items: baseline; gap: 8px; }
+  .ap-tag { font-size: 10.5px; font-weight: 800; letter-spacing: 1.8px; color: var(--amber); flex: 1; }
+  .ap-wait { font-size: 11px; color: var(--ink3); }
+  .ap-cmd {
+    background: rgba(0,0,0,.42); border: 1px solid var(--edge);
+    border-radius: 10px; padding: 10px 12px; margin: 11px 0 9px;
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; color: var(--ink);
+  }
+  .ap-cmd .a { color: var(--vio-soft); }
+  .ap-desc { font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .ap-acts { display: flex; gap: 8px; margin-top: 13px; }
+  .btn-w {
+    font-size: 13px; font-weight: 700; border-radius: 999px; padding: 10px 20px;
+    background: #FFFFFF; color: #0B0A13;
+  }
+  .btn-r {
+    font-size: 13px; font-weight: 600; border-radius: 999px; padding: 9px 19px;
+    border: 1px solid rgba(251,113,133,.45); color: var(--rose);
+  }
+
+  /* ============ COMPOSER ============ */
+  .czone { padding: 6px 14px 4px; position: relative; z-index: 3; }
+  .cpills { display: flex; gap: 7px; margin: 0 8px 9px; }
+  .cpill {
+    display: flex; align-items: center; gap: 6px; flex: none;
+    background: var(--glass); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 5px 11px;
+    font-size: 11.5px; color: var(--ink2); backdrop-filter: blur(10px);
+  }
+  .cpill .dot.cyn { width: 6px; height: 6px; }
+  .cpill .mk {
+    width: 15px; height: 15px; border-radius: 5px; font-size: 9.5px; font-weight: 800;
+    background: rgba(255,255,255,.07); border: 1px solid var(--edge);
+    color: var(--ink2); display: flex; align-items: center; justify-content: center;
+  }
+  .island {
+    position: relative;
+    background: rgba(16,15,24,.72);
+    border: 1px solid var(--edge);
+    border-radius: 26px; padding: 10px 11px;
+    backdrop-filter: blur(24px);
+    display: flex; align-items: center; gap: 9px;
+  }
+  .island.attention { border-color: rgba(34,211,238,.35); }
+  .iadd {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    background: rgba(255,255,255,.05); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center; color: var(--ink2);
+  }
+  .ifield {
+    flex: 1; min-width: 0; font-size: 14.5px; color: var(--ink3);
+    padding: 0 4px;
+  }
+  .isend {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    background: var(--grad);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 22px rgba(139,92,246,.45);
+  }
+  .istop {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    border: 1.5px solid rgba(34,211,238,.55);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .istop .in {
+    width: 29px; height: 29px; border-radius: 50%;
+    background: rgba(255,255,255,.07); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ============ DOCK ============ */
+  .dockwrap { padding: 8px 0 10px; position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .dock {
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(16,15,24,.78); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 8px 12px;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 18px 50px rgba(0,0,0,.6);
+  }
+  .dk {
+    position: relative; width: 46px; height: 40px; border-radius: 999px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--ink3);
+  }
+  .dk .bar { width: 14px; height: 3px; border-radius: 2px; background: transparent; }
+  .dk.active { color: var(--vio-soft); }
+  .dk.active .bar { background: var(--grad); }
+  .dk .bdg {
+    position: absolute; top: 5px; right: 10px;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--amber);
+    box-shadow: 0 0 10px rgba(251,191,36,.8);
+  }
+  .homebar { width: 120px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.22); }
+
+  /* ============ MERKEZ (bento) ============ */
+  .hhead { padding: 12px 20px 4px; position: relative; z-index: 3; }
+  .hhead h1 { font-size: 32px; font-weight: 750; letter-spacing: -1px; }
+  .hsub { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--ink3); }
+  .bento {
+    flex: 1; overflow-y: auto; scrollbar-width: none; z-index: 2;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 12px 20px 14px; align-content: start;
+  }
+  .bento::-webkit-scrollbar { display: none; }
+  .tile {
+    background: var(--glass); border: 1px solid var(--edge);
+    border-radius: 22px; padding: 16px; backdrop-filter: blur(14px);
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  }
+  .tile.hero { grid-column: span 2; gap: 10px; }
+  .tile .t-label { font-size: 10.5px; font-weight: 700; letter-spacing: 1.6px; color: var(--ink3); }
+  .tile .t-more { font-size: 12px; color: var(--vio-soft); margin-left: auto; }
+  .bignum { font-size: 40px; font-weight: 750; letter-spacing: -1.5px; line-height: 1; }
+  .bignum small { font-size: 14px; font-weight: 600; color: var(--ink3); letter-spacing: 0; margin-left: 4px; }
+  .t-sub { font-size: 11.5px; color: var(--ink3); }
+  .ws-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ws-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .ws-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-badge {
+    font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 3px 9px; flex: none;
+  }
+  .ws-badge.run { color: var(--cyn); background: rgba(34,211,238,.10); border: 1px solid rgba(34,211,238,.28); }
+  .ws-badge.ok { color: var(--mint); background: rgba(52,211,153,.10); border: 1px solid rgba(52,211,153,.28); }
+  .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; grid-column: span 2; }
+  .qa {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--glass); border: 1px solid var(--edge);
+    border-radius: 16px; padding: 13px 14px; font-size: 13px; font-weight: 600; color: var(--ink2);
+    min-width: 0;
+  }
+  .qa span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qa .ic {
+    width: 30px; height: 30px; border-radius: 10px; flex: none;
+    background: rgba(255,255,255,.06); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center; color: var(--ink2);
+  }
+  .spark { margin-top: auto; }
+
+  /* ============ PALET ============ */
+  .pdim {
+    position: absolute; inset: 0; z-index: 8;
+    background: rgba(4,4,8,.62); backdrop-filter: blur(7px);
+    display: flex; flex-direction: column; align-items: stretch;
+  }
+  .palette {
+    margin: 120px 16px 0; background: rgba(18,17,27,.92);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 28px;
+    padding: 8px; backdrop-filter: blur(28px);
+    box-shadow: 0 40px 110px rgba(0,0,0,.75), 0 0 0 1px rgba(139,92,246,.10), 0 0 70px rgba(139,92,246,.14);
+    display: flex; flex-direction: column;
+  }
+  .p-search {
+    display: flex; align-items: center; gap: 11px;
+    padding: 12px 14px;
+  }
+  .p-search .q { flex: 1; font-size: 16px; font-weight: 600; color: var(--ink); }
+  .p-search .q span { color: var(--ink3); font-weight: 400; }
+  .kbd {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; color: var(--ink3);
+    background: rgba(255,255,255,.06); border: 1px solid var(--edge);
+    border-radius: 6px; padding: 3px 7px; flex: none;
+  }
+  .p-sep { height: 1px; background: var(--edge); margin: 4px 8px; }
+  .p-sec { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; color: var(--ink3); padding: 10px 16px 4px; }
+  .p-item {
+    display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 14px;
+  }
+  .p-item.hot {
+    background: linear-gradient(135deg, rgba(139,92,246,.16), rgba(34,211,238,.08));
+    border: 1px solid rgba(139,92,246,.35);
+  }
+  .p-ic {
+    width: 30px; height: 30px; border-radius: 10px; flex: none;
+    background: rgba(255,255,255,.06); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center; color: var(--ink2);
+  }
+  .p-item.hot .p-ic { color: var(--vio-soft); }
+  .p-txt { flex: 1; min-width: 0; }
+  .p-t { font-size: 13.5px; font-weight: 600; }
+  .p-s { font-size: 11px; color: var(--ink3); margin-top: 1px; }
+  .p-hint {
+    text-align: center; font-size: 10.5px; color: var(--ink3);
+    padding: 10px 0 6px; letter-spacing: .4px;
+  }
+
+  /* ============ PANEL ============ */
+  .panel { width: 430px; max-width: 94vw; display: flex; flex-direction: column; gap: 22px; padding-top: 8px; }
+  .panel h1 {
+    font-size: 40px; font-weight: 750; letter-spacing: -1.6px; line-height: 1.05;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .panel .sub { font-size: 14.5px; line-height: 22px; color: var(--ink2); }
+  .panel h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ink3); margin-bottom: 10px;
+  }
+  .panel ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .panel ul li { font-size: 13.5px; line-height: 19px; color: var(--ink2); padding-left: 15px; position: relative; }
+  .panel ul li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--vio); }
+  .panel ul li b { color: var(--ink); font-weight: 650; }
+  .pcard {
+    background: var(--glass); border: 1px solid var(--edge); border-radius: 20px;
+    padding: 18px; backdrop-filter: blur(14px);
+  }
+  .pfoot { font-size: 12px; line-height: 17px; color: var(--ink3); }
+  .tokenrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .tok {
+    display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink2);
+    border: 1px solid var(--edge); border-radius: 999px; padding: 5px 11px;
+    background: rgba(255,255,255,.03);
+  }
+  .tok i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<main class="stage">
+
+  <!-- ================= SOHBET ================= -->
+  <section class="shot">
+    <div class="device">
+      <div class="phone">
+        <div class="blob b1"></div><div class="blob b2"></div>
+
+        <div class="statusbar">
+          <span>20:47</span>
+          <span class="sb-r">
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.6" height="4" rx="1"/><rect x="4" y="5" width="2.6" height="6" rx="1"/><rect x="8" y="2.5" width="2.6" height="8.5" rx="1"/><rect x="12" y="0" width="2.6" height="11" rx="1"/></svg>
+            <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="12" height="7" rx="1.6" fill="currentColor"/><path d="M20 3.5v4a2 2 0 0 0 0-4z" fill="currentColor" opacity=".5"/></svg>
+          </span>
+        </div>
+
+        <header class="chead">
+          <div class="chead-row">
+            <span class="gbtn">
+              <svg width="19" height="13" viewBox="0 0 20 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"><path d="M0 1h20M0 7h13M0 13h20"/></svg>
+            </span>
+            <div class="title-block">
+              <div class="title">2026/118 dosya <span class="chev">▾</span></div>
+              <div class="sub-row">
+                <span class="dot cyn"></span>
+                <span class="live-pill">çalışıyor · 4 dk</span>
+                <span>·</span>
+                <span class="mono">opus · %62 bağlam</span>
+              </div>
+            </div>
+            <span class="gbtn">
+              <svg width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><circle cx="8.6" cy="8.6" r="5.6"/><path d="M13 13l4.4 4.4"/></svg>
+            </span>
+          </div>
+        </header>
+
+        <div class="flow">
+          <div class="daysep">BUGÜN</div>
+
+          <div class="user">2026/118 dosyasını incele; kronoloji ve iddia–savunma matrisi çıkar.</div>
+
+          <div class="turn">
+            <span class="rail"></span>
+            <div class="alabel">OPUS</div>
+
+            <div class="seg">
+              <span class="node hollow"></span>
+              <p class="thought">34 belgeyi envanterleyip türlerine ayıracağım, sonra olay kronolojisini kuracağım.</p>
+            </div>
+
+            <div class="seg chip mono">
+              <span class="node tool"></span>
+              <span class="name">read</span>
+              <span class="path">belgeler/dava-dilekcesi.udf</span>
+              <span class="dur">1,2 sn</span>
+              <span class="chev">▾</span>
+            </div>
+
+            <div class="seg chip mono">
+              <span class="node tool"></span>
+              <span class="name">read</span>
+              <span class="path">belgeler/bilirkisi-raporu.pdf</span>
+              <span class="dur">0,8 sn</span>
+              <span class="chev">▾</span>
+            </div>
+
+            <div class="seg">
+              <p class="atext"><b>Kronoloji hazır</b> — 14 olay, 3 tanık beyanı. Matriste çelişki iki noktada: <span class="dim">tebligat tarihi ve faiz başlangıcı.</span> Raporu <code>teslimat/kronoloji.docx</code> olarak yazacağım.</p>
+            </div>
+
+            <div class="seg">
+              <span class="node amber"></span>
+              <div class="approval">
+                <div class="ap-head"><span class="ap-tag">ONAY BEKLİYOR</span><span class="ap-wait">2 dk</span></div>
+                <div class="ap-cmd"><span class="a">pandoc</span> kronoloji.md -o teslimat/kronoloji.docx</div>
+                <p class="ap-desc">Çalışma alanına dosya yazacak — yazma izni gerekiyor.</p>
+                <div class="ap-acts">
+                  <span class="btn-w">Onayla</span>
+                  <span class="btn-r">Reddet</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="seg">
+              <span class="node end"></span>
+              <div class="chip mono live">
+                <span class="name">search</span>
+                <span class="path">emsal · "icra inkâr tazminatı"</span>
+                <span class="dur">12 sn</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="czone">
+          <div class="cpills">
+            <span class="cpill"><span class="dot cyn"></span>çalışıyor</span>
+            <span class="cpill"><span class="mk">O</span>opus</span>
+            <span class="cpill">%62</span>
+          </div>
+          <div class="island attention">
+            <span class="iadd">
+              <svg width="19" height="19" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+            </span>
+            <div class="ifield">Mesaj yaz&nbsp; —&nbsp; <span class="mono">/</span>&nbsp; komutlar</div>
+            <span class="isend">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="#0B0A13"><path d="M2 10 17 3l-3.2 14L9 12.6 2 10z"/></svg>
+            </span>
+            <span class="istop"><span class="in">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="#A6A1C0"><rect width="10" height="10" rx="2.4"/></svg>
+            </span></span>
+          </div>
+        </div>
+
+        <div class="dockwrap">
+          <div class="dock">
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 9a6 6 0 1 1 1.7 4.2"/><path d="M4 5v4h4"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk active">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-3.5h-.5A2.5 2.5 0 0 1 1 10.5v-6" transform="translate(1 0)"/></svg>
+              <span class="bar"></span>
+              <span class="bdg"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 3h12l-1.2 11.2L10 17l-4.8-2.8L4 3z"/><path d="M7.5 7l5 3-5 3V7z" fill="currentColor" stroke="none"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="2.5" y="2.5" width="6" height="6" rx="1.8"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.8"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.8"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.8"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><circle cx="10" cy="10" r="2.4"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" stroke-linecap="round"/></svg>
+              <span class="bar"></span>
+            </span>
+          </div>
+          <span class="homebar"></span>
+        </div>
+
+      </div>
+    </div>
+    <div class="caption">Sohbet</div>
+  </section>
+
+  <!-- ================= MERKEZ ================= -->
+  <section class="shot">
+    <div class="device">
+      <div class="phone">
+        <div class="blob b1"></div><div class="blob b2"></div>
+
+        <div class="statusbar">
+          <span>20:47</span>
+          <span class="sb-r">
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.6" height="4" rx="1"/><rect x="4" y="5" width="2.6" height="6" rx="1"/><rect x="8" y="2.5" width="2.6" height="8.5" rx="1"/><rect x="12" y="0" width="2.6" height="11" rx="1"/></svg>
+            <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="12" height="7" rx="1.6" fill="currentColor"/><path d="M20 3.5v4a2 2 0 0 0 0-4z" fill="currentColor" opacity=".5"/></svg>
+          </span>
+        </div>
+
+        <header class="hhead">
+          <h1>Merkez</h1>
+          <div class="hsub">
+            <span class="dot done"></span> Köprü bağlı · 2 oturum çalışıyor
+          </div>
+        </header>
+
+        <div class="bento">
+          <div class="tile hero">
+            <div style="display:flex;align-items:baseline;">
+              <span class="t-label">ÇALIŞMA ALANLARI</span>
+              <span class="t-more">8 alan ›</span>
+            </div>
+            <div class="ws-row">
+              <span class="ws-dot" style="background:var(--cyn); box-shadow:0 0 9px rgba(34,211,238,.8);"></span>
+              <span class="ws-name">2026/118 dosya</span>
+              <span class="ws-badge run">çalışıyor</span>
+            </div>
+            <div class="ws-row">
+              <span class="ws-dot" style="background:var(--mint);"></span>
+              <span class="ws-name">emsal araştırması</span>
+              <span class="ws-badge ok">bitti</span>
+            </div>
+          </div>
+
+          <div class="tile">
+            <span class="t-label">KULLANIM</span>
+            <div class="bignum">1,24<small>M token · bugün</small></div>
+            <div class="spark">
+              <svg width="100%" height="40" viewBox="0 0 120 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sg" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#22D3EE"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0 33 C 14 31, 20 24, 32 26 S 54 13, 68 15 S 94 4, 120 7 L 120 40 L 0 40 Z" fill="url(#sg)" opacity=".10"/>
+                <path d="M0 33 C 14 31, 20 24, 32 26 S 54 13, 68 15 S 94 4, 120 7" fill="none" stroke="url(#sg)" stroke-width="2.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="tile">
+            <span class="t-label">TESLİMATLAR</span>
+            <div class="bignum">3<small>yeni</small></div>
+            <span class="t-sub">kronoloji.docx · 2 PDF</span>
+          </div>
+
+          <div class="tile">
+            <span class="t-label">NOTLARIM</span>
+            <div class="bignum">12</div>
+            <span class="t-sub">2 bayat · güncelle</span>
+          </div>
+
+          <div class="tile">
+            <span class="t-label">PROJELER</span>
+            <div class="bignum">6</div>
+            <span class="t-sub">2'si cowork</span>
+          </div>
+
+          <div class="qa-grid">
+            <div class="qa">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><circle cx="10" cy="10" r="3.2"/><path d="M16.5 8v4"/></svg></span>
+              <span class="nm">Görsel üret</span>
+            </div>
+            <div class="qa">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 3h5.5v5.5H3zM11.5 3H17v5.5h-5.5zM3 11.5h5.5V17H3zM11.5 11.5H17V17h-5.5z"/></svg></span>
+              <span class="nm">Dosyalar</span>
+            </div>
+            <div class="qa">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M6 3h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h4M8 10.5h4M8 14h2.5"/></svg></span>
+              <span class="nm">Belgelik</span>
+            </div>
+            <div class="qa">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 3h12l-1.2 11.2L10 17l-4.8-2.8L4 3z"/><path d="M7.5 7l5 3-5 3V7z" fill="currentColor" stroke="none"/></svg></span>
+              <span class="nm">Operasyonlar</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dockwrap">
+          <div class="dock">
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 9a6 6 0 1 1 1.7 4.2"/><path d="M4 5v4h4"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-3.5h-.5A2.5 2.5 0 0 1 1 10.5v-6" transform="translate(1 0)"/></svg>
+              <span class="bar"></span>
+              <span class="bdg"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 3h12l-1.2 11.2L10 17l-4.8-2.8L4 3z"/><path d="M7.5 7l5 3-5 3V7z" fill="currentColor" stroke="none"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk active">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="2.5" y="2.5" width="6" height="6" rx="1.8"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.8"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.8"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.8"/></svg>
+              <span class="bar"></span>
+            </span>
+            <span class="dk">
+              <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><circle cx="10" cy="10" r="2.4"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" stroke-linecap="round"/></svg>
+              <span class="bar"></span>
+            </span>
+          </div>
+          <span class="homebar"></span>
+        </div>
+
+      </div>
+    </div>
+    <div class="caption">Merkez</div>
+  </section>
+
+  <!-- ================= PALET ================= -->
+  <section class="shot">
+    <div class="device">
+      <div class="phone">
+        <div class="blob b1"></div><div class="blob b2"></div>
+
+        <div class="statusbar">
+          <span>20:47</span>
+          <span class="sb-r">
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.6" height="4" rx="1"/><rect x="4" y="5" width="2.6" height="6" rx="1"/><rect x="8" y="2.5" width="2.6" height="8.5" rx="1"/><rect x="12" y="0" width="2.6" height="11" rx="1"/></svg>
+            <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="12" height="7" rx="1.6" fill="currentColor"/><path d="M20 3.5v4a2 2 0 0 0 0-4z" fill="currentColor" opacity=".5"/></svg>
+          </span>
+        </div>
+
+        <!-- karartılmış sohbet eskizi -->
+        <header class="chead" style="opacity:.45;">
+          <div class="chead-row">
+            <span class="gbtn"></span>
+            <div class="title-block">
+              <div class="title">2026/118 dosya</div>
+              <div class="sub-row"><span class="dot cyn"></span><span class="live-pill">çalışıyor</span></div>
+            </div>
+          </div>
+        </header>
+        <div class="flow" style="opacity:.35;">
+          <div class="user">2026/118 dosyasını incele…</div>
+          <div class="turn">
+            <span class="rail"></span>
+            <div class="seg chip mono"><span class="node tool"></span><span class="name">read</span><span class="path">belgeler/…</span></div>
+            <div class="seg"><p class="atext">Kronoloji hazır — 14 olay…</p></div>
+          </div>
+        </div>
+
+        <!-- palet -->
+        <div class="pdim">
+          <div class="palette">
+            <div class="p-search">
+              <span class="p-ic" style="width:24px;height:24px;border-radius:8px;color:var(--vio-soft);">
+                <svg width="14" height="14" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M6 4l10 6-10 6V4z" fill="currentColor" stroke="none"/></svg>
+              </span>
+              <div class="q mono"><span>oturum&nbsp;</span>kronoloji</div>
+              <span class="kbd">esc</span>
+            </div>
+            <div class="p-sep"></div>
+
+            <div class="p-sec">OTURUMLAR</div>
+            <div class="p-item hot">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-3.5h-.5A2.5 2.5 0 0 1 1 10.5v-6" transform="translate(1 0)"/></svg></span>
+              <div class="p-txt">
+                <div class="p-t">2026/118 dosya</div>
+                <div class="p-s">kronoloji çıkarılıyor · çalışıyor</div>
+              </div>
+              <span class="dot cyn"></span>
+            </div>
+            <div class="p-item">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-3.5h-.5A2.5 2.5 0 0 1 1 10.5v-6" transform="translate(1 0)"/></svg></span>
+              <div class="p-txt">
+                <div class="p-t">ui revizyonu</div>
+                <div class="p-s">3 saat önce · opus</div>
+              </div>
+              <span class="kbd">⏎</span>
+            </div>
+
+            <div class="p-sec">AKSİYONLAR</div>
+            <div class="p-item">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"><path d="M10 4v12M4 10h12"/></svg></span>
+              <div class="p-txt"><div class="p-t">Yeni oturum</div><div class="p-s">sağlayıcı seçimiyle</div></div>
+              <span class="kbd">⌘N</span>
+            </div>
+            <div class="p-item">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><circle cx="10" cy="10" r="3.2"/></svg></span>
+              <div class="p-txt"><div class="p-t">Görsel üret</div><div class="p-s">oturumsuz üretim</div></div>
+              <span class="kbd">⌘G</span>
+            </div>
+            <div class="p-item">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M10 4.5 3 17h14L10 4.5z"/><path d="M10 10v3.5"/></svg></span>
+              <div class="p-txt"><div class="p-t">Bekleyen onaylar</div><div class="p-s">1 onay · 2 dk'dır bekliyor</div></div>
+              <span class="dot amber"></span>
+            </div>
+
+            <div class="p-sec">SON DOSYALAR</div>
+            <div class="p-item">
+              <span class="p-ic"><svg width="15" height="15" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M6 3h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h4M8 10.5h4"/></svg></span>
+              <div class="p-txt"><div class="p-t mono" style="font-size:12.5px;">kronoloji.docx</div><div class="p-s">teslimat · 2 dk önce</div></div>
+              <span class="kbd">⌘1</span>
+            </div>
+
+            <div class="p-hint mono">↑↓ gez &nbsp;·&nbsp; ⏎ seç &nbsp;·&nbsp; esc kapat</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="caption">Komut Paleti — her yerden ⌘K / uzun basma</div>
+  </section>
+
+  <!-- ================= PANEL ================= -->
+  <aside class="panel">
+    <div>
+      <h1>go wild.</h1>
+      <p class="sub" style="margin-top:10px">
+        Aynı motor, sıfır sürtünme: uygulama bir sohbet penceresi değil, <b style="color:var(--ink)">ajanların nöbet
+        kontrol merkezi</b>. Anayasa askıda — bu bir yön arayışı, onay gelirse anayasa v2 olarak yazılır.
+      </p>
+    </div>
+
+    <div class="pcard">
+      <h2>Dil</h2>
+      <ul>
+        <li><b>Saf siyah zemin + ışık:</b> yüzeyler kenar çizgisiyle değil cam (blur + kenar ışığı) ve parlaklık
+          basamağıyla ayrılıyor. Zeminde gezinen menekşe/cyan ışık lekeleri uygulamaya nefes veriyor.</li>
+        <li><b>Tek gradyan vurgu</b> (menekşe→cyan) yalnız <b>canlı ve birincil</b> şeylerde: gönder tuşu, aktif dock
+          çizgisi, akan ray. Durum renkleri neon: cyan=çalışıyor, kehribar=onay, mint=bitti, gül=hata.</li>
+        <li><b>Tipografi cesur:</b> 27–34sp başlıklar, −1px harf aralığı, büyük sayılar (40sp) veri fildişi değil
+          başlıktır.</li>
+        <li><b>Beyaz birincil buton:</b> koyu zeminde en yüksek kontrast aksiyon — onay kartında "Onayla".</li>
+        <li><b>Akan ray:</b> ajan turunun solundaki ışık hattı çalışırken aşağı akar; uçtaki gradyan nokta nabız atar.
+          "Şu an nerede" sorusunun cevabı hareketin kendisi.</li>
+      </ul>
+    </div>
+
+    <div class="pcard">
+      <h2>Yapı</h2>
+      <ul>
+        <li><b>Sekme pill'leri öldü:</b> büyük başlık = oturum seçici (▾ ile). Bağlam satırı canlı durum + model +
+          bağlam yüzdesini taşır.</li>
+        <li><b>Etiketsiz cam dock:</b> 5 ikon, aktif olanın altında gradyan çizgi; onay varken Sohbet'te kehribar
+          nokta. Alt nav gövdesi yok — dock havada.</li>
+        <li><b>Komut paleti:</b> arama ikonu, başlık uzun basması ya da ⌘K — oturum, aksiyon, dosya tek yerden;
+          klavye ipuçlarıyla. Sheet ormanının yerini tek desen alır.</li>
+        <li><b>Merkez = bento:</b> dev sayılar + sparkline; çalışma alanları kahraman kartta canlı durumlarıyla.</li>
+        <li><b>Composer adası:</b> durum pill'leri + cam ada; gönder gradyan, durdur cyan halka. Onayda kilitlenmez.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2>Tokenler</h2>
+      <div class="tokenrow">
+        <span class="tok"><i style="background:#08080D;border:1px solid #333;"></i>bg</span>
+        <span class="tok"><i style="background:#8B5CF6;"></i>vio</span>
+        <span class="tok"><i style="background:#22D3EE;"></i>cyn</span>
+        <span class="tok"><i style="background:#FBBF24;"></i>amber</span>
+        <span class="tok"><i style="background:#34D399;"></i>mint</span>
+        <span class="tok"><i style="background:#FB7185;"></i>rose</span>
+        <span class="tok mono" style="letter-spacing:0;">blur 14–28 · radius 14–28</span>
+      </div>
+    </div>
+
+    <p class="pfoot">
+      Korunan: motor katmanı (SessionStreamManager, bridge kontratları), capability-driven kontrol, dört durum
+      anlamı, mono kuralı. Mockup: sohbet + merkez + palet aynı dosyada; canlı Chrome'da taşma/hiza doğrulaması
+      yapıldı.
+    </p>
+  </aside>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Metin dosyalari depoda LF durur; Windows betikleri her makinede CRLF iner
+# (cmd.exe LF'li .bat/.cmd dosyalarinda etiket ve goto'yu yanlis okuyabiliyor).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.vbs text eol=crlf

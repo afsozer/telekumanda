@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="kota_widget_label">Kota: Claude + Nano-GPT</string>
+    <string name="kota_widget_description">Claude Code kalan limiti ve Nano-GPT bakiyesi (köprüden)</string>
+    <string name="kota_widget_claude">Claude Code kalan limit</string>
+    <string name="kota_widget_nano">Nano-GPT bakiyesi</string>
+    <string name="kota_widget_refresh">Yenile</string>
+</resources>

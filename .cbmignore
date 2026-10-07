@@ -1,0 +1,6 @@
+# ağır asset/log klasörleri
+**/build/
+**/.gradle/
+*.log
+*.png
+*.jpg

@@ -1,0 +1,100 @@
+.wrap {
+  padding: 0.5rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(18, 23, 38, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.head:hover {
+  color: var(--fg);
+  filter: none;
+  box-shadow: none;
+}
+
+.title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.count {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-azure);
+}
+
+.hint {
+  font-size: 0.75rem;
+}
+
+.list {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.2rem 0;
+  font-size: 0.88rem;
+}
+
+.status {
+  flex: none;
+  min-width: 4.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pending .status {
+  color: var(--muted);
+}
+
+.active .status {
+  color: var(--accent-azure);
+}
+
+.done .status {
+  color: var(--status-live);
+}
+
+.cancelled .status {
+  color: var(--muted);
+}
+
+.done .text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.cancelled .text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.draft {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+}

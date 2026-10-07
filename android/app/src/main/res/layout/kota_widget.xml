@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ana ekran kota kartı (4×2). Her kart tek bitmap (KotaCardPainter); açık
+     ve koyu sürümün ikisi de basılıyor, görünürlüğü bu dosyanın
+     layout/layout-night eşi seçiyor. Sağ üstteki boş çerçeve ↻ simgesinin
+     dokunma alanı; kartın geri kalanı uygulamayı açar. fitStart: kart kare
+     sınırlı, hücrenin üstüne hizalanır (bkz. MAX_CARD_ASPECT). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/kota_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+
+    <FrameLayout
+        android:id="@+id/kota_claude"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:contentDescription="@string/kota_widget_claude">
+
+        <ImageView
+            android:id="@+id/kota_claude_light"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitStart"
+            android:visibility="visible"
+            android:importantForAccessibility="no" />
+
+        <ImageView
+            android:id="@+id/kota_claude_dark"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitStart"
+            android:visibility="gone"
+            android:importantForAccessibility="no" />
+
+        <FrameLayout
+            android:id="@+id/kota_claude_refresh"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="top|end"
+            android:contentDescription="@string/kota_widget_refresh" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/kota_nano"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/kota_widget_nano">
+
+        <ImageView
+            android:id="@+id/kota_nano_light"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitStart"
+            android:visibility="visible"
+            android:importantForAccessibility="no" />
+
+        <ImageView
+            android:id="@+id/kota_nano_dark"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitStart"
+            android:visibility="gone"
+            android:importantForAccessibility="no" />
+
+        <FrameLayout
+            android:id="@+id/kota_nano_refresh"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="top|end"
+            android:contentDescription="@string/kota_widget_refresh" />
+    </FrameLayout>
+</LinearLayout>

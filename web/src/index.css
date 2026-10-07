@@ -1,0 +1,186 @@
+:root {
+  color-scheme: dark;
+  --bg: #080a10;
+  --bg-canvas: #080a10;
+  --fg: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-azure: #38bdf8;
+  --accent-azure-glow: 0 0 16px rgba(56, 189, 248, 0.25);
+  --accent-indigo: #818cf8;
+  --error: #f87171;
+  --status-live: #34d399;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-subtle: rgba(255, 255, 255, 0.06);
+
+  /* macOS 26 Tahoe Liquid Glass Surfaces */
+  --glass-bg-primary: rgba(13, 17, 28, 0.70);
+  --glass-bg-secondary: rgba(22, 29, 48, 0.65);
+  --glass-like-bg: rgba(18, 23, 38, 0.45);
+  --glass-blur: blur(28px) saturate(190%);
+  --glass-blur-sm: blur(16px);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.10);
+  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.06);
+  --glass-specular: inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+  --glass-specular-subtle: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.5);
+  --glass-shadow-lg: 0 24px 50px -10px rgba(0, 0, 0, 0.65);
+
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg-canvas);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% 10%, rgba(56, 189, 248, 0.12), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 90%, rgba(99, 102, 241, 0.10), transparent 60%),
+    radial-gradient(circle at 50% 40%, rgba(14, 165, 233, 0.03), transparent 70%);
+  background-attachment: fixed;
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* macOS Subtle Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.shell {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  background: var(--glass-like-bg);
+  border: var(--glass-border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: var(--glass-specular-subtle);
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+form input {
+  flex: 1;
+}
+
+input {
+  padding: 0.55rem 0.85rem;
+  font: inherit;
+  color: var(--fg);
+  background: rgba(18, 23, 38, 0.65);
+  border: var(--glass-border);
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible {
+  outline: 0;
+  border-color: var(--accent-azure);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 500;
+  color: #080a10;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.link {
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+button.link:hover:not(:disabled) {
+  color: var(--fg);
+  filter: none;
+  box-shadow: none;
+}

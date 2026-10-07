@@ -1,0 +1,6 @@
+{
+  "versionCode": 437,
+  "versionName": "11.115",
+  "notes": "Duzeltme: Yeni oturum ekraninda iki OpenCode cipi cikiyordu (backend sira listesinde kimlik mukerrerdi). Tek cip kaldi; mukerrer/olu kimlik icin bekci test eklendi.",
+  "apkPath": "/update/app-latest.apk"
+}

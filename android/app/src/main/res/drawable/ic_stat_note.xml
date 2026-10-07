@@ -1,0 +1,20 @@
+<!--
+  Not bildirimlerinin durum çubuğu simgesi (kıvrık köşeli, satırlı belge).
+
+  Neden ayrı: "görev tamamlandı" ve "ekran görüntüsünden not" aynı senkron
+  simgesiyle çıkıyordu, kullanıcı ikisini karıştırdı (08.08.2026) — not
+  bildiriminde "Sil" tuşu var, görev bildiriminde yok, karışması pahalı.
+
+  Durum çubuğu simgeleri tek renk maskedir: sistem zaten yeniden renklendirdiği
+  için dolgu beyaz olmalı, gri tonu ya da renk KULLANMA.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M14,2H6C4.9,2 4.01,2.9 4.01,4L4,20c0,1.1 0.89,2 1.99,2H18c1.1,0 2,-0.9 2,-2V8L14,2zM16,18H8v-2h8V18zM16,14H8v-2h8V14zM13,9V3.5L18.5,9H13z" />
+</vector>

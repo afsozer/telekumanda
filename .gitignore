@@ -1,0 +1,130 @@
+# Gecici calisma dosyalari: cihazdan cekilen ekran goruntuleri, uiautomator
+# dokumleri, olcum ciktilari. Repo kokunde birikiyorlar ve kisisel icerik
+# tasiyabiliyorlar (ekranda ne varsa o). Bir ajan raporu bunlarin zaten
+# yoksayildigini soylemisti — sayilmiyordu.
+.tmp-*
+
+# Android
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+
+# capsule-test: Honor kapsul spike'i (ayri, atilabilir bir uygulama). Kaynagi
+# repoda kalsin — Faz 8 spike'i onun uzerine kuruluyor — derleme ciktilari 14 MB
+# ve local.properties makineye ozel SDK yolu tasiyor.
+capsule-test/.gradle/
+capsule-test/build/
+capsule-test/app/build/
+capsule-test/local.properties
+# Spike sirasinda cihazdan cekilen kanitlar: ekran goruntuleri ve
+# `dumpsys notification` dokumleri. Dokumler telefondaki BUTUN uygulamalarin
+# bildirim icerigini tasiyor (1,5 MB, her biri) — kisisel, repoya girmez.
+capsule-test/*.png
+capsule-test/notif*.txt
+*.apk
+*.aab
+*.ap_
+
+# Masaustu istemcisi kurulum paketleri. Dagitim yolu bridge/update/desktop/
+# uzerinden; latest.json izlenir, paketin KENDISI izlenmez — tek bir MSI 120 MB
+# ve git'e giren ikili kalici olarak repoda kalir (geri almak gecmis yazmaktir).
+*.msi
+
+# Node / Bridge
+node_modules/
+bridge/pi-tmp/
+bridge/opencode-tmp/
+bridge/agy-tmp/
+bridge/chatgpt-planner-tmp/
+bridge/claude-tmp/
+bridge/codex-tmp/
+bridge/tmp/
+bridge/.pid
+# Depo kokundeki calisma alani: olcum ciktilari, gecici betikler, kaynak
+# gorseller. Kisisel icerik tasiyabilir, izlenmez.
+/tmp/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Logs
+# Depo kokundeki `logs/`: derleme ciktilari, logcat/dumpsys dokumleri, olcum
+# loglari. Icerik makineye ve o gunku olcume ozgu, kisisel veri tasiyabilir.
+logs/
+*.log
+bridge/bridge.log
+# Log rotasyonu çıktıları (bridge.log.1, supervisor-out.log.2, vb.) — *.log
+# .log ile bitenleri yakalar ama .log.1 gibi arşivleri değil; bunlar dahil.
+bridge/bridge.log*
+bridge/supervisor-*.log*
+# bootstrap.log: run-bridge.cmd'nin erken-hata yakalama dosyası (logger.mjs
+# devreye girmeden önce node başlatma/syntax hataları). Normalde boş.
+bridge/bootstrap.log*
+
+# IDE session cache (auto-generated)
+bridge/ide-sessions-cache.json
+
+# Secrets / config (contains auth token)
+bridge/config.json
+# Elle alınan yedekler (config.json.yedek-…) da aynı sırları taşıyor.
+# `config.example.json` bu desene takılmaz, izlenmeye devam eder.
+bridge/config.json.*
+
+# Makineye ozel model kataloglari: hangi checkpoint/GGUF'lar indirili, dosya
+# adlari, yollari ve aciklamalari. Kod degil YAPILANDIRMA — repoya girmez.
+# Sablonu: bridge/image-models.example.json
+bridge/image-models.json
+
+# Seçici sabitlemeleri (yıldızlar): cihazlar arası sync köprüde saklanır;
+# kişiseldir ama sır değildir. Kod değil durum — repoya girmez.
+bridge/ui-pins.json
+
+# Temp worker scripts
+bridge/worker-tmp/
+
+# Okuma modu onbellegi: cikarilmis PDF metni. Kaynak belgenin TAM METNINI
+# tasir (muvekkil evraki dahil) — repoya asla girmemeli.
+bridge/pdf-read-tmp/
+# Dil kontrolu onbellegi: bulgular kaynaktan ALINTI tasir, ayni gerekce.
+bridge/pdf-lang-tmp/
+# Cihazlar arasi "kaldigi yer" kaydi: hangi belgenin acildigini ve nerede
+# kalindigini gosteren kisisel gecmis. Makineye ozel durum, kod degil.
+bridge/pdf-positions.json
+
+# Codex remote attachments
+.codex-remote-attachments/
+__pycache__/
+
+# Syncthing
+.stfolder/
+.stignore
+
+# Personal, machine-specific helper scripts (device IPs, local venv paths,
+# Claude Code skill definitions). Kept on disk, out of the repo.
+# Exceptions below: generic, machine-independent tools that belong in the repo.
+scripts/*
+!scripts/masaustu.ps1
+!scripts/ocr.ps1
+!scripts/cdp.mjs
+!scripts/ui-olc.mjs
+
+.zcode/
+
+# Cihazdan cekilen ekran goruntuleri kisisel icerik tasiyor (sozlesme, IBAN,
+# yazisma). Uretimde ~/.agentbridge/screenshots altina inerler; repo icinde
+# bir kopya olusursa da asla commit edilmesin.
+bridge/data/
+
+# Ajan yonergeleri: makineye/kullaniciya ozel calisma kurallari, repo icerigi
+# degil. Diskte durur, repoya girmez.
+AGENTS.md
+CLAUDE.md
+

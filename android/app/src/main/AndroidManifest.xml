@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- WirelessDebugHealer'in Wi-Fi kontrolu icin (normal izin, otomatik verilir). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Kapsul (Android 16 Live Updates / Honor Magic Capsule): bildirimin
+         "promoted ongoing" olarak terfi etmesi icin. protectionLevel
+         normal|appop, kurulumda kendiliginden veriliyor (olculdu,
+         capsule-test/live/SONUC.md:45-52). DUZ METIN yaziliyor cunku
+         Manifest.permission sabiti yalniz API 36.1'de var, compileSdk 36. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Kablosuz hata ayiklamayi ag degisimi sonrasi geri acmak icin (WirelessDebugHealer);
+         yalniz adb'den `pm grant` verilen cihazda etkin, digerlerinde no-op. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Guvenli ag listesi icin (SafeNetworks): baglanilan Wi-Fi'nin ADINI okumak.
+         ACCESS_WIFI_STATE normal izin, kendiliginden verilir; FINE_LOCATION
+         kullaniciya CALISMA ANINDA SORULMUYOR, WRITE_SECURE_SETTINGS ile ayni
+         yoldan bir kez adb'den veriliyor:
+           pm grant com.agent.bridge android.permission.ACCESS_FINE_LOCATION
+           pm grant com.agent.bridge android.permission.ACCESS_BACKGROUND_LOCATION
+         BACKGROUND olani sart degil ama onemli: onsuz ag adi yalniz uygulama
+         ondeyken okunur, arka plandaki periyodik kontrolde sistem adi maskeler
+         ve kimlik izin gerektirmeyen alt-ag parmak izine duser. Izin hic yoksa
+         ozellik calismaya devam eder, sadece parmak iziyle. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <!-- Telefon dosya gezgini icin. Normal izin diyaloguyla VERILEMEZ; kullanici
+         Ayarlar > Tum dosyalara erisim'den elle acar (PhoneStorage.requestIntent).
+         Play Store bu izni kisitlar — uygulama zaten sideload (REQUEST_INSTALL_PACKAGES).
+         Gerekce: /sdcard/AgentBridge standart bir MediaStore koleksiyonu degil,
+         oraya MediaStore RELATIVE_PATH ile yazilamaz. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.EDIT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <!-- Merkez'deki "Belgelik" tuşu bu uygulamayı açar. Android 11'den beri
+             paket görünürlüğü kapalı: bu satır olmadan getLaunchIntentForPackage
+             kurulu uygulamada bile null döner. -->
+        <package android:name="com.belgelik.hakimlik_app" />
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.AgentBridge"
+        android:usesCleartextTraffic="true">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- Markdown acici. Honor'un dosya yoneticisinde .md'yi acabilen
+                 uygulama yok; bu filtre bizi secicide gorunur yapar.
+                 Iki ayri filtre gerekiyor: dosya yoneticileri .md'yi bazen
+                 text/markdown, bazen text/plain, bazen de octet-stream olarak
+                 gonderiyor — mime'a guvenilemiyor, uzantiyi de esliyoruz. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="text/markdown" />
+                <data android:mimeType="text/x-markdown" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.md" />
+                <data android:pathPattern=".*\\..*\\.md" />
+                <data android:pathPattern=".*\\.markdown" />
+            </intent-filter>
+            <!-- UDF acici. UYAP belgesi WhatsApp'tan, e-postadan ve dosya
+                 yoneticisinden dogrudan bizde acilsin diye; hedef davranis
+                 UDF Editor Pro'nun filtresinden okundu (telefonda olculdu).
+
+                 Iki filtre birden gerekiyor cunku gonderen tarafin elinde
+                 tuttugu bilgi degisiyor: content:// URI'de yol opak, geriye
+                 yalniz MIME kaliyor; file:// URI'de MIME cogu zaman yok,
+                 geriye yalniz uzanti kaliyor.
+
+                 application/octet-stream ve zip aileside BILEREK burada:
+                 .udf'i Android tanimadigi icin WhatsApp ve e-posta onu
+                 "bilinmeyen ikili" ya da "zip" diye gonderiyor, bunlar olmadan
+                 o yollardan hic cagrilmiyoruz. Bedeli, her .zip ve her
+                 taninmayan dosyanin "Birlikte ac" listesinde gorunmemiz —
+                 rahatsiz ederse once bu iki satir cikarilir. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/udf" />
+                <data android:mimeType="application/x-udf" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="multipart/x-zip" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.udf" />
+                <data android:pathPattern=".*\\.UDF" />
+                <data android:pathPattern=".*\\..*\\.udf" />
+                <data android:pathPattern=".*\\..*\\..*\\.udf" />
+                <data android:pathPattern=".*\\.udfx" />
+            </intent-filter>
+        </activity>
+        <service
+            android:name=".BridgeMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
+        <receiver
+            android:name=".ApprovalReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.agent.bridge.ACTION_APPROVE" />
+            </intent-filter>
+        </receiver>
+        <!-- Bildirimdeki "Sil" tusu. Yalniz kendi PendingIntent'imizden
+             tetiklenir, disari kapali. -->
+        <receiver
+            android:name=".NoteActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.agent.bridge.ACTION_NOTE_DELETE" />
+            </intent-filter>
+        </receiver>
+        <!-- Kapsuldeki "Durdur" tusu. Yalniz kendi PendingIntent'imizden
+             tetiklenir, disari kapali. -->
+        <receiver
+            android:name=".TurDurdurReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.agent.bridge.ACTION_TUR_DURDUR" />
+            </intent-filter>
+        </receiver>
+        <!-- Ana ekran kota kartı (4×2): Claude kalan limit + Nano-GPT bakiyesi.
+             Veri köprünün /usage ucundan; bkz. widget/KotaWidgetProvider.kt. -->
+        <receiver
+            android:name=".widget.KotaWidgetProvider"
+            android:exported="false"
+            android:label="@string/kota_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kota_widget_info" />
+        </receiver>
+    </application>
+</manifest>

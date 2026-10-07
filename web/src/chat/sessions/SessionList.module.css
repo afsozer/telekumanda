@@ -1,0 +1,439 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.row {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding: 0.6rem 2.4rem 0.6rem 0.85rem;
+  text-align: left;
+  font: inherit;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.03);
+  border: var(--glass-border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: none;
+  cursor: pointer;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.rowShell {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.menuTrigger {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  place-items: center;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.menuTrigger:hover,
+.menuTrigger:focus-visible {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  filter: none;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.selected {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Onay bekleyen oturum: kehribar cam */
+.approval {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.title {
+  flex: 1 1 0%;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pin {
+  flex: none;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.repo {
+  flex: none;
+  max-width: 7rem;
+  padding: 0.1rem 0.45rem;
+  overflow: hidden;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--accent-azure);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 999px;
+}
+
+.running {
+  flex: none;
+  color: var(--status-live);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.agent {
+  flex: none;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: var(--glass-border-subtle);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge {
+  flex: none;
+  margin-left: auto;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.lastText {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.meta > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cwd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--muted);
+  margin: 0.75rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.search {
+  flex: none;
+  height: 2.2rem;
+  box-sizing: border-box;
+  margin: 0.5rem 0.75rem 0.3rem;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--fg);
+  background: rgba(18, 23, 38, 0.7);
+  border: var(--glass-border);
+  border-radius: 999px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search:focus-visible {
+  outline: 0;
+  border-color: var(--accent-azure);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.more {
+  margin: 0.35rem 0.75rem 0.75rem;
+  padding: 0.3rem 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--fg);
+  filter: none;
+  box-shadow: none;
+}
+
+.loadMoreSentinel {
+  display: flex;
+  min-height: 2.25rem;
+  justify-content: center;
+}
+
+.notice {
+  margin: 0.25rem 0.75rem 0.65rem;
+  font-size: 0.78rem;
+  color: var(--status-live);
+}
+
+/* ── Oturum bağlam menüsü ───────────────────────────────────────────────── */
+
+.contextMenu {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  width: 14rem;
+  flex-direction: column;
+  padding: 0.4rem;
+  color: var(--fg);
+  background: rgba(18, 24, 40, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: var(--glass-border);
+  border-radius: 0.85rem;
+  box-shadow: var(--glass-shadow-lg), var(--glass-specular);
+}
+
+.menuHeading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.65rem 0.55rem;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.menuHeading strong,
+.menuHeading span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuHeading strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.menuHeading span {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.contextMenu > button {
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--fg);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 0.45rem;
+  box-shadow: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.contextMenu > button:hover,
+.contextMenu > button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.contextMenu > .menuDeleteItem {
+  color: #fca5a5;
+}
+
+.contextMenu > .menuDeleteItem:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+}
+
+.menuError {
+  margin: 0.35rem 0.5rem;
+  font-size: 0.76rem;
+  color: var(--error);
+}
+
+.dialogBackdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  padding: 1rem;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(14px) brightness(0.7);
+  -webkit-backdrop-filter: blur(14px) brightness(0.7);
+}
+
+.dialog {
+  width: min(25rem, 100%);
+  padding: 1.25rem;
+  color: var(--fg);
+  background: rgba(14, 18, 30, 0.9);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--glass-shadow-lg), var(--glass-specular);
+}
+
+.dialog h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dialog p {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.dialogInput {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: rgba(18, 23, 38, 0.7);
+  border: var(--glass-border);
+  border-radius: 0.5rem;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.dialogActions button {
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.menuSecondary {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: var(--glass-border-subtle);
+  box-shadow: none;
+}
+
+.menuSecondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  filter: none;
+  box-shadow: none;
+}
+
+.menuPrimary {
+  color: #080a10;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+}
+
+.menuDanger {
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

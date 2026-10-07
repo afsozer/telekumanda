@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui3 önerisi — Sohbet</title>
+<style>
+  /* Tokenler: Ui2Dark kümesinden birebir (ui2/theme/Ui2Theme.kt). */
+  :root {
+    --bg: #131118;
+    --chatBg: #0B0910;
+    --surface: #1B1923;
+    --surface2: #232030;
+    --line: #2D2A3C;
+    --line-strong: #3D3956;
+    --ink: #EBE9F4;
+    --ink2: #A19DBB;
+    --ink3: #6E6A85;
+    --accent: #A18BFA;
+    --on-accent: #191430;
+    --pill-fill: #CFC6F0;
+    --pill-on: #262040;
+    --code-bg: #14121B;
+    --nav-bg: #16141D;
+    --running: #5B9DFF;
+    --attention: #F0B34E;
+    --done: #4ECF8D;
+    --danger: #FF6B6B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 800px at 30% 20%, #0c0a13 0%, #060509 70%);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+  .stage {
+    min-height: 100vh;
+    display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: center;
+    gap: 56px; padding: 48px 32px;
+  }
+
+  /* ---------- cihaz çerçevesi ---------- */
+  .device {
+    padding: 10px; border-radius: 54px;
+    background: #04030a;
+    border: 1px solid #241f33;
+    box-shadow: 0 40px 90px rgba(0,0,0,.65);
+    position: relative;
+  }
+  .phone {
+    width: 393px; height: 852px;
+    border-radius: 44px; overflow: hidden;
+    background: var(--chatBg);
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+
+  /* ---------- durum çubuğu ---------- */
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 26px 4px; font-size: 12px; font-weight: 600; color: var(--ink2);
+  }
+  .statusbar .right { display: flex; gap: 6px; align-items: center; color: var(--ink2); }
+
+  /* ---------- üst bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px 10px; position: relative;
+  }
+  .iconbtn {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink2); flex: none;
+  }
+  .tabs { display: flex; gap: 8px; overflow: hidden; flex: 1; min-width: 0; align-items: center; }
+  .tab {
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    padding: 6px 12px; border-radius: 999px;
+  }
+  .tab.active { background: var(--pill-fill); color: var(--pill-on); }
+  .tab.passive { background: var(--surface2); color: var(--ink2); border: 1px solid var(--line); }
+  .tab.plus { color: var(--ink3); border: 1px solid var(--line); padding: 5px 11px; }
+  .conn { display: flex; align-items: center; gap: 6px; color: var(--ink3); font-size: 11px; padding-right: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.done { background: var(--done); }
+
+  /* ---------- akış ---------- */
+  .flow {
+    flex: 1; overflow-y: auto; scrollbar-width: none;
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 8px 20px 12px;
+  }
+  .flow::-webkit-scrollbar { display: none; }
+  .daysep { text-align: center; font-size: 11px; color: var(--ink3); }
+
+  /* kullanıcı balonu */
+  .user {
+    align-self: flex-end; max-width: 82%; position: relative;
+    background: rgba(161,139,250,.10);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px 16px 4px 16px;
+    padding: 10px 14px;
+    font-size: 15px; line-height: 21px;
+  }
+
+  /* ajan turu + omurga */
+  .turn { position: relative; padding-left: 28px; display: flex; flex-direction: column; gap: 12px; }
+  .turn .rail {
+    position: absolute; left: 8px; top: 6px; bottom: 14px; width: 2px;
+    background: linear-gradient(var(--line) 0%, var(--line) 82%, transparent 100%);
+    border-radius: 2px;
+  }
+  .seg { position: relative; }
+
+  /* omurga düğümleri */
+  .node { position: absolute; left: -25px; top: 2px; }
+  .node.hollow {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1.5px solid var(--ink3); background: var(--chatBg);
+    margin-top: 2px;
+  }
+  .node.tool {
+    width: 12px; height: 12px; border-radius: 4px;
+    border: 1.5px solid var(--line-strong); background: var(--surface);
+    margin-top: 0;
+  }
+  .node.run {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--running); margin-top: 1px;
+    animation: pulse 1.8s ease-out infinite;
+  }
+  .node.amber {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--attention); margin-top: 3px;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(91,157,255,.45); }
+    70%  { box-shadow: 0 0 0 9px rgba(91,157,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(91,157,255,0); }
+  }
+
+  /* düşünce şeridi */
+  .thought { font-size: 13px; line-height: 18px; color: var(--ink3); }
+
+  /* araç çipi (katlanır) */
+  .toolchip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 8px 12px;
+    font-size: 12.5px; position: relative;
+  }
+  .toolchip .name { color: var(--ink); font-weight: 600; }
+  .toolchip .path { color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .toolchip .dur { color: var(--ink3); font-size: 11px; flex: none; }
+  .toolchip .chev { color: var(--ink3); font-size: 10px; flex: none; }
+  .toolchip.live .name::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--running); margin-right: 7px; vertical-align: 1px;
+    animation: pulse 1.8s ease-out infinite;
+  }
+
+  /* ajan metni */
+  .atext { font-size: 15px; line-height: 22px; color: var(--ink); }
+  .atext strong { color: var(--ink); font-weight: 650; }
+  .atext code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12.5px; background: var(--code-bg); color: var(--pill-fill);
+    border-radius: 6px; padding: 1px 6px;
+  }
+  .atext .dim { color: var(--ink2); }
+
+  /* onay kartı */
+  .approval {
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: 12px; padding: 14px; position: relative;
+  }
+  .approval .head { display: flex; align-items: baseline; gap: 8px; }
+  .approval .tag {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--attention);
+    flex: 1;
+  }
+  .approval .wait { font-size: 11px; color: var(--ink3); }
+  .approval .cmd {
+    background: var(--code-bg); border-radius: 8px;
+    padding: 10px 12px; margin: 10px 0;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px; color: var(--ink);
+  }
+  .approval .cmd .a { color: var(--accent); }
+  .approval .desc { font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .approval .acts { display: flex; gap: 8px; margin-top: 12px; }
+  .btn {
+    font-size: 13px; font-weight: 600; border-radius: 999px; padding: 9px 18px;
+  }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.ghost { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+
+  /* ---------- composer bölgesi ---------- */
+  .composer-zone { padding: 0 12px 8px; position: relative; }
+  .pills { display: flex; gap: 8px; margin: 0 10px 10px; flex-wrap: nowrap; overflow: hidden; }
+  .pill {
+    display: flex; align-items: center; gap: 6px; flex: none;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 10px;
+    font-size: 12px; color: var(--ink2);
+  }
+  .pill .dot.run { background: var(--running); }
+  .pill .mark {
+    width: 16px; height: 16px; border-radius: 5px;
+    background: var(--surface2); border: 1px solid var(--line);
+    color: var(--ink2); font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .island {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 24px; padding: 10px 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);       /* delta A1: yalnız overlay yüzeyde */
+    display: flex; align-items: flex-end; gap: 9px;
+  }
+  .island .field {
+    flex: 1; background: var(--chatBg); border: 1px solid var(--line);
+    border-radius: 18px; padding: 10px 14px;
+    font-size: 14px; color: var(--ink); min-height: 40px;
+    display: flex; align-items: center;
+  }
+  .island .field span { color: var(--ink3); }
+  .send {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stop {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stop .inner {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- alt nav ---------- */
+  .bottomnav {
+    background: var(--nav-bg); border-top: 1px solid var(--line);
+    display: flex; padding: 6px 6px 18px; position: relative;
+  }
+  .navitem {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 0; color: var(--ink3); font-size: 11px;
+  }
+  .navitem.active { color: var(--accent); font-weight: 600; }
+  .navicon { position: relative; height: 22px; display: flex; align-items: center; }
+  .navicon .badge {
+    position: absolute; top: -1px; right: -5px;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--attention);
+  }
+
+  /* ---------- açıklama paneli ---------- */
+  .panel { width: 420px; max-width: 92vw; display: flex; flex-direction: column; gap: 20px; }
+  .panel h1 { font-size: 26px; font-weight: 700; letter-spacing: -.4px; }
+  .panel .sub { font-size: 14px; line-height: 21px; color: var(--ink2); }
+  .panel h2 {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ink3); margin-bottom: 10px;
+  }
+  .panel ol { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .panel ol li { display: flex; gap: 10px; font-size: 13.5px; line-height: 19px; color: var(--ink2); }
+  .panel ol li b { color: var(--ink); font-weight: 600; }
+  .panel .num {
+    flex: none; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: var(--on-accent);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .panel ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .panel ul li { font-size: 13px; line-height: 18px; color: var(--ink2); padding-left: 14px; position: relative; }
+  .panel ul li::before { content: ""; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--ink3); }
+  .panel ul li b { color: var(--ink); font-weight: 600; }
+  .panel .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px;
+  }
+  .panel .foot { font-size: 11.5px; line-height: 16px; color: var(--ink3); }
+
+  /* mockup içindeki numara rozetleri */
+  .n {
+    position: absolute; z-index: 6;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: var(--on-accent);
+    font-size: 11px; font-weight: 700; font-style: normal;
+    border: 2px solid var(--chatBg);
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+<main class="stage">
+
+  <!-- ============ CİHAZ ============ -->
+  <section class="device" aria-label="Sohbet ekranı mockup">
+    <div class="phone">
+
+      <div class="statusbar">
+        <span>20:47</span>
+        <span class="right">
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.6" height="4" rx="1"/><rect x="4" y="5" width="2.6" height="6" rx="1"/><rect x="8" y="2.5" width="2.6" height="8.5" rx="1"/><rect x="12" y="0" width="2.6" height="11" rx="1"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="12" height="7" rx="1.6" fill="currentColor"/><path d="M20 3.5v4a2 2 0 0 0 0-4z" fill="currentColor" opacity=".5"/></svg>
+        </span>
+      </div>
+
+      <!-- üst bar: çekmece + sekmeler + bağlantı -->
+      <header class="topbar">
+        <span class="iconbtn" aria-hidden="true">
+          <svg width="20" height="14" viewBox="0 0 20 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M0 1h20M0 7h13M0 13h20"/></svg>
+        </span>
+        <div class="tabs">
+          <span class="tab active">2026/118 dosya</span>
+          <span class="tab passive">ui revizyonu</span>
+          <span class="tab plus">+</span>
+        </div>
+        <span class="conn"><span class="dot done"></span>bağlı</span>
+        <i class="n" style="top:-6px; right:2px;">1</i>
+      </header>
+
+      <!-- akış -->
+      <div class="flow">
+
+        <div class="user">
+          <i class="n" style="top:-8px; left:-8px;">2</i>
+          2026/118 dosyasını incele; kronoloji ve iddia–savunma matrisi çıkar.
+        </div>
+
+        <!-- ajan turu: omurga -->
+        <div class="turn">
+          <i class="n" style="top:-4px; left:-6px;">3</i>
+          <span class="rail"></span>
+
+          <div class="seg">
+            <span class="node hollow"></span>
+            <p class="thought">34 belgeyi envanterleyip türlerine ayıracağım, sonra olay kronolojisini kuracağım.</p>
+          </div>
+
+          <div class="seg toolchip mono">
+            <span class="node tool"></span>
+            <span class="name">read</span>
+            <span class="path">belgeler/dava-dilekcesi.udf</span>
+            <span class="dur">1,2 sn</span>
+            <span class="chev">▾</span>
+          </div>
+
+          <div class="seg toolchip mono">
+            <span class="node tool"></span>
+            <span class="name">read</span>
+            <span class="path">belgeler/bilirkisi-raporu.pdf</span>
+            <span class="dur">0,8 sn</span>
+            <span class="chev">▾</span>
+          </div>
+
+          <div class="seg">
+            <p class="atext">
+              <strong>Kronoloji hazır</strong> — 14 olay, 3 tanık beyanı.
+              Matriste çelişki iki noktada: <span class="dim">tebligat tarihi ve faiz başlangıcı.</span>
+              Raporu <code>teslimat/kronoloji.docx</code> olarak yazacağım.
+            </p>
+          </div>
+
+          <div class="seg">
+            <span class="node amber"></span>
+            <div class="approval">
+              <i class="n" style="top:-8px; right:-8px;">5</i>
+              <div class="head"><span class="tag">ONAY BEKLİYOR</span><span class="wait">2 dk</span></div>
+              <div class="cmd"><span class="a">pandoc</span> kronoloji.md -o teslimat/kronoloji.docx</div>
+              <p class="desc">Çalışma alanına dosya yazacak — yazma izni gerekiyor.</p>
+              <div class="acts">
+                <span class="btn primary">Onayla</span>
+                <span class="btn ghost">Reddet</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="seg">
+            <span class="node run"></span>
+            <div class="toolchip mono live">
+              <i class="n" style="top:-8px; left:-2px;">4</i>
+              <span class="name">search</span>
+              <span class="path">emsal · "icra inkâr tazminatı"</span>
+              <span class="dur">12 sn</span>
+            </div>
+          </div>
+          <!-- canlı uç: omurganın nabzı -->
+          <span class="node run" style="bottom:6px; top:auto; left:4px;"><i class="n" style="top:-6px; left:14px;">6</i></span>
+        </div>
+
+      </div>
+
+      <!-- composer: yüzen ada -->
+      <div class="composer-zone">
+        <i class="n" style="top:-4px; right:4px;">7</i>
+        <div class="pills">
+          <span class="pill"><span class="dot run"></span>çalışıyor · 4 dk</span>
+          <span class="pill">%62 bağlam</span>
+          <span class="pill"><span class="mark">O</span>opus</span>
+        </div>
+        <div class="island">
+          <span class="iconbtn">
+            <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+          </span>
+          <div class="field"><span>Mesaj yaz —&nbsp;/&nbsp;komutlar</span></div>
+          <span class="send">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="#191430"><path d="M2 10 17 3l-3.2 14L9 12.6 2 10z"/></svg>
+          </span>
+          <span class="stop"><span class="inner">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="#A19DBB"><rect width="10" height="10" rx="2"/></svg>
+          </span></span>
+        </div>
+      </div>
+
+      <!-- alt nav -->
+      <nav class="bottomnav">
+        <i class="n" style="top:-9px; left:50%; margin-left:-9px;">8</i>
+        <span class="navitem">
+          <span class="navicon">
+            <svg width="21" height="21" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 9a6 6 0 1 1 1.7 4.2"/><path d="M4 5v4h4"/></svg>
+          </span>
+          Oturumlar
+        </span>
+        <span class="navitem active">
+          <span class="navicon">
+            <svg width="21" height="21" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-3.5h-.5A2.5 2.5 0 0 1 1 10.5v-6" transform="translate(1 0)"/><circle cx="6.5" cy="7.5" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="7.5" r=".8" fill="currentColor" stroke="none"/><circle cx="13.5" cy="7.5" r=".8" fill="currentColor" stroke="none"/></svg>
+            <span class="badge"></span>
+          </span>
+          Sohbet
+        </span>
+        <span class="navitem">
+          <span class="navicon">
+            <svg width="21" height="21" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M4 3h12l-1.2 11.2L10 17l-4.8-2.8L4 3z"/><path d="M7.5 7l5 3-5 3V7z" fill="currentColor" stroke="none"/></svg>
+          </span>
+          Operasyon
+        </span>
+        <span class="navitem">
+          <span class="navicon">
+            <svg width="21" height="21" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="2.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.5"/></svg>
+          </span>
+          Merkez
+        </span>
+        <span class="navitem">
+          <span class="navicon">
+            <svg width="21" height="21" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.6" fill="none"><circle cx="10" cy="10" r="2.4"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" stroke-linecap="round"/></svg>
+          </span>
+          Ayarlar
+        </span>
+      </nav>
+
+    </div>
+  </section>
+
+  <!-- ============ AÇIKLAMA ============ -->
+  <aside class="panel">
+    <div>
+      <h1>ui3 önerisi — Sohbet</h1>
+      <p class="sub" style="margin-top:8px">
+        Aynı motor, aynı anayasa ruhu; tek yapısal fikir: bu ekran bir sohbet değil,
+        <b style="color:var(--ink)">uzun süren ajan oturumunun monitörü</b>. Token değerleri
+        mevcut <span class="mono" style="font-size:12px">Ui2Dark</span> kümesinden birebire alınmıştır.
+      </p>
+    </div>
+
+    <div>
+      <h2>Okuma rehberi</h2>
+      <ol>
+        <li><span class="num">1</span><span><b>Oturum bağlamı üstte:</b> çekmece + sekme pill'leri + bağlantı noktası. Mevcut model aynen.</span></li>
+        <li><span class="num">2</span><span><b>Kullanıcı balonu:</b> vurgu tonlu, sağa yaslı, en fazla %82 genişlik. Değişmedi.</span></li>
+        <li><span class="num">3</span><span><b>Ajan turu omurgası:</b> her tur sol ray taşıyor; düşünce/araç/onay olayları rayda düğüm. Uzun oturum tek bakışta taranıyor, "şu an nerede" sorusunun cevabı rayda.</span></li>
+        <li><span class="num">4</span><span><b>Araç çağrısı = omurgada çip:</b> katlanabilir ToolCallCard sözleşmesi aynı, yalnızca görsel bağ değişti. Süren araç mavi nabız taşır.</span></li>
+        <li><span class="num">5</span><span><b>Onay kartı:</b> kehribar düğüm + mono komut + iki aksiyon. Composer onayda kilitlenmez (mevcut kural).</span></li>
+        <li><span class="num">6</span><span><b>Canlı uç:</b> tur sürerken omurganın ucunda nabız atan mavi nokta — büyük spinner'a gerek kalmadan "çalışıyor" hissi.</span></li>
+        <li><span class="num">7</span><span><b>Composer adası:</b> dock şeridi yerine yüzen yüzey; pill'ler adanın üstünde, arkada sohbet zemini görünür. Gönder + kuyruğa ekle + durdur aynı yerde.</span></li>
+        <li><span class="num">8</span><span><b>Alt nav:</b> 5 tuş aynen; onay beklerken Sohbet'te kehribar nokta (anayasa 6, aynen).</span></li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Bilinçli anayasa deltaları</h2>
+      <ul>
+        <li><b>4.2'ye ek:</b> gölge yalnız <b>overlay yüzeylerde</b> (composer adası, sheet) ve çok düşük alfa ile. Kartlarda gölge yine yasak — ton farkı kuralı duruyor.</li>
+        <li><b>4.3:</b> displaySmall 26→28sp; kök başlıklar bir kademe büyür, harf aralığı sıkışır.</li>
+        <li><b>Bölüm 5:</b> <span class="mono" style="font-size:12px">AgentBlock</span> → <span class="mono" style="font-size:12px">AgentTurn</span> (omurga + segment düğümleri). SessionTabBar ve Composer'ın görsel kabuğu değişir, veri sözleşmesi aynı kalır.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2>Değişmeyenler</h2>
+      <ul>
+        <li>3+1 kök alan, Navigation Compose back-stack, alt nav / rail ikiliği.</li>
+        <li>Capability-driven sağlayıcı kontrolü — string-switch yok.</li>
+        <li>Dört durum rengi, tek menekşe vurgu, monogram, mono kod/pasaj kuralı.</li>
+        <li>Boşluk ölçeği (4/8/12/16/20/28) ve köşe kararları.</li>
+        <li>Motor katmanının tamamı (SessionStreamManager, bridge kontratları).</li>
+      </ul>
+    </div>
+
+    <p class="foot">
+      Faz 0.4 protokolüne göre: bu mockup onaylanmadan tek satır Compose kodu yazılmaz.
+      Onaylanırsa önce anayasa güncellenir (commit gerekçesiyle), sonra bileşen setine
+      AgentTurn eklenir.
+    </p>
+  </aside>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,264 @@
+/* Kullanım ekranı + sohbet şeridindeki düğme. Tahoe Liquid Glass stili. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--glass-bg-primary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: rgba(13, 17, 28, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 1.25rem clamp(1rem, 2vw, 2rem) 3rem;
+  overflow-y: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+  max-width: 78rem;
+}
+
+.card {
+  padding: 1.1rem 1.25rem;
+  background: rgba(18, 23, 38, 0.6);
+  border: var(--glass-border-subtle);
+  border-radius: 1rem;
+  box-shadow: var(--glass-specular-subtle);
+}
+
+.cardHead {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cardDesc {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.stale {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 999px;
+}
+
+/* ── Bucket ──────────────────────────────────────────────────────────────── */
+
+.bucket {
+  margin-top: 0.75rem;
+}
+
+.bucketHead,
+.bucketFoot {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.bucketLabel {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.bucketValue {
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #e0f2fe;
+}
+
+.bucketFoot {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.reset {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.track {
+  height: 0.55rem;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.ok {
+  background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.low {
+  background: linear-gradient(90deg, #d97706 0%, #fbbf24 100%);
+}
+
+.critical {
+  background: linear-gradient(90deg, #dc2626 0%, #f87171 100%);
+}
+
+/* Bakiye 10 $ üstü: çubuk dolu, ton indigo — "azalıyor" yeşilinden ayrışır. */
+.plenty {
+  background: linear-gradient(90deg, #6366f1 0%, var(--accent-indigo) 100%);
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.4);
+}
+
+.muted {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--error);
+}
+
+.link {
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--fg);
+  filter: none;
+  box-shadow: none;
+}
+
+/* ── Sohbet şeridindeki düğme ────────────────────────────────────────────── */
+
+.chipWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chip {
+  padding: 0.25rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: var(--glass-border-subtle);
+  border-radius: 999px;
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  filter: none;
+  box-shadow: none;
+}
+
+.popover {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  z-index: 30;
+  width: min(25rem, 90vw);
+  max-height: 60vh;
+  margin-bottom: 0.6rem;
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+  background: rgba(18, 24, 40, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: var(--glass-border);
+  border-radius: 1rem;
+  box-shadow: var(--glass-shadow-lg), var(--glass-specular);
+}
+
+.popHead {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.popGroup {
+  margin-top: 0.85rem;
+}
+
+.popGroupName {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}

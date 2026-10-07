@@ -1,0 +1,84 @@
+.shell {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr;
+  height: 100vh;
+  padding: 0.75rem;
+  gap: 0.75rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem 0.35rem;
+  background: var(--glass-bg-primary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--glass-shadow), var(--glass-specular);
+  min-height: 0;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: center;
+  padding: 0.55rem 0.25rem;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tabOn {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tabOn:hover {
+  background: rgba(56, 189, 248, 0.24);
+}
+
+.glyph {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* Bölüm değil, ayrı bir sayfaya çıkış — rayın dibine itilir ve araya çizgi
+   girer ki yukarıdaki sekmelerle aynı şeymiş gibi durmasın. */
+.spacer {
+  flex: 1;
+}
+
+.exit {
+  text-decoration: none;
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.body {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 1.25rem;
+}
