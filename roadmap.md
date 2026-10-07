@@ -288,7 +288,9 @@
 
 ## 15. WebSocket token'ının query string'den çıkarılması
 
-- Status: completed.
+- Status: completed (7 Eki 2026: sorgu parametresi yolu tamamen kaldırıldı; köprü token'ı yalnız
+  başlıktan okuyor, Android başlık gönderiyor, web arayüzü tek kullanımlık `/ws-ticket` biletiyle
+  bağlanıyor, ilk açılış `/ui/#token=`).
 - Problem: `server.mjs:79` token'ı `Authorization: Bearer` yanında `?token=` query parametresinden
   de kabul ediyor (WebSocket el sıkışması için gerekliydi). Query string'ler log'lara, hata
   mesajlarına ve olası proxy kayıtlarına sızar; `bridge.log` içinde düz token bulunması muhtemel.

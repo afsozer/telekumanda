@@ -46,10 +46,11 @@ eşleştiriyor. Ayrı önek olmasa yeni bir uç nokta eklendiği gün arayüzle
 sayfa gelirdi. Paket istemci kodu, sır taşımaz. **API uçları auth'un arkasında
 kalmaya devam ediyor** — oraya bir şey taşıma.
 
-**Token iki kanaldan gider.** REST çağrıları `Authorization: Bearer`
-kullanır. WebSocket **zorunlu olarak** `?token=` kullanır, çünkü tarayıcı WS el
-sıkışmasına başlık ekleyemez. İkisi de `src/lib/api.ts` içinde; kendi başına
-`fetch`/`WebSocket` kurma, oradaki yardımcıları kullan.
+**Token adrese girmez.** Köprü token'ı yalnız `Authorization: Bearer`
+başlığından kabul ediyor. REST çağrıları başlığı kullanır; tarayıcı WS el
+sıkışmasına başlık ekleyemediği için akış, başlıkla alınan tek kullanımlık ve 30
+saniyelik bir biletle açılır (`wsTicket` + `withTicket`). Hepsi `src/lib/api.ts`
+içinde; kendi başına `fetch`/`WebSocket` kurma, oradaki yardımcıları kullan.
 
 **Vitest `pool: 'threads'` ile koşar.** Varsayılan `forks` havuzu bu makinede
 worker'ları 60 sn zaman aşımına düşürüyor (Node 25 + Windows). `vite.config.ts`
@@ -273,7 +274,7 @@ tutarlı görünsün. Hepsi `composer/attachments.ts` içinde.
 
 ```bash
 & scripts/tarayici-debug.ps1              # debug tarayıcısını aç
-node scripts/cdp.mjs open "http://127.0.0.1:8787/ui/?token=..."
+node scripts/cdp.mjs open "http://127.0.0.1:8787/ui/#token=..."
 node scripts/cdp.mjs eval "document.title"
 node scripts/cdp.mjs shot tmp/ui.png 1600 1000
 node scripts/cdp.mjs console

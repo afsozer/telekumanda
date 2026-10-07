@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { searchWithoutToken, tokenFromSearch } from './token'
+import { bootstrapToken, searchWithoutToken, tokenFromHash, tokenFromSearch } from './token'
 
 describe('tokenFromSearch', () => {
   it('sorgudaki token değerini alır', () => {
@@ -33,5 +33,25 @@ describe('searchWithoutToken', () => {
   it('token yoksa null döner — adrese dokunulmayacak demek', () => {
     expect(searchWithoutToken('?a=1')).toBeNull()
     expect(searchWithoutToken('')).toBeNull()
+  })
+})
+
+describe('tokenFromHash', () => {
+  it('adres parçasındaki token değerini alır', () => {
+    expect(tokenFromHash('#token=abc123')).toBe('abc123')
+  })
+
+  it('parça yoksa null döner', () => {
+    expect(tokenFromHash('')).toBeNull()
+  })
+})
+
+describe('bootstrapToken', () => {
+  it('#token= ile gelen token alınır ve adres parçası silinir', () => {
+    const calls: string[] = []
+    const location = { pathname: '/ui/', search: '', hash: '#token=gizli' } as Location
+    const history = { replaceState: (_s: unknown, _t: string, url: string) => calls.push(url) } as unknown as History
+    expect(bootstrapToken(location, history)).toBe('gizli')
+    expect(calls).toEqual(['/ui/'])
   })
 })

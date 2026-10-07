@@ -526,11 +526,10 @@ fun BridgeClient.openBackendStream(
     listener: WebSocketListener,
 ): WebSocket {
     val session = URLEncoder.encode(sessionId, "UTF-8")
-    val token = URLEncoder.encode(settings.token, "UTF-8")
     val sincePart = since?.let { "&since=$it" } ?: ""
     val url = settings.baseUrl.trimEnd('/')
         .replaceFirst("https://", "wss://")
-        .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&token=$token&delta=1$sincePart"
+        .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&delta=1$sincePart"
     val builder = Request.Builder().url(url)
     if (settings.token.isNotBlank()) {
         builder.header("Authorization", "Bearer ${settings.token}")

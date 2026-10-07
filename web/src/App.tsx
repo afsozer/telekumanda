@@ -15,7 +15,7 @@ export function App() {
   const [hasToken, setHasToken] = useState(false)
   const [probe, setProbe] = useState<Probe>({ state: 'bekliyor' })
 
-  // Açılış: adresteki ?token= alınır, kaydedilir, adresten silinir.
+  // Açılış: adresteki #token= (ya da eski ?token=) alınır, kaydedilir, adresten silinir.
   useEffect(() => {
     const token = bootstrapToken(window.location, window.history)
     setActiveToken(token)

@@ -3,7 +3,7 @@
 // İndirgeme mantığı burada DEĞİL (reducer.ts). Burada olan: soket ömrü, epoch
 // koruması, geri çekilmeli yeniden bağlanma, oturum değiştirince durak (stash).
 
-import { streamUrl } from '../api'
+import { streamUrl, withTicket, wsTicket } from '../api'
 import { emptyState, type ServerMessage, type SessionState, type StreamMeta, type StreamRow } from './protocol'
 import { reduce } from './reducer'
 
@@ -75,15 +75,32 @@ class Stash {
   }
 }
 
+// Soket, bağlanmadan hemen önce alınan tek kullanımlık biletle açılır (token
+// adrese girmez, bkz. lib/token.ts). Bilet alınamazsa kapanmış sayılır; akış
+// olağan geri çekilmeyle yeniden dener.
 const defaultFactory: SocketFactory = (url, handlers) => {
-  const ws = new WebSocket(url)
-  ws.onopen = () => handlers.onOpen()
-  ws.onmessage = (event) => handlers.onMessage(String(event.data))
-  ws.onclose = () => handlers.onClose()
-  // Tarayıcıda error'ı daima close izler; ikisini de dinlemek çift yeniden
-  // bağlanma denemesi üretirdi.
-  ws.onerror = () => {}
-  return { close: () => ws.close() }
+  let ws: WebSocket | null = null
+  let closed = false
+  wsTicket()
+    .then((ticket) => {
+      if (closed) return
+      ws = new WebSocket(withTicket(url, ticket))
+      ws.onopen = () => handlers.onOpen()
+      ws.onmessage = (event) => handlers.onMessage(String(event.data))
+      ws.onclose = () => handlers.onClose()
+      // Tarayıcıda error'ı daima close izler; ikisini de dinlemek çift yeniden
+      // bağlanma denemesi üretirdi.
+      ws.onerror = () => {}
+    })
+    .catch(() => {
+      if (!closed) handlers.onClose()
+    })
+  return {
+    close: () => {
+      closed = true
+      ws?.close()
+    },
+  }
 }
 
 export class SessionStream {

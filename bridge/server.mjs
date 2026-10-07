@@ -41,6 +41,7 @@ import { pruneAll } from './disk-prune.mjs';
 import { pruneSessions } from './session-prune.mjs';
 import { serveWebUi } from './web-ui.mjs';
 import { createReminders } from './reminders.mjs';
+import { createWsTickets } from './ws-tickets.mjs';
 import { ensureDocumentToolPath } from './tool-path.mjs';
 import { createRunPodManager } from './runpod.mjs';
 import { createOturumImhaManager } from './oturum-imha.mjs';
@@ -141,13 +142,19 @@ export const SLASH = {
 };
 
 const deviceAuth = createDeviceAuth();
+const wsTickets = createWsTickets();
 
+// Token yalnız `Authorization: Bearer` başlığından okunur. Adrese (`?token=`)
+// konan token proxy, tarayıcı geçmişi ve günlüklerde açıkta kalıyordu; tarayıcı
+// WebSocket'i başlık gönderemediği için onun yolu tek kullanımlık bilet
+// (`POST /ws-ticket`, bkz. ws-tickets.mjs).
 function requestToken(req) {
   const h = req.headers['authorization'] || '';
-  return h.startsWith('Bearer ') ? h.slice(7) : (new URL(req.url, 'http://x')).searchParams.get('token');
+  return h.startsWith('Bearer ') ? h.slice(7) : null;
 }
 
 function authIdentity(req) {
+  if (req.wsIdentity) return req.wsIdentity;
   const token = requestToken(req);
   if (token === cfg.authToken) return { kind: 'legacy', id: 'legacy' };
   const device = token ? deviceAuth.authenticate(token) : null;
@@ -901,6 +908,7 @@ router.get('/search/global', async (req, res) => {
   json(res, result.ok ? 200 : 400, result);
 });
 router.post('/pairing/start', async (req, res) => json(res, 200, deviceAuth.startPairing()));
+router.post('/ws-ticket', async (req, res) => json(res, 200, { ok: true, ...wsTickets.issue(authIdentity(req)) }));
 router.post('/pairing/complete', async (req, res) => {
   const b = await body(req);
   const result = deviceAuth.completePairing({ code: b.code, name: b.name });
@@ -1826,8 +1834,24 @@ const wssOpenCode2App = new WebSocketServer({ noServer: true });
 const wssOmp = new WebSocketServer({ noServer: true });
 const wssAgy = new WebSocketServer({ noServer: true });
 
+// Akış el sıkışması kimliği bağlantı kurulmadan doğrulanır: başlıktaki token
+// (Android) ya da tek kullanımlık bilet (tarayıcı). Bilet burada harcandığı için
+// kimlik isteğe yazılır, bağlantı işleyicilerindeki auth() onu okur.
+function upgradeIdentity(req) {
+  const fromHeader = requestToken(req) ? authIdentity(req) : null;
+  if (fromHeader) return fromHeader;
+  return wsTickets.redeem(new URL(req.url, 'http://x').searchParams.get('ticket'));
+}
+
 server.on('upgrade', (req, socket, head) => {
   const u = new URL(req.url, 'http://x');
+  const identity = upgradeIdentity(req);
+  if (!identity) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  req.wsIdentity = identity;
   if (u.pathname === '/codex-app/stream') {
     wssCodexApp.handleUpgrade(req, socket, head, sock => wssCodexApp.emit('connection', sock, req));
   } else if (u.pathname === '/claude-app/stream') {

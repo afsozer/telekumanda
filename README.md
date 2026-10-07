@@ -321,8 +321,12 @@ npm run build     # production: served by the bridge at /ui
 npm run dev       # development: http://localhost:5173/ui/ , proxies to the bridge
 ```
 
-Token flow: open `/ui/?token=<bridge token>` once; the token is stored in
-`localStorage` and stripped from the address bar.
+Token flow: open `/ui/#token=<bridge token>` once; the part after `#` never
+reaches the server, and the token is stored in `localStorage` and stripped from
+the address bar. The bridge accepts tokens only in the `Authorization` header;
+because browsers cannot set headers on a WebSocket handshake, the web UI opens
+each stream with a single-use ticket valid for 30 seconds (`POST /ws-ticket`,
+`bridge/ws-tickets.mjs`).
 
 > The former Compose Desktop client (`android/desktop/`) was removed on
 > 2026-08-10 — it had fallen far behind the phone app because every screen had

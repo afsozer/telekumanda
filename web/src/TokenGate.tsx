@@ -6,7 +6,7 @@ interface Props {
 }
 
 /**
- * Token giriş ekranı. Normalde görünmez: köprü arayüzü `/ui/?token=...`
+ * Token giriş ekranı. Normalde görünmez: köprü arayüzü `/ui/#token=...`
  * adresiyle açtırır ve token yerel depoya alınır. Bu ekran token'ın hiç
  * verilmediği ya da köprü tarafından reddedildiği durum içindir.
  */
@@ -17,7 +17,7 @@ export function TokenGate({ reason, onSubmit }: Props) {
     <main className="shell">
       <h1>Telekumanda</h1>
       <p className="muted">
-        Köprü token’ı gerekiyor. Normalde adres <code>/ui/?token=…</code> biçiminde açılır;
+        Köprü token’ı gerekiyor. Normalde adres <code>/ui/#token=…</code> biçiminde açılır;
         token bir kez alınıp adresten temizlenir.
       </p>
       {reason && <p className="error">{reason}</p>}

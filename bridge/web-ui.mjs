@@ -3,8 +3,8 @@
 // KİMLİK DOĞRULAMASINDAN ÖNCE çalışır — ve bu bilinçli bir karar:
 //
 // Köprü server.mjs'de yönlendirmeden önce auth uyguluyor. Arayüz auth'un
-// arkasında kalsaydı tarayıcı kilitlenirdi: ilk istek `/ui/?token=...` ile
-// geçerdi ama HTML'in referans verdiği `/ui/assets/index-*.js` token taşımaz,
+// arkasında kalsaydı tarayıcı kilitlenirdi: sayfanın kendisi
+// açılsa bile HTML'in referans verdiği `/ui/assets/index-*.js` token taşımaz,
 // 401 alır ve sayfa boş kalır. Tarayıcı alt kaynak isteklerine başlık ekleyemez.
 //
 // Paketin kendisinde sır yok — istemci kodu. Açıkta kalan tek bilgi "burada bir

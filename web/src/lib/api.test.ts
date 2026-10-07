@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { setActiveToken, streamUrl } from './api'
+import { setActiveToken, streamUrl, withTicket } from './api'
 
 afterEach(() => setActiveToken(null))
 
@@ -17,15 +17,18 @@ describe('streamUrl', () => {
     expect(url.startsWith('wss://pc.ts.net/')).toBe(true)
   })
 
-  it('token sorguya gömülür — tarayıcı WS başlık gönderemiyor', () => {
+  it('token adrese girmez — akış tek kullanımlık biletle açılır', () => {
     setActiveToken('gizli')
     const url = streamUrl('/claude-app/stream', { session: 'abc' }, loc)
-    expect(new URL(url).searchParams.get('token')).toBe('gizli')
+    expect(new URL(url).searchParams.has('token')).toBe(false)
+    expect(url).not.toContain('gizli')
   })
 
-  it('token yoksa sorguya token eklenmez', () => {
-    const url = streamUrl('/claude-app/stream', { session: 'abc' }, loc)
-    expect(new URL(url).searchParams.has('token')).toBe(false)
+  it('withTicket bileti ekler, öteki parametreleri korur', () => {
+    const url = withTicket(streamUrl('/claude-app/stream', { session: 'abc' }, loc), 'tkt_1')
+    const params = new URL(url).searchParams
+    expect(params.get('ticket')).toBe('tkt_1')
+    expect(params.get('session')).toBe('abc')
   })
 
   it('tanımsız ve boş parametreler atılır', () => {

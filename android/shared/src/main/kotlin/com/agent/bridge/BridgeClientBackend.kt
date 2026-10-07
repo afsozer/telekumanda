@@ -662,11 +662,10 @@ suspend fun BridgeClient.claudeAppAdopt(settings: BridgeSettings, id: String, cw
     }
 
 fun BridgeClient.openClaudeAppStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener): WebSocket {
-        val token = URLEncoder.encode(settings.token, "UTF-8")
         val session = URLEncoder.encode(sessionId, "UTF-8")
         val wsUrl = normalizeBase(settings.baseUrl)
             .replaceFirst("https://", "wss://")
-            .replaceFirst("http://", "ws://") + "/claude-app/stream?session=$session&token=$token"
+            .replaceFirst("http://", "ws://") + "/claude-app/stream?session=$session"
         val builder = Request.Builder().url(wsUrl)
         if (settings.token.isNotBlank()) {
             builder.header("Authorization", "Bearer ${settings.token}")
@@ -1590,11 +1589,10 @@ suspend fun BridgeClient.opencodeAppRename(settings: BridgeSettings, id: String,
 }
 
 fun BridgeClient.openOpencodeAppStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener, backend: String = "opencode2-app"): WebSocket {
-        val token = URLEncoder.encode(settings.token, "UTF-8")
         val session = URLEncoder.encode(sessionId, "UTF-8")
         val wsUrl = normalizeBase(settings.baseUrl)
             .replaceFirst("https://", "wss://")
-            .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&token=$token"
+            .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session"
         val builder = Request.Builder().url(wsUrl)
         if (settings.token.isNotBlank()) {
             builder.header("Authorization", "Bearer ${settings.token}")
@@ -1935,11 +1933,10 @@ suspend fun BridgeClient.agyOpenAntigravity(settings: BridgeSettings) {
     }
 
 fun BridgeClient.openAgyStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener): WebSocket {
-        val token = URLEncoder.encode(settings.token, "UTF-8")
         val session = URLEncoder.encode(sessionId, "UTF-8")
         val wsUrl = normalizeBase(settings.baseUrl)
             .replaceFirst("https://", "wss://")
-            .replaceFirst("http://", "ws://") + "/agy/stream?session=$session&token=$token"
+            .replaceFirst("http://", "ws://") + "/agy/stream?session=$session"
         val builder = Request.Builder().url(wsUrl)
         if (settings.token.isNotBlank()) {
             builder.header("Authorization", "Bearer ${settings.token}")
@@ -1949,11 +1946,10 @@ fun BridgeClient.openAgyStream(settings: BridgeSettings, sessionId: String, list
     }
 
 fun BridgeClient.openCodexAppStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener): WebSocket {
-        val token = URLEncoder.encode(settings.token, "UTF-8")
         val session = URLEncoder.encode(sessionId, "UTF-8")
         val wsUrl = normalizeBase(settings.baseUrl)
             .replaceFirst("https://", "wss://")
-            .replaceFirst("http://", "ws://") + "/codex-app/stream?session=$session&token=$token"
+            .replaceFirst("http://", "ws://") + "/codex-app/stream?session=$session"
         val builder = Request.Builder().url(wsUrl)
         if (settings.token.isNotBlank()) {
             builder.header("Authorization", "Bearer ${settings.token}")
