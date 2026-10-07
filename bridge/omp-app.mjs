@@ -871,7 +871,7 @@ export async function stop(sessionId) {
 }
 export function getPendingApproval() {
   const s = [...sessions.values()].find(v => v.pendingApproval);
-  return s ? { backend: 'omp', sessionId: s.id, summary: s.pendingApproval.summary || 'OMP yanıt bekliyor' } : null;
+  return s ? { backend: 'omp', sessionId: s.id, requestId: s.pendingApproval.requestId ?? null, summary: s.pendingApproval.summary || 'OMP yanıt bekliyor' } : null;
 }
 export function approve({ sessionId, allow = false, answers = [], requestId: sentRequestId } = {}) {
   const s = resolveSession(sessionId); if (!s?.pendingApproval || !s.client) return { ok: false, error: 'pending approval not found' };

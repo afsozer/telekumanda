@@ -1021,7 +1021,7 @@ export async function approve({ sessionId, allow = false, always = false, reques
 export function getPendingApproval() {
   for (const s of sessions.values()) {
     if (s.pendingApproval && s.awaitingApproval) {
-      return { backend: 'opencode2-app', sessionId: s.id, summary: s.pendingApproval.summary || 'İzin gerekiyor' };
+      return { backend: 'opencode2-app', sessionId: s.id, requestId: s.pendingApproval.requestId ?? null, summary: s.pendingApproval.summary || 'İzin gerekiyor' };
     }
   }
   return null;

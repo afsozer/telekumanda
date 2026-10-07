@@ -2002,6 +2002,7 @@ export function getPendingApproval() {
       return {
         backend: 'claude-app',
         sessionId: s.id,
+        requestId: s.pendingApproval.requestId ?? null,
         summary: s.pendingApproval.summary || 'İzin gerekiyor',
       };
     }

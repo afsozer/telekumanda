@@ -542,8 +542,10 @@ export const OPERATION_PUSH_KINDS = ['started', 'attention', 'completed', 'faile
 // `startedAt` kapsul icin eklendi: kapsul kartinin basligi ve chronometer'in
 // baslangici. `startedAt` ISO metindir (operations.mjs:98 `now().toISOString()`),
 // sayi degil — Android metin olarak okuyor, ek donusum gereksiz.
-export function operationPushBody(event) {
-  return {
+// `requestId` yalnız 'attention' olayında ve bekleyen onay biliniyorsa dolar:
+// bildirimdeki onay tuşu onu gönderir, bayat bir bildirim yeni bir isteği onaylayamaz.
+export function operationPushBody(event, requestId = null) {
+  const body = {
     deliveryId: event.id,
     kind: event.kind,
     backend: event.backend,
@@ -553,6 +555,14 @@ export function operationPushBody(event) {
     title: event.title || '',
     startedAt: event.at || '',
   };
+  if (requestId !== null && requestId !== undefined && requestId !== '') body.requestId = String(requestId);
+  return body;
+}
+
+function pendingRequestIdFor(event) {
+  if (event.kind !== 'attention') return null;
+  const p = findAnyPendingApproval();
+  return p && p.backend === event.backend && p.sessionId === event.sessionId ? p.requestId : null;
 }
 
 const operationsTracker = createOperationsTracker({
@@ -573,7 +583,7 @@ const operationsTracker = createOperationsTracker({
     // once OLCULECEK (plan §5, olcum adimi 11), kisma gerekiyorsa ondan sonra
     // eklenecek. Olcmeden kisma koymak kapsulu gecikmeli/yanlis durumda
     // birakma riskini bedava getirirdi.
-    notificationDelivery.send(operationPushBody(event), targets.length > 0 ? { targets } : {});
+    notificationDelivery.send(operationPushBody(event, pendingRequestIdFor(event)), targets.length > 0 ? { targets } : {});
   },
 });
 operationsTracker.start();
@@ -719,9 +729,9 @@ function findAnyPendingApproval() {
 function getNotificationsState() {
   const p = findAnyPendingApproval();
   if (p) {
-    return { pending: true, backend: p.backend, sessionId: p.sessionId, summary: p.summary };
+    return { pending: true, backend: p.backend, sessionId: p.sessionId, requestId: p.requestId ?? null, summary: p.summary };
   }
-  return { pending: false, backend: '', sessionId: '', summary: '' };
+  return { pending: false, backend: '', sessionId: '', requestId: null, summary: '' };
 }
 
 function getNotificationFeedState(deviceId = '') {
