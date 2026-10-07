@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import pty from 'node-pty';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { hhmm, capMessages, broadcast, logWarn, matchTranscriptMessages } from './session-utils.mjs';
+import { hhmm, capMessages, broadcast, logWarn, matchTranscriptMessages, isSafeSessionId } from './session-utils.mjs';
 import { createAgentSessionCore } from './agent-session-core.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -840,6 +840,7 @@ export function listDiskSessions({ all: includeAll = false } = {}) {
 // açık tutuyorsa silme kilit nedeniyle başarısız olabilir (eski oturumlarda sorun yok).
 export function deleteDiskSession({ id } = {}) {
   if (!id) return { ok: false, error: 'id required' };
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   const s = sessions.get(id);
   const home = (s && s.home) || detectHome(id);
   if (!home) return { ok: false, error: 'konuşma bulunamadı: ' + id };
@@ -858,6 +859,7 @@ export function deleteDiskSession({ id } = {}) {
 
 export function adoptSession({ id, cwd, home }) {
   if (!id) return { ok: false, error: 'id required' };
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   if (sessions.has(id)) return { ok: true, sessionId: id, cwd: sessions.get(id).cwd, model: sessions.get(id).model };
   invalidateDiskCache();
   // Konuşmanın gerçek home'u diskten tespit edilir (IDE oturumları da adopt edilebilir);

@@ -84,6 +84,21 @@ function send(res, code, headers, body) {
  * İsteği karşılarsa true döner; arayüze ait değilse false (çağıran normal
  * yönlendirmeye devam eder).
  */
+// Arayüz token'ı localStorage'da tutuyor; başka bir sitenin onu görünmez bir
+// çerçeveye alıp tıklatması (clickjacking) ya da ajan Markdown'ındaki dış bir
+// görselle veri sızdırması engellenir. Arayüz dış kaynak yüklemiyor.
+export const SECURITY_HEADERS = {
+  'content-security-policy': [
+    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:", "media-src 'self' blob:", "font-src 'self' data:",
+    "connect-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; '),
+  'x-frame-options': 'DENY',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+};
+
 export function serveWebUi(req, res, root = WEB_DIST) {
   const pathname = new URL(req.url, 'http://x').pathname;
   if (!isUiPath(pathname)) return false;
@@ -92,10 +107,11 @@ export function serveWebUi(req, res, root = WEB_DIST) {
       JSON.stringify({ error: 'method not allowed' }));
     return true;
   }
-  // `/ui` → `/ui/`: göreli varlık adreslerinin doğru çözülmesi için.
+  // `/ui` → `/ui/`: göreli varlık adreslerinin doğru çözülmesi için. Sorgu dizesi
+  // taşınmaz (eski `?token=` bağlantıları token'ı Location başlığında yeniden
+  // dolaştırmasın); `#token=` parçası tarayıcıda kalır.
   if (pathname === UI_PREFIX) {
-    const search = req.url.slice(pathname.length);
-    send(res, 302, { location: UI_PREFIX + '/' + search }, '');
+    send(res, 302, { location: UI_PREFIX + '/' }, '');
     return true;
   }
   if (!fs.existsSync(root)) {
@@ -130,6 +146,7 @@ export function serveWebUi(req, res, root = WEB_DIST) {
     'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
     'content-length': body.length,
     'cache-control': cacheControl(file),
+    ...SECURITY_HEADERS,
   };
   if (req.method === 'HEAD') { res.writeHead(200, headers); res.end(); return true; }
   send(res, 200, headers, body);

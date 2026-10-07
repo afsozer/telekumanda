@@ -70,7 +70,7 @@ export function ApprovalPrompt({ backend, sessionId, approval, onDecision }: App
     setError(null)
     try {
       // Reddet cevapsız gider (Kotlin claudeAppApprove ile aynı).
-      await approve(backend, sessionId, allow, allow ? buildAnswers() : undefined)
+      await approve(backend, sessionId, allow, allow ? buildAnswers() : undefined, approval.requestId)
       setDraft({})
       setCustomText({})
       onDecision?.()

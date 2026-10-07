@@ -16,6 +16,46 @@ export function createRouter() {
   };
 }
 
-export function json(res, code, obj) { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); }
-export async function body(req) { let d=''; for await (const c of req) d+=c; return d?JSON.parse(d):{}; }
-export async function rawBody(req) { const chunks=[]; for await (const c of req) chunks.push(c); return Buffer.concat(chunks); }
+export function json(res, code, obj) { if (!res.headersSent) res.writeHead(code, { 'content-type': 'application/json', 'x-content-type-options': 'nosniff' }); res.end(JSON.stringify(obj)); }
+
+// Gövde sınırı. Sınırsız okuma, kimlik kapısından önce gövde okuyan uçta
+// (/pairing/complete) kimliksiz birinin paralel büyük gövdelerle köprünün
+// belleğini tüketmesine izin veriyordu. Aşılınca istek kesilir ve 413 döner.
+export const JSON_BODY_MAX = 16 * 1024 * 1024;
+export const RAW_BODY_MAX = 1024 * 1024 * 1024;
+
+export class BodyTooLargeError extends Error {
+  constructor(limit) { super(`request body exceeds ${limit} bytes`); this.status = 413; }
+}
+
+async function readLimited(req, maxBytes) {
+  const declared = Number(req.headers?.['content-length']);
+  if (Number.isFinite(declared) && declared > maxBytes) throw new BodyTooLargeError(maxBytes);
+  const chunks = []; let size = 0;
+  for await (const c of req) {
+    const chunk = typeof c === 'string' ? Buffer.from(c) : c;
+    size += chunk.length;
+    if (size > maxBytes) throw new BodyTooLargeError(maxBytes);
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+// İsteğe bağlı gövde denetleyicisi (server.mjs yol alanlarını denetlemek için kurar).
+let bodyValidator = null;
+export function setBodyValidator(fn) { bodyValidator = fn; }
+
+/** 413 yanıtını yazar, ardından bağlantıyı keser (istemci gövdeyi göndermeye devam etmesin). */
+export function rejectTooLarge(req, res) {
+  if (!res.headersSent) res.writeHead(413, { 'content-type': 'application/json', connection: 'close' });
+  res.on('finish', () => req.destroy?.());
+  res.end(JSON.stringify({ ok: false, error: 'request body too large' }));
+}
+
+export async function body(req, { maxBytes = JSON_BODY_MAX } = {}) {
+  const d = (await readLimited(req, maxBytes)).toString('utf8');
+  const parsed = d ? JSON.parse(d) : {};
+  if (bodyValidator) bodyValidator(parsed);
+  return parsed;
+}
+export async function rawBody(req, { maxBytes = RAW_BODY_MAX } = {}) { return readLimited(req, maxBytes); }

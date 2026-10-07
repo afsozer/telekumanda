@@ -6,7 +6,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { OmpRpcClient } from './omp-rpc-client.mjs';
 import { discoverOmpMcpCandidates, mcpInventoryFromPrompt, skillInventoryFromCommands } from './omp-inventory.mjs';
-import { hhmm, capMessages, capToolDetails, logWarn, matchTranscriptMessages, resolveExecutableSync } from './session-utils.mjs';
+import { hhmm, capMessages, capToolDetails, logWarn, matchTranscriptMessages, resolveExecutableSync, isStaleApproval } from './session-utils.mjs';
 import { createAgentSessionCore, ensureMessageRowIds, paginateSessionMessages } from './agent-session-core.mjs';
 
 // RPC kataloğu alınamazsa kullanılan statik yedek. Kademeler OMP'nin kendi
@@ -873,8 +873,9 @@ export function getPendingApproval() {
   const s = [...sessions.values()].find(v => v.pendingApproval);
   return s ? { backend: 'omp', sessionId: s.id, summary: s.pendingApproval.summary || 'OMP yanıt bekliyor' } : null;
 }
-export function approve({ sessionId, allow = true, answers = [] } = {}) {
+export function approve({ sessionId, allow = false, answers = [], requestId: sentRequestId } = {}) {
   const s = resolveSession(sessionId); if (!s?.pendingApproval || !s.client) return { ok: false, error: 'pending approval not found' };
+  if (isStaleApproval(sentRequestId, s.pendingApproval.requestId)) return { ok: false, error: 'stale approval', stale: true };
   const pending = s.pendingApproval; const answer = answers[0]?.label || answers[0]?.optionId || '';
   const response = pending.method === 'confirm'
     ? { type: 'extension_ui_response', id: pending.requestId, confirmed: !!allow }

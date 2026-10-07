@@ -22,6 +22,14 @@ const components: Components = {
   a: (props) => (
     <a className={styles.link} target="_blank" rel="noopener noreferrer" {...dropNode(props)} />
   ),
+  // Görsel kendiliğinden yüklenmez: ajan çıktısındaki `![](https://…?veri)` tıklama
+  // olmadan istek atıp sohbetteki veriyi dışarı taşıyabilirdi. Bağlantı olarak gösterilir.
+  img: ({ src, alt }) =>
+    typeof src === 'string' && src ? (
+      <a className={styles.link} href={src} target="_blank" rel="noopener noreferrer">
+        {alt || src}
+      </a>
+    ) : null,
   p: (props) => <p className={styles.p} {...dropNode(props)} />,
   h1: (props) => <h1 className={styles.h1} {...dropNode(props)} />,
   h2: (props) => <h2 className={styles.h2} {...dropNode(props)} />,

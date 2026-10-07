@@ -37,7 +37,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
-import { hhmm, capMessages, capToolDetails, appendToolDetail, pruneEvictedThoughtDetail, logWarn, killChildTree, killChildTreeSync, spawnResolvedExecutable, spawnResolvedAsync, matchTranscriptMessages } from './session-utils.mjs';
+import { hhmm, capMessages, capToolDetails, appendToolDetail, pruneEvictedThoughtDetail, logWarn, killChildTree, killChildTreeSync, spawnResolvedExecutable, spawnResolvedAsync, matchTranscriptMessages, isStaleApproval } from './session-utils.mjs';
 import { archiveMessagesToDisk, clearArchivedMessages, createAgentSessionCore, createCollectionWatchdog, createTurnLifecycle, ensureMessageRowIds, paginateSessionMessages } from './agent-session-core.mjs';
 import { dispatchCodexNotification } from './codex-app-adapter.mjs';
 import { readSkillCatalog } from './skills.mjs';
@@ -842,8 +842,13 @@ function policyForMode(permissionMode) {
       return { approvalPolicy: 'untrusted', sandbox: 'workspace-write' };
     case 'never':
     case 'yolo':
-    default:
       return { approvalPolicy: DEFAULT_APPROVAL_POLICY, sandbox: DEFAULT_SANDBOX_MODE };
+    default:
+      // Mod verilmediyse varsayılan (yolo). Tanınmayan bir değer ise ("Ask" gibi
+      // yazım farkı) tam yetkiye değil, onay isteyen moda düşer.
+      return permissionMode
+        ? { approvalPolicy: 'on-request', sandbox: 'workspace-write' }
+        : { approvalPolicy: DEFAULT_APPROVAL_POLICY, sandbox: DEFAULT_SANDBOX_MODE };
   }
 }
 
@@ -1033,10 +1038,11 @@ export async function stop(sessionId) {
 // Feature 3: approval now supports scope selection:
 //   decision: 'allow'|'deny'|'acceptForSession'|'acceptForTurn'
 //   scope:    'turn'|'session' (permissions only)
-export function approve({ sessionId, allow = true, decision, cancel, answers, content, scope } = {}) {
+export function approve({ sessionId, allow = false, decision, cancel, answers, content, scope, requestId: sentRequestId } = {}) {
   const s = sessions.get(sessionId);
   if (!s) return { ok: false, error: 'session not found' };
   if (!s.pendingApproval) return { ok: false, error: 'no pending approval' };
+  if (isStaleApproval(sentRequestId, s.pendingApproval.requestId)) return { ok: false, error: 'stale approval', stale: true };
   const { requestId, method, rawParams } = s.pendingApproval;
   // cancel=true → karar enum'unda cancel
   const effectiveDecision = cancel ? 'cancel' : decision;

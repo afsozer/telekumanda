@@ -57,7 +57,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { hhmm, capMessages, logWarn, killChildTree, spawnAsync, resolveExecutableSync } from './session-utils.mjs';
+import { hhmm, capMessages, logWarn, killChildTree, spawnAsync, resolveExecutableSync, isStaleApproval, isSafeSessionId } from './session-utils.mjs';
 import { createAgentSessionCore, ensureMessageRowIds, paginateSessionMessages } from './agent-session-core.mjs';
 // Katalog süzgeci ve etiket kuralı v1 ile ORTAK: iki listede aynı modeller
 // görünsün diye (kullanıcı isteği 26.09.2026). Tek kaynak bu modül.
@@ -1003,11 +1003,12 @@ export async function stop(sessionId) {
   return r.ok ? { ok: true } : { ok: false, error: 'interrupt başarısız (HTTP ' + r.status + ')' };
 }
 
-export async function approve({ sessionId, allow = true, always = false }) {
+export async function approve({ sessionId, allow = false, always = false, requestId: sentRequestId }) {
   const s = sessions.get(sessionId);
   if (!s) return { ok: false, error: 'session not found' };
   const pending = s.pendingApproval;
   if (!pending || !s.remoteId) return { ok: false, error: 'bekleyen izin yok' };
+  if (isStaleApproval(sentRequestId, pending.requestId)) return { ok: false, error: 'stale approval', stale: true };
   const decision = allow ? (always ? 'always' : 'once') : 'reject';
   const r = await api('POST', `/api/session/${s.remoteId}/permission/${pending.id}/reply`, { decision });
   if (!r.ok) return { ok: false, error: 'izin yanıtı reddedildi (HTTP ' + r.status + ')' };
@@ -1153,6 +1154,9 @@ export async function listDiskSessions() {
 // mesajlar okunur, sonraki turlar canlı olay akışından gelir.
 export async function adoptSession({ id, cwd }) {
   if (!id) return { ok: false, error: 'id required' };
+  // Kimlik yerel API adresine yol parçası olarak giriyor: `..`, `/` ya da `?` ile
+  // başka uçlara ulaşılmasın.
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   const existing = byRemote.get(id);
   if (existing && sessions.has(existing)) return { ok: true, sessionId: existing, adopted: true };
   try {
@@ -1193,6 +1197,9 @@ export async function adoptSession({ id, cwd }) {
 
 export async function deleteDiskSession({ id }) {
   if (!id) return { ok: false, error: 'id required' };
+  // Kimlik yerel API adresine yol parçası olarak giriyor: `..`, `/` ya da `?` ile
+  // başka uçlara ulaşılmasın.
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   if (!serverUp()) return { ok: false, error: 'v2 sunucusu çalışmıyor' };
   try {
     const r = await api('DELETE', `/api/session/${id}`);

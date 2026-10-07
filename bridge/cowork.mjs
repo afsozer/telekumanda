@@ -1133,14 +1133,20 @@ export function archiveProject({ projectPath } = {}) {
   const zipPath = path.join(tmpDir, `${name}-${stamp}.zip`);
   // Compress-Archive glob'u: workspace içeriği (kök klasörün kendisi değil).
   // .cowork'u dışarıda bırakmak için içerikleri filtreleyerek geçiriyoruz.
+  // Yollar betiğe gömülmez, ortam değişkeniyle geçer: PowerShell ‘ ’ gibi Unicode
+  // tırnakları da tek tırnak sayar; adında bu işaret olan klasör ("Ahmet’in dosyası")
+  // hem arşivlemeyi bozuyor hem -Command dizgisinden kaçmaya izin veriyordu.
   const ps = [
     '$ErrorActionPreference = "Stop";',
-    `$items = Get-ChildItem -LiteralPath '${checked.path.replace(/'/g, "''")}' -Force | Where-Object { $_.Name -ne '.cowork' };`,
+    "$items = Get-ChildItem -LiteralPath $env:TK_ARCHIVE_SRC -Force | Where-Object { $_.Name -ne '.cowork' };",
     `if (-not $items) { throw 'workspace bos' };`,
-    `Compress-Archive -LiteralPath ($items | ForEach-Object { $_.FullName }) -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force;`,
+    'Compress-Archive -LiteralPath ($items | ForEach-Object { $_.FullName }) -DestinationPath $env:TK_ARCHIVE_DST -Force;',
   ].join(' ');
   return new Promise((resolve) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { windowsHide: true });
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {
+      windowsHide: true,
+      env: { ...process.env, TK_ARCHIVE_SRC: checked.path, TK_ARCHIVE_DST: zipPath },
+    });
     let err = '';
     child.stderr.on('data', d => { err += d; });
     const timer = setTimeout(() => { try { child.kill(); } catch {} resolve({ ok: false, error: 'zip timeout' }); }, 120_000);

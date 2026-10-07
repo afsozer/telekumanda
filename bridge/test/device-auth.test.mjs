@@ -32,3 +32,39 @@ test('pairing codes expire after five minutes', () => {
     assert.equal(auth.completePairing({ code: pairing.code, name: 'late' }).ok, false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('revoked device key stops working and revoke is persisted', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'device-revoke-'));
+  const filePath = path.join(root, 'devices.json');
+  try {
+    const auth = createDeviceAuth({ filePath });
+    const done = auth.completePairing({ code: auth.startPairing().code, name: 'phone' });
+    assert.equal(auth.revoke(done.deviceId).ok, true);
+    assert.equal(auth.authenticate(done.key), null);
+    assert.equal(auth.rotate(done.deviceId).ok, false);
+    assert.ok(auth.list()[0].revokedAt);
+    assert.equal(createDeviceAuth({ filePath }).authenticate(done.key), null);
+    assert.equal(auth.revoke('missing').ok, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('wrong codes from one address do not lock out the owner', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'device-limit-'));
+  try {
+    const auth = createDeviceAuth({ filePath: path.join(root, 'devices.json') });
+    const { code } = auth.startPairing();
+    for (let i = 0; i < 12; i++) auth.completePairing({ code: 'x' + i, address: '100.64.0.9' });
+    assert.equal(auth.completePairing({ code, address: '100.64.0.9' }).ok, false);
+    assert.equal(auth.completePairing({ code, address: '100.64.0.2' }).ok, true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a distributed guessing burst invalidates all open codes', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'device-burst-'));
+  try {
+    const auth = createDeviceAuth({ filePath: path.join(root, 'devices.json') });
+    const { code } = auth.startPairing();
+    for (let i = 0; i < 100; i++) auth.completePairing({ code: 'y' + i, address: `10.0.0.${i}` });
+    assert.equal(auth.completePairing({ code, address: '100.64.0.2' }).ok, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

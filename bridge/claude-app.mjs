@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { hhmm, capMessages, capToolDetails, pruneEvictedThoughtDetail, killChildTree, killChildTreeSync, logWarn, extractChoices, spawnResolvedExecutable, resolveExecutableSync, matchTranscriptMessages } from './session-utils.mjs';
+import { hhmm, capMessages, capToolDetails, pruneEvictedThoughtDetail, killChildTree, killChildTreeSync, logWarn, extractChoices, spawnResolvedExecutable, resolveExecutableSync, matchTranscriptMessages, isSafeModelId, isSafeSessionId, isStaleApproval } from './session-utils.mjs';
 import { reapIdleChildren as reapIdle } from './idle-reaper.mjs';
 import { spawn } from 'node:child_process';
 import { archiveMessagesToDisk, clearArchivedMessages, createAgentSessionCore, createSessionWatchdog, createShellPersistence, createTurnLifecycle, ensureMessageRowIds, paginateSessionMessages } from './agent-session-core.mjs';
@@ -358,7 +358,7 @@ function resetDiskCursor(s) {
 
 function rememberDesiredModel(s, model) {
   const mdl = String(model || '').trim();
-  if (!mdl) return false;
+  if (!mdl || !isSafeModelId(mdl)) return false;
   const changed = s.model !== mdl;
   s.model = mdl;
   // getInfo() prefers init.model when present; avoid showing the old child model
@@ -677,10 +677,11 @@ function onStdout(s, chunk) {
 }
 
 // ── Onay API'si (telefon → /claude-app/approve) ───────────────────────────────
-export function approve({ sessionId, allow, answers, updatedInput }) {
+export function approve({ sessionId, allow, answers, updatedInput, requestId: sentRequestId }) {
   const s = resolveSession(sessionId);
   if (!s) return { ok: false, error: 'session not found' };
   if (!s.pendingApproval) return { ok: true, already: true };
+  if (isStaleApproval(sentRequestId, s.pendingApproval.requestId)) return { ok: false, error: 'stale approval', stale: true };
   const { requestId, input } = s.pendingApproval;
   const nextInput = updatedInput || (answers ? buildQuestionUpdatedInput(input, answers) : input);
   if (allow && s.pendingApproval.kind === 'question') {
@@ -838,6 +839,7 @@ export function prompt({ sessionId, text, model, permissionMode } = {}) {
 
   if (s.status === 'running') return { ok: false, error: 'busy' };
   if (!text || !String(text).trim()) return { ok: false, error: 'text required' };
+  if (model && !isSafeModelId(String(model).trim())) return { ok: false, error: 'geçersiz model adı' };
   const modelChanged = model ? rememberDesiredModel(s, model) : false;
   if (modelChanged && s.child) killPersistentChild(s);
   if (!s.child) s.permissionMode = normalizePermissionMode(permissionMode || s.permissionMode);
@@ -908,6 +910,7 @@ function resumeAutonomousTurn(s) {
 
 // Bir oturum jsonl'ini projects havuzunda ara (disk cache soğukken fallback).
 function findTranscriptFile(id) {
+  if (!isSafeSessionId(id)) return null;
   let dirs;
   try { dirs = fs.readdirSync(CLAUDE_PROJECTS_DIR, { withFileTypes: true }); } catch { return null; }
   for (const pd of dirs) {
@@ -1159,6 +1162,7 @@ export function setModel({ sessionId, model } = {}) {
   if (!s) return { ok: false, error: 'session not found' };
   const mdl = String(model || '').trim();
   if (!mdl) return { ok: false, error: 'model required' };
+  if (!isSafeModelId(mdl)) return { ok: false, error: 'geçersiz model adı' };
   rememberDesiredModel(s, mdl);
   if (isRunning(s)) {
     s._pendingRespawn = true;
@@ -1634,6 +1638,7 @@ export function listAllDiskSessionsForPrune() {
 // Geri alınamaz. Dosya bulunamasa bile bellek/metadata temizlenir (ok döner).
 export function deleteDiskSession({ id } = {}) {
   if (!id) return { ok: false, error: 'id required' };
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   const s = sessions.get(id);
   // Transcript dosyasını bul: canlı oturum _diskFile taşır; yoksa hesap indexinden,
   // son çare tüm hesap havuzlarını tara.
@@ -1673,6 +1678,7 @@ export function deleteDiskSession({ id } = {}) {
 // terminalde yazılanları telefona da akıtmaya devam eder.
 export function openOnPc({ id } = {}) {
   if (!id) return { ok: false, error: 'id required' };
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   if (process.platform !== 'win32') return { ok: false, error: 'yalnız Windows destekleniyor' };
   const s = sessions.get(id);
   if (s && isRunning(s)) return { ok: false, error: 'tur sürüyor; önce durdurun' };
@@ -1834,6 +1840,7 @@ export function listCoworkDiskSessions({ all: includeAll = false } = {}) {
 
 export function adoptSession({ id, cwd, cowork = false }) {
   if (!id) return { ok: false, error: 'id required' };
+  if (!isSafeSessionId(id)) return { ok: false, error: 'geçersiz oturum kimliği' };
   if (sessions.has(id)) {
     const s = sessions.get(id);
     if (cowork) {

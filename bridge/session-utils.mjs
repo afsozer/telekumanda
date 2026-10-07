@@ -270,9 +270,37 @@ export function resolveExecutableSync(name, envVar) {
   return preferred;
 }
 
+// npm .cmd sarmalayıcısı cmd.exe ile çalışır ve cmd argümanlardaki metakarakterleri
+// yorumlar (BatBadBut sınıfı): `--model x&komut` köprü bağlamında komut çalıştırırdı.
+// Node'un argüman tırnaklaması cmd için yeterli değil; bu yüzden metakarakterli
+// argüman sarmalayıcıya hiç verilmez.
+/**
+ * Onay isteği bayat mı? İstemci onayladığı isteğin kimliğini gönderir; bekleyen
+ * istek başkaysa (bildirim eski, araya yeni bir istek girmiş) onay uygulanmaz.
+ * Kimlik gönderilmezse (eski istemci) karşılaştırma yapılmaz.
+ */
+export function isStaleApproval(sentRequestId, pendingRequestId) {
+  if (sentRequestId === undefined || sentRequestId === null || sentRequestId === '') return false;
+  return String(sentRequestId) !== String(pendingRequestId);
+}
+
+export const CMD_UNSAFE_ARG = /[&|<>^%!"()`\r\n]/;
+
+/** Model kimliği: harf, rakam ve . _ : / [ ] @ + - (ör. claude-opus-5-5[1m], openrouter/x/y). */
+export function isSafeModelId(model) {
+  return typeof model === 'string' && /^[A-Za-z0-9._:/\[\]@+-]{1,200}$/.test(model);
+}
+
+/** Oturum kimliği: UUID ya da harf/rakam/_-. ile sınırlı tek parça (yol ayracı ve `..` yok). */
+export function isSafeSessionId(id) {
+  return typeof id === 'string' && /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}$/.test(id) && !id.includes('..');
+}
+
 export function spawnResolvedExecutable(name, args = [], opts = {}, envVar) {
   const bin = resolveExecutableSync(name, envVar);
   if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin)) {
+    const unsafe = args.find(a => CMD_UNSAFE_ARG.test(String(a)));
+    if (unsafe !== undefined) throw new Error(`${name}: cmd.exe için güvenli olmayan argüman reddedildi`);
     return spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'call', bin, ...args], { ...opts, shell: false });
   }
   return spawn(bin, args, { ...opts, shell: false });

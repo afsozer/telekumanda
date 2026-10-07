@@ -6,7 +6,8 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { createRouter, json, body, rawBody } from './router.mjs';
+import { createRouter, json, body, rawBody, BodyTooLargeError, rejectTooLarge, setBodyValidator } from './router.mjs';
+import { PATH_KEYS, UnsafePathError, assertSafePathFields, unsafePathReason } from './path-guard.mjs';
 import { register as registerGeneral } from './routes/general.mjs';
 import { registerBackend, reconcilePromptRequests, promptOriginModel } from './routes/backend.mjs';
 import { warmOpenTabBackends } from './backend-warmth.mjs';
@@ -51,6 +52,12 @@ import { createOturumImhaManager } from './oturum-imha.mjs';
 ensureDocumentToolPath();
 const CFG_URL = new URL('./config.json', import.meta.url);
 const cfg = JSON.parse(fs.readFileSync(CFG_URL));
+// Boş ya da örnekteki yer tutucu token herkese tam erişim demek: boş token,
+// boş bir `Bearer ` başlığıyla eşleşir. Köprü böyle bir ayarla açılmaz.
+if (typeof cfg.authToken !== 'string' || cfg.authToken.trim().length < 24 || /^CHANGE-ME/i.test(cfg.authToken.trim())) {
+  throw new Error('bridge/config.json: authToken en az 24 karakterlik, size özel rastgele bir dizgi olmalı (örnekteki CHANGE-ME değeri kullanılamaz)');
+}
+const LEGACY_TOKEN_DIGEST = crypto.createHash('sha256').update(cfg.authToken).digest();
 const runpod = createRunPodManager(cfg.runpod || {});
 // Silinmis opencode oturumlarinin kalintilarini imha eden betik. Yol
 // yapilandirilabilir (cfg.oturumImha.script); yoksa varsayilan CoworkSpaces
@@ -142,6 +149,7 @@ export const SLASH = {
 };
 
 const deviceAuth = createDeviceAuth();
+setBodyValidator(assertSafePathFields);
 const wsTickets = createWsTickets();
 
 // Token yalnız `Authorization: Bearer` başlığından okunur. Adrese (`?token=`)
@@ -156,7 +164,7 @@ function requestToken(req) {
 function authIdentity(req) {
   if (req.wsIdentity) return req.wsIdentity;
   const token = requestToken(req);
-  if (token === cfg.authToken) return { kind: 'legacy', id: 'legacy' };
+  if (token && crypto.timingSafeEqual(crypto.createHash('sha256').update(token).digest(), LEGACY_TOKEN_DIGEST)) return { kind: 'legacy', id: 'legacy' };
   const device = token ? deviceAuth.authenticate(token) : null;
   return device ? { kind: 'device', ...device } : null;
 }
@@ -910,17 +918,26 @@ router.get('/search/global', async (req, res) => {
 router.post('/pairing/start', async (req, res) => json(res, 200, deviceAuth.startPairing()));
 router.post('/ws-ticket', async (req, res) => json(res, 200, { ok: true, ...wsTickets.issue(authIdentity(req)) }));
 router.post('/pairing/complete', async (req, res) => {
-  const b = await body(req);
-  const result = deviceAuth.completePairing({ code: b.code, name: b.name });
+  // Kimlik kapısından önce çalışan tek gövdeli uç: küçük tavan.
+  const b = await body(req, { maxBytes: 4096 });
+  const result = deviceAuth.completePairing({ code: b.code, name: b.name, address: req.socket?.remoteAddress || '' });
   json(res, result.ok ? 200 : 400, result);
 });
 router.post('/devices/rotate', async (req, res) => {
   const identity = authIdentity(req);
   if (identity?.kind !== 'device') return json(res, 400, { ok: false, error: 'device key required' });
   const result = deviceAuth.rotate(identity.id);
+  // Eski anahtarla açılmış akışlar da düşsün; istemci yeni anahtarla yeniden bağlanır.
+  if (result.ok) closeSocketsOf(identity.id);
   json(res, result.ok ? 200 : 400, result);
 });
 router.get('/devices', (req, res) => json(res, 200, { ok: true, devices: deviceAuth.list() }));
+router.post('/devices/revoke', async (req, res) => {
+  const b = await body(req);
+  const result = deviceAuth.revoke(String(b.deviceId || ''));
+  if (result.ok) closeSocketsOf(String(b.deviceId));
+  json(res, result.ok ? 200 : 400, result);
+});
 
 router.post('/backends/warm', async (req, res) => {
   const b = await body(req);
@@ -1190,8 +1207,8 @@ registerBackend(router, 'claude-app', claudeApp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = claudeApp.approve({ sessionId: b.sessionId, allow: b.allow !== false, answers: b.answers, updatedInput: b.updatedInput });
-      json(res, r.ok ? 200 : 400, r);
+      const r = claudeApp.approve({ sessionId: b.sessionId, allow: b.allow === true, answers: b.answers, updatedInput: b.updatedInput, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/interrupt', handler: async (req, res) => {
       const b = await body(req);
@@ -1275,8 +1292,8 @@ registerBackend(router, 'codex-app', codexApp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = codexApp.approve({ sessionId: b.sessionId, allow: b.allow !== false, cancel: b.cancel === true, decision: b.decision, scope: b.scope, answers: b.answers, content: b.content });
-      json(res, r.ok ? 200 : 400, r);
+      const r = codexApp.approve({ sessionId: b.sessionId, allow: b.allow === true, cancel: b.cancel === true, decision: b.decision, scope: b.scope, answers: b.answers, content: b.content, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/respond-user-input', handler: async (req, res) => {
       const b = await body(req);
@@ -1438,8 +1455,8 @@ registerBackend(router, 'opencode2-app', opencode2App, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = await opencode2App.approve({ sessionId: b.sessionId, allow: b.allow !== false, always: !!b.always });
-      json(res, r.ok ? 200 : 400, r);
+      const r = await opencode2App.approve({ sessionId: b.sessionId, allow: b.allow === true, always: b.always === true, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/model', handler: async (req, res) => {
       const b = await body(req);
@@ -1655,8 +1672,8 @@ registerBackend(router, 'omp', omp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = omp.approve({ sessionId: b.sessionId, allow: b.allow !== false, answers: b.answers });
-      json(res, r.ok ? 200 : 400, r);
+      const r = omp.approve({ sessionId: b.sessionId, allow: b.allow === true, answers: b.answers, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/model', handler: async (req, res) => {
       const b = await body(req); const r = await omp.setModel({ sessionId: b.sessionId, model: b.model });
@@ -1821,10 +1838,20 @@ const server = http.createServer(async (req, res) => {
   }
   const url = new URL(req.url, 'http://x');
   try {
+    for (const [key, value] of url.searchParams) {
+      const reason = PATH_KEYS.has(key) ? unsafePathReason(value) : null;
+      if (reason) throw new UnsafePathError(reason);
+    }
+    const xDirReason = unsafePathReason(String(req.headers['x-dir'] || ''));
+    if (xDirReason) throw new UnsafePathError(xDirReason);
     const route = router.match(req.method, url.pathname);
     if (route) return await route.handler(req, res);
     return json(res, 404, { error: 'not found' });
-  } catch (e) { return json(res, 500, { error: String(e.message || e) }); }
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return rejectTooLarge(req, res);
+    if (e instanceof UnsafePathError) return json(res, 400, { ok: false, error: e.message });
+    return json(res, 500, { error: String(e.message || e) });
+  }
 });
 
 // ── WebSocket servers ──────────────────────────────────────────────────────
@@ -1843,6 +1870,20 @@ function upgradeIdentity(req) {
   return wsTickets.redeem(new URL(req.url, 'http://x').searchParams.get('ticket'));
 }
 
+// Cihaz kimliğine göre açık akışlar: cihaz iptal edildiğinde ya da anahtarı
+// yenilendiğinde o cihazın akışları hemen kapatılır.
+const socketsByDevice = new Map();
+function trackSocket(sock, identity) {
+  if (identity?.kind !== 'device') return;
+  let set = socketsByDevice.get(identity.id);
+  if (!set) socketsByDevice.set(identity.id, set = new Set());
+  set.add(sock);
+  sock.on('close', () => { set.delete(sock); if (!set.size) socketsByDevice.delete(identity.id); });
+}
+function closeSocketsOf(deviceId) {
+  for (const sock of socketsByDevice.get(deviceId) || []) { try { sock.close(1008, 'device key revoked'); } catch {} }
+}
+
 server.on('upgrade', (req, socket, head) => {
   const u = new URL(req.url, 'http://x');
   const identity = upgradeIdentity(req);
@@ -1853,15 +1894,15 @@ server.on('upgrade', (req, socket, head) => {
   }
   req.wsIdentity = identity;
   if (u.pathname === '/codex-app/stream') {
-    wssCodexApp.handleUpgrade(req, socket, head, sock => wssCodexApp.emit('connection', sock, req));
+    wssCodexApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssCodexApp.emit('connection', sock, req); });
   } else if (u.pathname === '/claude-app/stream') {
-    wssClaudeApp.handleUpgrade(req, socket, head, sock => wssClaudeApp.emit('connection', sock, req));
+    wssClaudeApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssClaudeApp.emit('connection', sock, req); });
   } else if (u.pathname === '/opencode2-app/stream') {
-    wssOpenCode2App.handleUpgrade(req, socket, head, sock => wssOpenCode2App.emit('connection', sock, req));
+    wssOpenCode2App.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssOpenCode2App.emit('connection', sock, req); });
   } else if (u.pathname === '/omp/stream') {
-    wssOmp.handleUpgrade(req, socket, head, sock => wssOmp.emit('connection', sock, req));
+    wssOmp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssOmp.emit('connection', sock, req); });
   } else if (u.pathname === '/agy/stream') {
-    wssAgy.handleUpgrade(req, socket, head, sock => wssAgy.emit('connection', sock, req));
+    wssAgy.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssAgy.emit('connection', sock, req); });
   } else {
     socket.destroy();
   }

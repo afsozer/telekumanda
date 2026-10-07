@@ -2,7 +2,7 @@
 // (web/src/lib/api.ts); burada yalnız gövde ve yanıt şekilleri bilinir.
 // Uç listesi ve gövde şekilleri: android/shared/.../BridgeClientBackend.kt.
 
-import { apiGet, apiPost } from '../../lib/api'
+import { ApiError, apiGet, apiPost } from '../../lib/api'
 
 export interface ModelsResponse {
   models: { id: string; label?: string }[]
@@ -109,11 +109,30 @@ export async function setPermissionMode(backend: string, sessionId: string, mode
   return data.permissionMode ?? mode
 }
 
-export async function approve(backend: string, sessionId: string, allow: boolean, answers?: ApprovalAnswer[]): Promise<void> {
-  const body: { sessionId: string; allow: boolean; answers?: ApprovalAnswer[] } = { sessionId, allow }
+/**
+ * Onayı, onaylanan isteğin kimliğiyle gönderir. Köprü bekleyen istek başkaysa
+ * (araya yeni bir istek girmişse) 409 döner ve onay uygulanmaz.
+ */
+export async function approve(
+  backend: string,
+  sessionId: string,
+  allow: boolean,
+  answers?: ApprovalAnswer[],
+  requestId?: string,
+): Promise<void> {
+  const body: { sessionId: string; allow: boolean; answers?: ApprovalAnswer[]; requestId?: string } = { sessionId, allow }
   // Kotlin tarafı da boş listeyi gövdeye koymuyor (claudeAppApprove).
   if (answers && answers.length > 0) body.answers = answers
-  const data = await apiPost<OkResponse>(`/${backend}/approve`, body)
+  if (requestId) body.requestId = requestId
+  let data: OkResponse
+  try {
+    data = await apiPost<OkResponse>(`/${backend}/approve`, body)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      throw new Error('Bu onay isteği artık geçerli değil; ekrandaki güncel isteğe bakın.')
+    }
+    throw err
+  }
   okOrThrow(data, 'Onay iletilemedi')
 }
 

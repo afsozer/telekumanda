@@ -61,4 +61,11 @@ describe('Markdown', () => {
     expect(container.textContent).toContain('<img')
     expect(container.textContent).toContain('onerror')
   })
+
+  it('görsel kendiliğinden yüklenmez, bağlantı olarak gösterilir', () => {
+    const { container } = render(<Markdown text={'![sızıntı](https://ornek.test/x.png?d=gizli)'} />)
+    expect(container.querySelector('img')).toBeNull()
+    const link = screen.getByRole('link', { name: 'sızıntı' })
+    expect(link.getAttribute('href')).toBe('https://ornek.test/x.png?d=gizli')
+  })
 })
