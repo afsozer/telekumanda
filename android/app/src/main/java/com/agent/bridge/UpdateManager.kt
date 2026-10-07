@@ -35,11 +35,13 @@ class AndroidUpdateManager(private val context: Context) : UpdateManager {
             val versionCode = json.getInt("versionCode")
             if (versionCode <= BuildConfig.VERSION_CODE) return@withContext null
             val apkPath = json.getString("apkPath")
+            val sha256 = UpdateIntegrity.expectedDigest(json.optString("sha256"))
             UpdateInfo(
                 versionCode = versionCode,
                 versionName = json.optString("versionName", versionCode.toString()),
                 notes = json.optString("notes"),
                 apkUrl = normalizeBase(settings.baseUrl) + apkPath,
+                sha256 = sha256,
             )
         }
     }
@@ -47,6 +49,7 @@ class AndroidUpdateManager(private val context: Context) : UpdateManager {
     override suspend fun downloadApk(
         settings: BridgeSettings,
         apkUrl: String,
+        sha256: String,
         onProgress: (Float) -> Unit,
     ): File = withContext(Dispatchers.IO) {
         onProgress(0f)
@@ -55,19 +58,19 @@ class AndroidUpdateManager(private val context: Context) : UpdateManager {
             if (!it.isSuccessful) throw IOException("HTTP ${it.code}")
             val body = it.body ?: throw IOException("Empty response body")
             val target = File(context.cacheDir, "update.apk")
-            body.byteStream().use { input ->
+            val total = body.contentLength()
+            val actual = body.byteStream().use { input ->
                 target.outputStream().use { output ->
-                    val total = body.contentLength()
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var copied = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        copied += read
+                    UpdateIntegrity.copyWithDigest(input, output) { copied ->
                         if (total > 0L) onProgress((copied.toFloat() / total).coerceIn(0f, 1f))
                     }
                 }
+            }
+            try {
+                UpdateIntegrity.verify(sha256, actual)
+            } catch (e: IOException) {
+                target.delete()
+                throw e
             }
             onProgress(1f)
             target
@@ -75,14 +78,13 @@ class AndroidUpdateManager(private val context: Context) : UpdateManager {
     }
 
     override fun installApk(file: File): Boolean {
-        if (BuildConfig.IS_LITE) {
-            val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
-                ?: throw IOException("İndirilen APK okunamadı")
-            if (archive.packageName != context.packageName) throw IOException("APK Lite uygulamasına ait değil")
-            val version = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) archive.longVersionCode
-                else @Suppress("DEPRECATION") archive.versionCode.toLong()
-            if (version <= BuildConfig.VERSION_CODE) throw IOException("APK daha yeni bir Lite sürümü değil")
-        }
+        // Paket bu uygulamaya ait ve daha yeni olmalı (her iki derlemede de).
+        val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+            ?: throw IOException("İndirilen APK okunamadı")
+        if (archive.packageName != context.packageName) throw IOException("APK bu uygulamaya ait değil")
+        val version = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) archive.longVersionCode
+            else @Suppress("DEPRECATION") archive.versionCode.toLong()
+        if (version <= BuildConfig.VERSION_CODE) throw IOException("APK daha yeni bir sürüm değil")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,

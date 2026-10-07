@@ -9,4 +9,6 @@ data class UpdateInfo(
     val versionName: String,
     val notes: String,
     val apkUrl: String,
+    /** Paketin bildirimdeki SHA-256 özeti (küçük harf, 64 hane); bkz. UpdateIntegrity. */
+    val sha256: String,
 )

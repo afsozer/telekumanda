@@ -3,6 +3,7 @@
 // Usage: node release.mjs <versionName> "<notes>"
 //   e.g. node release.mjs 1.1 "Yeni ozellikler"
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +77,9 @@ if (!fs.existsSync(srcApk)) {
 fs.mkdirSync(path.dirname(dstApk), { recursive: true });
 fs.copyFileSync(srcApk, dstApk);
 const apkSize = fs.statSync(dstApk).size;
+// Uygulama indirdigi paketin SHA-256'sini bununla karsilastirir; ozet yoksa ya da
+// tutmuyorsa kurmaz (UpdateIntegrity.kt).
+const sha256 = crypto.createHash('sha256').update(fs.readFileSync(dstApk)).digest('hex');
 
 // ── 5. Write latest.json ───────────────────────────────────────────────────
 const latest = {
@@ -83,6 +87,7 @@ const latest = {
   versionName,
   notes,
   apkPath: '/update/app-latest.apk',
+  sha256,
 };
 fs.writeFileSync(latestPath, JSON.stringify(latest, null, 2) + '\n', 'utf-8');
 

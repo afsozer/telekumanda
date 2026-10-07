@@ -41,7 +41,7 @@ class UpdateDelegate(
         val info = updateInfo.value ?: return@launch
         downloadProgress.value = 0f
         runCatching {
-            val file = updateManager.downloadApk(state().settings, info.apkUrl) { progress ->
+            val file = updateManager.downloadApk(state().settings, info.apkUrl, info.sha256) { progress ->
                 downloadProgress.value = progress
             }
             updateManager.installApk(file)
