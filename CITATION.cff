@@ -16,6 +16,7 @@ version: "1.0.1"
 date-released: "2026-10-23"
 license: AGPL-3.0-only
 repository-code: "https://github.com/afsozer/telekumanda"
+doi: "10.5281/zenodo.23603803"
 keywords:
   - ai-agent
   - coding-agent

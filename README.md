@@ -1,5 +1,7 @@
 # Telekumanda
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23603803.svg)](https://doi.org/10.5281/zenodo.23603803)
+
 Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code, Codex, OpenCode and Antigravity sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
 
 - A Kotlin / Jetpack Compose Android app in `android/`
