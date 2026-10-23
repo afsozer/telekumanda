@@ -1,6 +1,6 @@
 {
   "name": "telekumanda",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Remote control for desktop coding agents from an Android phone or browser",
   "license": "AGPL-3.0-only",

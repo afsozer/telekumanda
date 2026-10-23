@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "Bu yazılımı kullanırsanız lütfen aşağıdaki künyeyle atıf yapın. If you use this software, please cite it as below."
+type: software
+title: "Telekumanda"
+abstract: >-
+  Remote control for the AI coding agents running on a desktop computer:
+  Claude Code, Codex, OpenCode and Antigravity sessions are started, followed
+  and approved from an Android phone or a browser. It consists of a Kotlin and
+  Jetpack Compose Android app and a Node.js bridge server that runs on the PC,
+  authenticates requests with a bearer token or per-device key, and connects
+  the phone UI to the agent backends over HTTP and WebSocket.
+authors:
+  - family-names: "Sözer"
+    given-names: "Alpaslan Fatih"
+version: "1.0.1"
+date-released: "2026-10-23"
+license: AGPL-3.0-only
+repository-code: "https://github.com/afsozer/telekumanda"
+keywords:
+  - ai-agent
+  - coding-agent
+  - remote-control
+  - android
+  - kotlin
+  - jetpack-compose
+  - nodejs
+  - mcp
