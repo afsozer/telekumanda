@@ -66,7 +66,7 @@ zorlama.
   kullanıcı sürecine kapalı: yakalama "geçersiz işleyici" verir, sentetik
   girdi kabul edilmez. `screenshot` bu durumda `KILITLI` döner (exit 3).
   Chrome Remote Desktop/Moonlight aşabiliyor çünkü SYSTEM servisi + sanal
-  sürücü olarak çalışıyorlar.
+  sürücü olarak çalışıyorlar. Bu makinede otomatik kilit kapatılmıştır.
 - **UAC ve yükseltilmiş pencereler** sentetik girdiyi reddeder. Yönetici
   gerektiren işi bu yolla yaptıramazsın.
 - **Sistem uykuya girerse** süreç de donar. Fişte uyku "Asla" ayarlı.

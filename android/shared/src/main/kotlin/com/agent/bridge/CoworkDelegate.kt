@@ -7,8 +7,7 @@ import kotlinx.coroutines.launch
 
 // Cowork backend oturum yaşam döngüsü — RemoteViewModel'den ayrılan delege (madde 11.6c).
 // Üç backend delegesinin son ve en büyüğü. Cowork bir sunum + konfigürasyon katmanıdır:
-// asıl oturum seçili sağlayıcıya (claude-app / codex-app / opencode-app /
-// opencode-app) dağıtılır.
+// asıl oturum seçili sağlayıcıya (claude-app / codex-app / omp) dağıtılır.
 //
 // Kapsam: uploadToCoworkWorkspace (Uri çözme VM'de), loadCoworkImportDir,
 // importPcIntoCoworkWorkspace, convertCoworkOutputToUdf, downloadCoworkWorkspaceZip,
@@ -21,13 +20,13 @@ import kotlinx.coroutines.launch
 // openCoworkSocket (internal), refreshCoworkOutputs (internal).
 //
 // Davranış değişikliği yok. Cowork'un kendi pollJob'u yok — polling seçili sağlayıcının
-// sibling delegesine/VM metoduna dağıtılır (startCodexAppPolling/startOpencodeAppPolling/
+// sibling delegesine/VM metoduna dağıtılır (startCodexAppPolling/startOmpPolling/
 // claudeAppDelegate.startClaudeAppPolling). Cross-backend state alanları (claudeApp*,
-// codexApp*, opencodeApp*) RemoteUiState'te — state/update ile erişilir. Sibling
+// codexApp*, omp*) RemoteUiState'te — state/update ile erişilir. Sibling
 // socket/polling/info-load callback olarak verilir. openCoworkSocket + refreshCoworkOutputs
 // shared infra'dan (applyConversation/handleStreamEnd/applyStreamSnapshot/session-adopt)
 // çağrıldığı için internal expose edilir. setCoworkYoloMode sibling permission setter'ları
-// client üzerinden doğrudan çağırır (claude/codex/opencode API'leri).
+// client üzerinden doğrudan çağırır (claude/codex/omp API'leri).
 //
 // Kalıp önceki delegelerle aynı. uploadToCoworkWorkspace Uri çözmesi VM'de (FileBrowserDelegate
 // deseni); downloadCoworkWorkspaceZip downloadRepo gerektirir (Android Context bağımlı,
@@ -42,13 +41,9 @@ class CoworkDelegate(
     private val thoughtDetails: MutableStateFlow<Map<Int, String>>,
     private val openSocket: (provider: String, sessionId: String) -> Unit,
     private val startCodexAppPolling: () -> Unit,
-    private val startOpencodeAppPolling: () -> Unit,
-    private val startOpencode2Polling: () -> Unit = {},
     private val startOmpPolling: () -> Unit,
     private val startClaudeAppPolling: () -> Unit,
     private val loadCodexAppInfo: () -> Unit,
-    private val loadOpencodeAppInfo: () -> Unit,
-    private val loadOpencode2Info: () -> Unit = {},
     private val loadOmpInfo: () -> Unit,
     private val loadClaudeAppInfo: () -> Unit,
     private val refreshConversation: (showErrors: Boolean) -> Unit,
@@ -119,7 +114,7 @@ class CoworkDelegate(
     }
 
     // Workspace'in tamamını KLASÖR olarak telefona indirir: bridge zip'i hazırlar,
-    // telefon zip'i indirir ve Download/AgentBridge/<workspace>/ altına açar.
+    // telefon zip'i indirir ve Download/Telekumanda/<workspace>/ altına açar.
     fun downloadCoworkWorkspaceZip() = scope.launch {
         val repo = downloadRepo ?: run { emit("İndirme servisi kullanılamıyor"); return@launch }
         val dir = state().selectedCoworkWorkspace.ifBlank { coworkProjectPath() }
@@ -158,21 +153,14 @@ class CoworkDelegate(
             .onSuccess { catalog -> update { current ->
                 val claude = catalog.firstOrNull { it.id == "claude-app" }
                 val codex = catalog.firstOrNull { it.id == "codex-app" }
-                val opencode = catalog.firstOrNull { it.id == "opencode2-app" }
                 val claudeDefault = claude?.defaultModel.orEmpty().ifBlank { current.claudeAppDefaultModel }
                 val codexDefault = codex?.defaultModel.orEmpty().ifBlank { current.codexAppDefaultModel }
-                val opencodeDefault = opencode?.defaultModel.orEmpty().ifBlank { current.opencodeAppDefaultModel }
                 current.copy(
                     claude = current.claude.copy(models = claude?.models?.map { ClaudeModel(it.label, it.id) }.orEmpty(), defaultModel = claudeDefault, model = if (current.claudeAppModel.isBlank() || current.claudeAppModel == current.claudeAppDefaultModel) claudeDefault else current.claudeAppModel),
                     codex = current.codex.copy(
                         models = codex?.models?.map { CodexModel(it.label, it.id) }.orEmpty(),
                         defaultModel = codexDefault,
                         model = if (current.codexAppModel.isBlank() || current.codexAppModel == current.codexAppDefaultModel) codexDefault else current.codexAppModel,
-                    ),
-                    opencode = current.opencode.copy(
-                        availableModels = opencode?.models.orEmpty(),
-                        defaultModel = opencodeDefault,
-                        model = if (current.opencodeAppModel.isBlank() || current.opencodeAppModel == current.opencodeAppDefaultModel) opencodeDefault else current.opencodeAppModel,
                     ),
                 )
             } }
@@ -225,7 +213,7 @@ class CoworkDelegate(
         loadCoworkProviderCatalog().join()
         loadCoworkWorkspaces()
         // Sekme geçişinin işaret ettiği canlı cowork oturumuna bağlan. Sağlayıcıya
-        // duyarlı (lastCoworkProvider, sekmeyle birlikte yazılır): codex/opencode/omp
+        // duyarlı (lastCoworkProvider, sekmeyle birlikte yazılır): codex/omp
         // oturumları da tanınır. Hedef TÜKETİLİR — bir sonraki girişte tekrar
         // bağlanmasın (yukarıdaki uzun not).
         val bekleyen = state()
@@ -253,26 +241,6 @@ class CoworkDelegate(
                         }
                         openSocket("codex-app", target.id)
                         startCodexAppPolling()
-                        refreshConversation(false)
-                    }
-                    "opencode2-app" -> {
-                        update {
-                            it.copy(
-                                cowork = it.cowork.copy(provider = "opencode2-app", activeProjectPath = target.cwd),
-                                opencode = it.opencode.copy(
-                                    sessionId = target.id,
-                                    cwd = target.cwd.ifBlank { it.opencode.cwd },
-                                    model = target.model.ifBlank { it.opencode.model },
-                                    // Codex dalıyla aynı gerekçe: diff oturuma ait.
-                                    diff = null,
-                                    diffLoading = false,
-                                ),
-                                currentSession = "Cowork",
-                                model = "Cowork · ${target.model.ifBlank { it.opencodeAppModel }}",
-                            )
-                        }
-                        openSocket("opencode2-app", target.id)
-                        startOpencodeAppPolling()
                         refreshConversation(false)
                     }
                     // OMP DALI EKSİKTİ. `normalizeCoworkProvider` omp'yi geçerli
@@ -405,7 +373,7 @@ class CoworkDelegate(
     }
 
     // startClaudeAppSession'in cowork varyanti: workspace'i cwd yapar, cowork:true gönderir.
-    // Claude için onaylar zaten interaktif (cowork'ün kalbi). Codex/OpenCode için
+    // Claude için onaylar zaten interaktif (cowork'ün kalbi). Codex/OMP için
     // permissionMode yolo toggle'dan gelir (madde 6) — açık opt-in değilse bridge 'ask' varsayıyor.
     // Drawer'daki "Başlat" tuşu: aynı workspace içinde HER ZAMAN yeni bir oturum açar
     // (forceNew=true). Aktif oturum varken bile taze oturum başlatılır; mevcut oturuma
@@ -473,7 +441,6 @@ class CoworkDelegate(
         val applyProviderUi: (RemoteUiState) -> RemoteUiState = {
             when (cleanProvider) {
                 "codex-app" -> it.copy(cowork = it.cowork.copy(provider = cleanProvider), codex = it.codex.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
-                "opencode2-app" -> it.copy(cowork = it.cowork.copy(provider = cleanProvider), opencode = it.opencode.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
                 "omp" -> it.copy(cowork = it.cowork.copy(provider = cleanProvider), omp = it.omp.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
                 else -> it.copy(cowork = it.cowork.copy(provider = cleanProvider), claude = it.claude.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
             }
@@ -509,7 +476,6 @@ class CoworkDelegate(
             update {
                 when (provider) {
                     "codex-app" -> it.copy(codex = it.codex.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
-                    "opencode2-app" -> it.copy(opencode = it.opencode.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
                     "omp" -> it.copy(omp = it.omp.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
                     else -> it.copy(claude = it.claude.copy(model = cleanModel), model = "Cowork / $label / $cleanModel")
                 }
@@ -540,7 +506,6 @@ class CoworkDelegate(
 
     private fun coworkModelFor(provider: String): String = when (normalizeCoworkProvider(provider)) {
         "codex-app" -> state().codexAppModel.ifBlank { state().codexAppDefaultModel }
-        "opencode2-app" -> state().opencode.model.ifBlank { state().opencode.defaultModel }
         "omp" -> state().ompModel.ifBlank { state().ompDefaultModel }
         else -> state().claudeAppModel.ifBlank { state().claudeAppDefaultModel }
     }
@@ -550,15 +515,14 @@ class CoworkDelegate(
     // atlanınca sessizce yanlış oturuma dokunuyor.
     private fun coworkSessionIdFor(provider: String): String = when (normalizeCoworkProvider(provider)) {
         "codex-app" -> state().codexAppSessionId
-        "opencode2-app" -> state().opencode.sessionId
         "omp" -> state().ompSessionId
         else -> state().claudeAppSessionId
     }
 
     // Cowork yolo (otomatik onay) — tüm provider'lar için, VARSAYILAN AÇIK
     // (CoworkUiState.yoloMode = true; kullanıcı kararı 21.07). Bridge eşler:
-    // codex 'yolo'→danger-full-access, opencode 'yolo'→native yolo,
-    // claude 'yolo'→bypassPermissions. null → onay modu (codex/opencode 'ask',
+    // codex 'yolo'→danger-full-access, omp 'yolo'→native yolo,
+    // claude 'yolo'→bypassPermissions. null → onay modu (codex/omp 'ask',
     // claude default → interaktif onay) — kullanıcı "Onay"ı seçerse.
     private fun coworkPermissionMode(): String? =
         if (state().coworkYoloMode) "yolo" else null
@@ -577,14 +541,6 @@ class CoworkDelegate(
                 // (yeni cowork oturumu ya da başka sağlayıcı), taşınan liste
                 // "bu oturum şunları değiştirdi" diye YALAN söylerdi.
                 codex = it.codex.copy(sessionId = if (activeProvider == "codex-app") result.sessionId else "", cwd = projectPath, model = if (activeProvider == "codex-app") activeModel else it.codex.model, diff = null, diffLoading = false),
-                opencode = it.opencode.copy(
-                    sessionId = if (activeProvider == "opencode2-app") result.sessionId else "",
-                    cwd = projectPath,
-                    model = if (activeProvider == "opencode2-app") activeModel else it.opencode.model,
-                    permissionMode = if (activeProvider == "opencode2-app") (if (it.cowork.yoloMode) "yolo" else "ask") else it.opencode.permissionMode,
-                    diff = null,
-                    diffLoading = false,
-                ),
                 omp = it.omp.copy(
                     sessionId = if (activeProvider == "omp") result.sessionId else "",
                     cwd = projectPath,
@@ -604,14 +560,12 @@ class CoworkDelegate(
         openSocket(activeProvider, result.sessionId)
         when (activeProvider) {
             "codex-app" -> startCodexAppPolling()
-            "opencode2-app" -> startOpencode2Polling()
             "omp" -> startOmpPolling()
             else -> startClaudeAppPolling()
         }
         refreshConversation(false)
         when (activeProvider) {
             "codex-app" -> loadCodexAppInfo()
-            "opencode2-app" -> loadOpencode2Info()
             "omp" -> loadOmpInfo()
             else -> loadClaudeAppInfo()
         }
@@ -715,14 +669,10 @@ class CoworkDelegate(
     }
 
     // Yolo (otomatik onay) toggle'ı — tüm provider'lar için (madde 6). Aktif cowork
-    // oturumu varsa modu hemen uygular (best effort; codex/opencode tur sürerken reddeder,
+    // oturumu varsa modu hemen uygular (best effort; codex/omp tur sürerken reddeder,
     // o durumda bir sonraki oturum başlangıcında zaten toggle'dan uygulanır).
     fun setCoworkYoloMode(enabled: Boolean) {
-        update { it.copy(
-            cowork = it.cowork.copy(yoloMode = enabled),
-            opencode = if (normalizeCoworkProvider(it.coworkProvider) == "opencode2-app")
-                it.opencode.copy(permissionMode = if (enabled) "yolo" else "ask") else it.opencode,
-        ) }
+        update { it.copy(cowork = it.cowork.copy(yoloMode = enabled)) }
         val st = state()
         if (st.backend != "cowork") return
         scope.launch {
@@ -731,12 +681,6 @@ class CoworkDelegate(
                     val sid = st.codexAppSessionId
                     if (sid.isNotBlank()) runCatching {
                         client.codexAppSetPermissionMode(st.settings, sid, if (enabled) "yolo" else "ask")
-                    }
-                }
-                "opencode2-app" -> {
-                    val sid = st.opencodeAppSessionId
-                    if (sid.isNotBlank()) runCatching {
-                        client.opencodeAppSetPermissionMode(st.settings, sid, if (enabled) "yolo" else "ask")
                     }
                 }
                 "omp" -> {

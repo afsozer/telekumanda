@@ -12,10 +12,8 @@ private fun RemoteUiState.activeQueueSessionId(): String = when (backend) {
     Backend.AGY.id -> agy.sessionId
     Backend.CLAUDE_APP.id -> claude.sessionId
     Backend.CODEX_APP.id -> codex.sessionId
-    Backend.OPENCODE2_APP.id -> opencode.sessionId
     Backend.COWORK.id -> when (activeQueueProvider()) {
         Backend.CODEX_APP.id -> codex.sessionId
-        Backend.OPENCODE2_APP.id -> opencode.sessionId
         else -> claude.sessionId
     }
     else -> ""

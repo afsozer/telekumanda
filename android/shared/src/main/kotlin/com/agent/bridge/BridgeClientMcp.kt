@@ -93,9 +93,9 @@ suspend fun BridgeClient.claudeAppMcpToggle(settings: BridgeSettings, name: Stri
     if (!json.optBoolean("ok")) throw IOException(json.optString("error", "MCP durumu değişmedi"))
 }
 
-// --- Backend-genel MCP (codex-app / opencode-app; /<prefix>/mcp/*) ---
-// Her backend kendi CLI config'ini yönetir (codex: config.toml, opencode:
-// opencode.json). Cevap şekli claude-app MCP ile aynı.
+// --- Backend-genel MCP (codex-app; /<prefix>/mcp/*) ---
+// Her backend kendi CLI config'ini yönetir (codex: config.toml). Cevap şekli
+// claude-app MCP ile aynı.
 private fun parseMcpServers(json: JSONObject): List<McpServer> {
     val array = json.optJSONArray("servers") ?: return emptyList()
     return buildList {

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Telekumanda adaptive icon, ön katman: "Yörünge" (7 Kas 2026). Açık uçlu halka
+  ve boşluğunda duran nokta. Temalı simge (Android 13+): sistem tek renge boyar.
+  432'lik tuval (1 birim = 0.25dp). Halka r=104, nokta merkezden 131 birimde
+  bitiyor; 0.76 ölçekle ~100 birim = 25dp, güvenli bölge (33dp) içinde.
+  Nokta sağ üstte ağırlık yaptığı için işaret 6 birim sol alta kaydırıldı.
+  Kaynak çizim: docs/logo/yorunge.svg
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="432"
+    android:viewportHeight="432">
+    <group
+        android:pivotX="216" android:pivotY="216"
+        android:scaleX="0.76" android:scaleY="0.76"
+        android:translateX="-6" android:translateY="6">
+        <path
+            android:pathData="M225.1,112.4 A104,104 0 1 0 316.5,189.1"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M282.8,136.3 m-27,0 a27,27 0 1 0 54,0 a27,27 0 1 0 -54,0"
+            android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

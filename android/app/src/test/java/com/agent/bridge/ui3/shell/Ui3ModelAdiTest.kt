@@ -57,7 +57,7 @@ class Ui3ModelAdiTest {
     @Test
     fun monogramComesFromProviderFirstToken() {
         assertEquals("DE", ui3ModelMonogrami("deepseek-pro", "deepseek-v4-pro"))
-        assertEquals("OP", ui3ModelMonogrami("opencode-go", "muse-spark-1.2"))
+        assertEquals("AN", ui3ModelMonogrami("anthropic", "muse-spark-1.2"))
         assertEquals("ZE", ui3ModelMonogrami("zen", "big-pickle"))
     }
 

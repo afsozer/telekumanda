@@ -156,7 +156,7 @@ private fun SoruKarti(
         ) {
             if (soru.header.isNotBlank()) {
                 Text(
-                    soru.header.uppercase(),
+                    soru.header,
                     style = Ui3Type.etiket,
                     color = Ui3Colors.vurguHi,
                     modifier = Modifier
@@ -314,7 +314,7 @@ private fun DuzOnayKarti(
         tint = GlassTint.Amber,
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s8)) {
-            Text("ONAY BEKLİYOR", style = Ui3Type.etiket, color = Ui3Colors.attention)
+            Text("Onay bekliyor", style = Ui3Type.etiket, color = Ui3Colors.attention)
             Text(baslik, style = Ui3Type.govde, color = Ui3Colors.ink)
             if (komut != null) {
                 Box(

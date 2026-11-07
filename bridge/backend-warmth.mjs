@@ -1,4 +1,4 @@
-const WARMABLE = new Set(['codex-app', 'opencode2-app']);
+const WARMABLE = new Set(['codex-app']);
 const inflightWarmups = new Map();
 
 export function normalizeWarmTargets(rawTargets) {

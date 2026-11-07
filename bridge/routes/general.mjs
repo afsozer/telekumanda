@@ -164,7 +164,7 @@ export function register(router, {
   recordFileEvent = () => {},
   scheduleRestart = scheduleSupervisorRestart,
   getCoworkRoot = () => '',
-  getLiteRoot = () => path.join(os.homedir(), 'AgentBridge-Lite'),
+  getLiteRoot = () => path.join(os.homedir(), 'Telekumanda-Lite'),
 }) {
   router.get('/health', (req, res) => json(res, 200, { ok: true, protocolVersion: 2, protocolMinClient: 2 }));
   router.get('/active-state', (req, res) => json(res, 200, getActiveState()));

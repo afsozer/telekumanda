@@ -6,23 +6,23 @@ describe('open-tab backend warmth', () => {
   it('keeps only warmable backends and groups duplicate tab sessions', () => {
     assert.deepStrictEqual(
       normalizeWarmTargets([
-        { backend: 'opencode2-app', sessionId: 'h1' },
-        { backend: 'opencode2-app', sessionId: 'h1' },
-        { backend: 'opencode2-app', sessionId: 'h2' },
         { backend: 'codex-app', sessionId: 'c1' },
+        { backend: 'codex-app', sessionId: 'c1' },
+        { backend: 'codex-app', sessionId: 'c2' },
+        // Tanınmayan bir backend kimliği (eski istemci) yok sayılmalı.
+        { backend: 'taninmayan-app', sessionId: 'h1' },
         { backend: 'claude-app', sessionId: 'cl1' },
         { backend: 'agy', sessionId: 'a1' },
         { backend: 'codex-app', sessionId: '' },
       ]),
       [
         {
-          backend: 'opencode2-app',
+          backend: 'codex-app',
           openSessions: [
-            { sessionId: 'h1', cwd: '' },
-            { sessionId: 'h2', cwd: '' },
+            { sessionId: 'c1', cwd: '' },
+            { sessionId: 'c2', cwd: '' },
           ],
         },
-        { backend: 'codex-app', openSessions: [{ sessionId: 'c1', cwd: '' }] },
       ],
     );
   });

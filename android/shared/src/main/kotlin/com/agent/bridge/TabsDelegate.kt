@@ -17,10 +17,6 @@ class TabsDelegate(
     private val enterAgyMode: () -> Unit,
     private val enterClaudeAppMode: () -> Unit,
     private val enterCodexAppMode: () -> Unit,
-    private val enterOpencodeAppMode: () -> Unit,
-    // Varsayilan BOS DEGIL: dal eklenmeden birakilirsa sekmeye donmek sessizce
-    // hicbir sey yapar (26.09.2026'da opencode2'de tam bu oldu).
-    private val enterOpencode2AppMode: () -> Unit,
     private val enterOmpMode: () -> Unit = {},
     private val enterCoworkMode: () -> Unit,
     private val onTabsChanged: () -> Unit = {},
@@ -281,7 +277,7 @@ class TabsDelegate(
 
         update { state ->
             when (tab.backend) {
-                // claude/codex/opencode: enter* yalnız tek atımlık pendingBind hedefine
+                // claude/codex/omp: enter* yalnız tek atımlık pendingBind hedefine
                 // bağlanır (lastSessionId artık otomatik bağlanma kaynağı değil).
                 "claude-app" -> state.copy(
                     claude = state.claude.copy(lastSessionId = tab.sessionId),
@@ -300,12 +296,6 @@ class TabsDelegate(
                     lastCoworkProvider = tab.provider,
                     pendingBindBackend = "cowork", pendingBindSessionId = tab.sessionId,
                 )
-                // v1 ve v2 AYNI dal: durum ailesini `withOpencodeFamily` seciyor.
-                // Ayri yazilsaydi biri unutulurdu — nitekim v2 dali hic yoktu ve
-                // sekmeden cikip geri gelince oturum yuklenmiyordu.
-                "opencode2-app" -> state
-                    .withOpencodeFamily(tab.backend) { f -> f.copy(lastSessionId = tab.sessionId) }
-                    .copy(pendingBindBackend = tab.backend, pendingBindSessionId = tab.sessionId)
                 "omp" -> state.copy(
                     omp = state.omp.copy(lastSessionId = tab.sessionId),
                     pendingBindBackend = "omp", pendingBindSessionId = tab.sessionId,
@@ -329,7 +319,6 @@ class TabsDelegate(
             "agy" -> enterAgyMode()
             "claude-app" -> enterClaudeAppMode()
             "codex-app" -> enterCodexAppMode()
-            "opencode2-app" -> enterOpencode2AppMode()
             "omp" -> enterOmpMode()
             "cowork" -> enterCoworkMode()
         }

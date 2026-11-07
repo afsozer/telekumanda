@@ -482,36 +482,10 @@ suspend fun BridgeClient.bulkSessionAction(
     )
 }
 
-suspend fun BridgeClient.pollNotifications(
-    settings: BridgeSettings,
-    lastPending: Boolean,
-    lastSessionId: String,
-    lastEventId: String,
-    deviceId: String = "",
-): NotificationPollResult {
-    val query = "?pending=$lastPending" +
-        "&sessionId=${URLEncoder.encode(lastSessionId, "UTF-8")}" +
-        "&eventId=${URLEncoder.encode(lastEventId, "UTF-8")}" +
-        "&deviceId=${URLEncoder.encode(deviceId, "UTF-8")}"
-    val json = getJsonLongPoll(settings, "/notifications/poll$query")
-    return NotificationPollResult(
-        pending = json.optBoolean("pending"),
-        backend = json.optString("backend"),
-        sessionId = json.optString("sessionId"),
-        summary = json.optString("summary"),
-        eventId = json.optString("eventId"),
-        events = parseOperationEvents(json.optJSONArray("events")),
-        pushEvents = parsePushEvents(json.optJSONArray("pushEvents")),
-    )
-}
-
 suspend fun BridgeClient.approve(settings: BridgeSettings, backend: String, sessionId: String, allow: Boolean) {
     val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
     val path = when (backend.trim().lowercase()) {
         "codex-app" -> "/codex-app/approve"
-        // Bildirim kartindaki onay tusu: dal olmadan v2 oturumunun onayi
-        // `else` dalindan CLAUDE'a gidiyordu.
-        "opencode2-app" -> "/opencode2-app/approve"
         "omp" -> "/omp/approve"
         else -> "/claude-app/approve"
     }

@@ -78,10 +78,10 @@ class AndroidUpdateManager(private val context: Context) : UpdateManager {
         if (BuildConfig.IS_LITE) {
             val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
                 ?: throw IOException("İndirilen APK okunamadı")
-            if (archive.packageName != context.packageName) throw IOException("APK Lite uygulamasına ait değil")
+            if (archive.packageName != context.packageName) throw IOException("APK bu uygulamaya ait değil")
             val version = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) archive.longVersionCode
                 else @Suppress("DEPRECATION") archive.versionCode.toLong()
-            if (version <= BuildConfig.VERSION_CODE) throw IOException("APK daha yeni bir Lite sürümü değil")
+            if (version <= BuildConfig.VERSION_CODE) throw IOException("APK daha yeni bir sürüm değil")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             val intent = Intent(

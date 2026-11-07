@@ -21,21 +21,21 @@ beforeEach(() => {
 describe('forkFromMessage', () => {
   it('gövde {sessionId, dropUserTurns}, yanıt sessionId döner', async () => {
     queue.push(json(200, { ok: true, sessionId: 'yeni-1' }))
-    const id = await forkFromMessage('opencode2-app', 'ses-1', 3)
+    const id = await forkFromMessage('codex-app', 'ses-1', 3)
     expect(id).toBe('yeni-1')
     expect(calls[0]).toMatchObject({
-      url: '/opencode2-app/fork-from',
+      url: '/codex-app/fork-from',
       body: { sessionId: 'ses-1', dropUserTurns: 3 },
     })
   })
 
   it('ok:false ya da sessionId yoksa hata fırlatır', async () => {
     queue.push(json(200, { ok: false, error: 'tur sürerken çatallanamaz' }))
-    await expect(forkFromMessage('opencode2-app', 'ses-1', 1)).rejects.toThrow(
+    await expect(forkFromMessage('codex-app', 'ses-1', 1)).rejects.toThrow(
       'tur sürerken çatallanamaz',
     )
     queue.push(json(200, { ok: true }))
-    await expect(forkFromMessage('opencode2-app', 'ses-1', 1)).rejects.toThrow('Çatallanamadı')
+    await expect(forkFromMessage('codex-app', 'ses-1', 1)).rejects.toThrow('Çatallanamadı')
   })
 })
 

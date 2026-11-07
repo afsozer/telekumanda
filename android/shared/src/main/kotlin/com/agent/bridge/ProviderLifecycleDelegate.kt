@@ -6,7 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Codex/OpenCode provider oturumlarının giriş, çıkış ve polling yaşam döngüsü. */
+/** Codex/OMP provider oturumlarının giriş, çıkış ve polling yaşam döngüsü. */
 class ProviderLifecycleDelegate(
     private val client: BridgeClient,
     private val scope: CoroutineScope,
@@ -23,17 +23,13 @@ class ProviderLifecycleDelegate(
     private val refreshSession: () -> Unit,
     private val applyConversation: (ConversationResult) -> Unit,
     private val refreshAll: () -> Unit,
-    private val refreshRunPodStatus: (Boolean) -> Unit,
-    private val syncRunPodStatus: () -> Unit,
     private val syncActiveTab: (String, String, String, String) -> Unit,
 ) {
     private var codexPollJob: Job? = null
-    private var opencodePollJob: Job? = null
     private var ompPollJob: Job? = null
 
     fun cancelCoworkSiblingPolling() {
         codexPollJob?.cancel(); codexPollJob = null
-        opencodePollJob?.cancel(); opencodePollJob = null
         ompPollJob?.cancel(); ompPollJob = null
     }
 
@@ -169,7 +165,8 @@ class ProviderLifecycleDelegate(
         codexPollJob?.cancel()
         codexPollJob = scope.launch {
             while (isActive && (state().backend == Backend.CODEX_APP.id || (state().backend == Backend.COWORK.id && state().cowork.provider == Backend.CODEX_APP.id))) {
-                delay(POLL_MS); val current = state(); val sid = current.codex.sessionId
+                if (!SohbetYoklamasi.siradakiTur { state().wsConnected }) continue
+                val current = state(); val sid = current.codex.sessionId
                 if (sid.isBlank()) continue
                 runCatching { client.codexAppConversation(current.settings, sid, limit = current.messagePageSize.coerceAtLeast(100)) }.onSuccess {
                     if (state().backend == Backend.CODEX_APP.id || (state().backend == Backend.COWORK.id && state().cowork.provider == Backend.CODEX_APP.id)) {
@@ -189,101 +186,6 @@ class ProviderLifecycleDelegate(
             messagesList = emptyList(), transcript = "", running = false, awaitingApproval = false,
             contextTokens = 0, contextWindow = 0,
         ) }
-        refreshAll()
-    }
-
-    // Model kataloğunu yükler — enterOpencode dışında model çipinden de (loadBackendInfo).
-    fun loadOpencodeAppModels(backendId: String = Backend.OPENCODE2_APP.id): Job = scope.launch {
-        runCatching { client.opencodeAppModels(state().settings, backendId) }
-            .onSuccess { models -> update { it.withOpencodeFamily(backendId) { f -> f.copy(availableModels = models) } } }
-            .onFailure { reportError("OpenCode modelleri yuklenemedi", it) }
-    }
-
-    fun enterOpencode(backendId: String = Backend.OPENCODE2_APP.id) = scope.launch {
-        // v1 sokuldu: tek etiket kaldi.
-        val etiket = "OpenCode"
-        val kisa = "OpenCode"
-        clearThoughts()
-        val warm = prefill.warm(
-            "$backendId:$backendId",
-            state().pendingBindSessionId.takeIf { state().pendingBindBackend == backendId }.orEmpty(),
-        )
-        update { it.withOpencodeFamily(backendId) { f -> f.copy(setupPending = true, diskLoading = true) }.copy(
-            backend = backendId, wsConnected = false, 
-            currentSession = if (warm != null) etiket else "",
-            messagesList = warm?.messages ?: emptyList(),
-            transcript = warm?.transcript ?: "",
-            staleConversation = warm != null,
-            running = false, awaitingApproval = false, awaitingFirstOutput = false,
-        ) }
-        loadOpencodeAppModels(backendId).join()
-        refreshRunPodStatus(false); loadWorkerDirs("")
-        val current = state()
-        // codex/claude ile aynı kural: yalnız tek atımlık pendingBind hedefine bağlan;
-        // hedef yoksa oturum seçici (aşağıda disk listesi yüklenir, otomatik devralma yok).
-        val pendingSid = current.pendingBindSessionId
-            .takeIf { current.pendingBindBackend == backendId }.orEmpty()
-        if (pendingSid.isNotBlank()) update { it.copy(pendingBindBackend = "", pendingBindSessionId = "") }
-        if (pendingSid.isNotBlank()) {
-            val target = runCatching { client.listBackendSessions(current.settings, backendId) }.getOrDefault(emptyList()).firstOrNull { it.id == pendingSid }
-            if (target != null) {
-                update {
-                    val targetModel = target.model.ifBlank { it.opencodeFamily(backendId).model }
-                    it.withOpencodeFamily(backendId) { f ->
-                        f.panoSifirla().copy(sessionId = target.id, cwd = target.cwd.ifBlank { f.cwd }, model = targetModel, setupPending = false, diskLoading = false)
-                    }.copy(
-                        backend = backendId,
-                        currentSession = etiket, model = "$kisa · ${targetModel.substringAfterLast('/')}",
-                    )
-                }
-                openSocket(backendId, target.id); startOpencodePolling(backendId); refreshConversation(false)
-                syncActiveTab(backendId, "", target.id, generateTabTitle(backendId, "", target.cwd, target.model))
-                return@launch
-            }
-        }
-        // Hedefe bağlanılamadı: prefill tazelenmeyecek, bayrağı düşür (claude ile aynı).
-        update { it.copy(staleConversation = false) }
-        scope.launch {
-            // Otomatik devralma YOK: en yeni disk oturumu çoğu kez başka bir sekmede
-            // açık olan sohbetti — sessizce ona yapışmak sekme tekilleştirmesiyle o
-            // sekmeyi öldürüyordu. Liste gösterilir, kullanıcı seçer ya da yeni başlatır.
-            runCatching { client.opencodeAppDiskSessions(state().settings, backendId) }
-                .onSuccess { list -> update { it.withOpencodeFamily(backendId) { f -> f.copy(diskSessions = list, diskLoading = false, setupPending = false) } } }
-                .onFailure { update { it.withOpencodeFamily(backendId) { f -> f.copy(diskLoading = false, setupPending = false) } } }
-        }
-    }
-
-    fun startOpencodePolling(backendId: String = Backend.OPENCODE2_APP.id) {
-        opencodePollJob?.cancel()
-        opencodePollJob = scope.launch {
-            var tick = 0
-            fun aktif(): Boolean {
-                val st = state()
-                return st.backend == backendId ||
-                    (st.backend == Backend.COWORK.id && st.cowork.provider == backendId)
-            }
-            while (isActive && aktif()) {
-                delay(POLL_MS); tick++
-                val current = state(); val sid = current.opencodeFamily(backendId).sessionId
-                if (sid.isNotBlank()) runCatching { client.opencodeAppConversation(current.settings, sid, backendId) }.onSuccess {
-                    if (aktif()) {
-                        if (it.messages.isEmpty() && state().messagesList.isNotEmpty()) refreshSession() else applyConversation(it)
-                    }
-                }
-                // RunPod yalniz v1 tarafinda kurulu; v2'de o uc yok.
-                // RunPod durumu 6 turda bir: pod denetimi OpenCode sekmesinde.
-                if (tick % 6 == 0) syncRunPodStatus()
-            }
-        }
-    }
-
-    fun exitOpencode(backendId: String = Backend.OPENCODE2_APP.id) = scope.launch {
-        opencodePollJob?.cancel(); opencodePollJob = null; closeSocket()
-        val sid = state().opencodeFamily(backendId).sessionId
-        update {
-            it.withOpencodeFamily(backendId) { f -> f.panoSifirla().copy(sessionId = "", lastSessionId = sid, cwd = "") }
-                .copy(backend = null, messagesList = emptyList(), transcript = "", running = false, awaitingApproval = false, contextTokens = 0, contextWindow = 0)
-        }
         refreshAll()
     }
 
@@ -338,7 +240,7 @@ class ProviderLifecycleDelegate(
         ompPollJob?.cancel()
         ompPollJob = scope.launch {
             while (isActive && state().backend == Backend.OMP.id) {
-                delay(POLL_MS)
+                if (!SohbetYoklamasi.siradakiTur { state().wsConnected }) continue
                 val current = state(); val sid = current.omp.sessionId
                 if (sid.isBlank()) continue
                 runCatching { client.ompConversation(current.settings, sid) }.onSuccess {
@@ -362,7 +264,4 @@ class ProviderLifecycleDelegate(
     // Henüz gelmediyse boş gider; köprü kendi varsayılanını uygular.
     private fun codexDefaultModel(): String = state().codex.defaultModel
 
-    private companion object {
-        const val POLL_MS = 2_500L
-    }
 }

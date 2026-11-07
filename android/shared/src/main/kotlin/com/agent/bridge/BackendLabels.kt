@@ -38,8 +38,6 @@ fun permissionModeIsPermissive(mode: String): Boolean = when (mode) {
 fun providerMonogram(backendId: String): String = when (backendId) {
     "claude-app" -> "C"
     "codex-app" -> "X"
-    // v1 sokuldu: OpenCode monogrami yine "O".
-    "opencode2-app" -> "O"
     "omp" -> "P"
     "agy" -> "A"
     "cowork" -> "W"
@@ -54,25 +52,6 @@ fun providerMonogram(backendId: String): String = when (backendId) {
  * ui2'de `ChatRootScreen`'in private'ıydı; ui3 de aynı kısaltmayı gösterdiği
  * için buraya taşındı. İki arayüz aynı modeli farklı adlandırmasın.
  */
-/**
- * RunPod'da barındırılan RunPod modelinin kimliği.
- *
- * Köprüdeki `isRunPodModel` (bridge/opencode-app.mjs) ile AYNI tek kimlik —
- * sağlayıcı öneki taraması değil, çünkü "runpod/" altında başka model yok ve
- * olsaydı da pod'u onun için açmak yanlış olurdu.
- */
-const val RUNPOD_MODEL_ID = "runpod/runpod"
-
-/**
- * Seçili model RunPod pod'unu gerektiriyor mu?
- *
- * `Locale.ROOT` ŞART: tr-TR'de `lowercase()` "I" harfini "ı" yapıyor ve
- * karşılaştırma cihazın diline göre sessizce bozulurdu (bu depoda tekrarlayan
- * hata sınıfı).
- */
-fun isRunPodModel(model: String): Boolean =
-    model.trim().lowercase(java.util.Locale.ROOT) == RUNPOD_MODEL_ID
-
 fun shortModelLabel(model: String): String {
     val base = model.substringAfterLast('/').trim()
     if (base.isBlank()) return model

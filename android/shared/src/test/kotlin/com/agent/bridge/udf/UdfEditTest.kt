@@ -69,7 +69,7 @@ class UdfEditTest {
     @Test
     fun `sablon alani tasiyan satir kilitlidir`() {
         val document = parse(fieldDocument())
-        val fieldLine = document.paragraphBlocks().first { it.paragraph.plainText().contains("Ahmet") }
+        val fieldLine = document.paragraphBlocks().first { it.paragraph.plainText().contains("Yasir") }
 
         assertFalse("Alan taşıyan satır düzenlenebilir görünmemeli", fieldLine.editable)
         // Yine de çağrılırsa belge DEĞİŞMEZ: aynı örnek geri döner.
@@ -201,7 +201,7 @@ class UdfEditTest {
 
     /** Bir satırı `<field>` ile bağlı, bir satırı düz olan belge. */
     private fun fieldDocument(): ByteArray {
-        val text = "Müvekkil: Ahmet Yılmaz\nDüz satır\n"
+        val text = "Müvekkil: Yasir Öner\nDüz satır\n"
         return udf(
             """
             <paragraph>
@@ -211,7 +211,7 @@ class UdfEditTest {
             </paragraph>
             """.trimIndent(),
             text,
-            data = "<data><muvekkil><ad>Ahmet Yılmaz</ad></muvekkil></data>",
+            data = "<data><muvekkil><ad>Yasir Öner</ad></muvekkil></data>",
         )
     }
 

@@ -149,7 +149,7 @@ internal fun Ui3YeniOturum(
                 Modifier.padding(Ui3Tokens.s16),
                 verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s12),
             ) {
-                Text("SAĞLAYICI", style = Ui3Type.etiket, color = Ui3Colors.ink3)
+                Text("Sağlayıcı", style = Ui3Type.etiket, color = Ui3Colors.ink3)
                 if (BuildConfig.IS_LITE) {
                     Column(verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s8)) {
                         saglayicilar.forEach { id ->
@@ -197,7 +197,7 @@ internal fun Ui3YeniOturum(
                 onYeniAd = { yeniAlanAdi = it },
             )
         } else if (!BuildConfig.IS_LITE) {
-            Text("PROJE KLASÖRÜ", style = Ui3Type.etiket, color = Ui3Colors.ink3)
+            Text("Proje klasörü", style = Ui3Type.etiket, color = Ui3Colors.ink3)
             GlassLikeSurface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(Ui3Tokens.r26),
@@ -291,7 +291,6 @@ internal fun Ui3YeniOturum(
 
 internal fun liteSaglayiciAciklamasi(id: String): String = when (id) {
     "claude-app" -> "Uzun sohbetler ve genel görevler"
-    "codex-app" -> "Kodlama ve proje işleri"
     "agy" -> "Hızlı, genel amaçlı yardım"
     else -> "Yeni bir oturum başlat"
 }
@@ -399,7 +398,7 @@ private fun CalismaAlanlari(
     onAlan: (String) -> Unit,
     onYeniAd: (String) -> Unit,
 ) {
-    Text("ÇALIŞMA ALANI", style = Ui3Type.etiket, color = Ui3Colors.ink3)
+    Text("Çalışma alanı", style = Ui3Type.etiket, color = Ui3Colors.ink3)
     GlassLikeSurface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Ui3Tokens.r26),

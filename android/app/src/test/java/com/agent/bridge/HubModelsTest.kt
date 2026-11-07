@@ -27,12 +27,12 @@ class HubModelsTest {
     @Test
     fun coworkOnlyWorkspaceUsesMatterAsTitle() {
         val items = RemoteUiState().copy(
-            cowork = CoworkUiState(workspaces = listOf(CoworkWorkspace("ham-ad", "C:/cowork/ham-ad", "Örnek dosyası")))
+            cowork = CoworkUiState(workspaces = listOf(CoworkWorkspace("ham-ad", "C:/cowork/ham-ad", "Ercan dosyası")))
         ).hubProjects()
 
         assertEquals(1, items.size)
         assertEquals(null, items[0].projectId)
-        assertEquals("Örnek dosyası", items[0].title)
+        assertEquals("Ercan dosyası", items[0].title)
         assertEquals("C:/cowork/ham-ad", items[0].workspacePath)
     }
 

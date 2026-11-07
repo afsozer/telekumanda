@@ -12,8 +12,6 @@ class CoworkUiLogicTest {
             listOf(
                 CoworkProviderOption("claude-app", "Claude"),
                 CoworkProviderOption("codex-app", "Codex"),
-                CoworkProviderOption("opencode2-app", "OpenCode"),
-                CoworkProviderOption("opencode2-app", "OpenCode"),
                 CoworkProviderOption("omp", "Oh My Pi"),
             ),
             COWORK_PROVIDER_OPTIONS,
@@ -26,7 +24,6 @@ class CoworkUiLogicTest {
         assertEquals("claude-app", normalizeCoworkProvider("unknown"))
         assertEquals("claude-app", normalizeCoworkProvider("claude-app"))
         assertEquals("codex-app", normalizeCoworkProvider("codex-app"))
-        assertEquals("opencode2-app", normalizeCoworkProvider("opencode2-app"))
         assertEquals("omp", normalizeCoworkProvider("omp"))
         // Kaldırılmış bir backend eski kayıtlarda sağlayıcı olarak kalmış
         // olabilir; bilinmeyen değer Claude'a düşmeli, oturum açılamaz olmamalı.
@@ -45,8 +42,8 @@ class CoworkUiLogicTest {
         assertEquals("claude-app", coworkApprovalBackend("cowork", "claude-app"))
         assertEquals("codex-app", coworkApprovalBackend("cowork", "codex-app"))
         assertEquals("codex-app", coworkApprovalBackend("codex-app", "claude-app"))
-        assertEquals("opencode2-app", coworkApprovalBackend("cowork", "opencode2-app"))
-        assertEquals("opencode2-app", coworkApprovalBackend("cowork", "opencode2-app"))
+        assertEquals("omp", coworkApprovalBackend("cowork", "omp"))
+        assertEquals("claude-app", coworkApprovalBackend("cowork", "kaldirilmis-app"))
         assertEquals("claude-app", coworkApprovalBackend("claude-app", "codex-app"))
     }
 
@@ -54,8 +51,8 @@ class CoworkUiLogicTest {
     fun modelPickerUsesActiveCoworkProvider() {
         assertEquals("claude-app", coworkModelProvider("claude-app"))
         assertEquals("codex-app", coworkModelProvider("codex-app"))
-        assertEquals("opencode2-app", coworkModelProvider("opencode2-app"))
-        assertEquals("opencode2-app", coworkModelProvider("opencode2-app"))
+        assertEquals("omp", coworkModelProvider("omp"))
+        assertEquals("claude-app", coworkModelProvider("kaldirilmis-app"))
         assertEquals("claude-app", coworkModelProvider("bad-provider"))
     }
 }
@@ -76,7 +73,7 @@ class CoworkSessionListTargetTest {
     fun blankWhenNoActiveCoworkSessionEvenIfProviderHasCwd() {
         val state = RemoteUiState(
             claude = ClaudeUiState(cwd = "C:/Users/x/agtest"),
-            omp = OpencodeUiState(cwd = "C:/Users/x/agtest"),
+            omp = OmpUiState(cwd = "C:/Users/x/agtest"),
             cowork = CoworkUiState(activeProjectPath = "", selectedWorkspace = ""),
         )
 

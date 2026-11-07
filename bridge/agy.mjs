@@ -58,12 +58,15 @@ const TURN_GRACE_MS = 3000;       // 3s grace after last growth before declaring
 //
 // Not: `--model gemini-3.8-flash` tek basina `--effort` istiyor; bilesik id
 // (…-low/-medium/-high) cabayi icinde tasiyor ve ek bayrak gerektirmiyor.
+//
+// 14.10.2026'da katalogla hizalandi: Gemini 3.1 Pro High/Low artik `agy models`
+// ciktisinda yok, cikarildi. Gemini 4 Argon yalniz AI Ultra'ya acik, katalogda
+// gorunurse katalogun verdigi id'yle eklenir. Not: `agy models` SSH oturumunda "sign in"
+// der; kullanici oturumunda (schtasks /IT) calistir.
 export const AGY_MODELS = [
   { label: 'Gemini 3.8 Flash High', id: 'gemini-3.8-flash-high' },
   { label: 'Gemini 3.8 Flash Medium', id: 'gemini-3.8-flash-medium' },
   { label: 'Gemini 3.8 Flash Low', id: 'gemini-3.8-flash-low' },
-  { label: 'Gemini 3.1 Pro High', id: 'gemini-3.1-pro-high' },
-  { label: 'Gemini 3.1 Pro Low', id: 'gemini-3.1-pro-low' },
   { label: 'Claude Opus 4.6', id: 'claude-opus-4-6-thinking' },
   { label: 'Claude Sonnet 4.6', id: 'claude-sonnet-4-6' },
   { label: 'GPT-OSS 120B Medium', id: 'gpt-oss-120b-medium' },
@@ -90,7 +93,7 @@ function snapshot(s) {
   };
 }
 
-// Delta yayın çekirdeği (claude-app/codex-app/opencode-app/omp ile aynı).
+// Delta yayın çekirdeği (claude-app/codex-app/omp ile aynı).
 // Kısıcı EKLENMEDİ: agy zaten PTY karesi başına değil, 1,5 sn'lik transkript
 // yoklaması ve tur/onay sınırlarında itiyor — doğal hız sınırı orada.
 // `pendingPrompt` META_KEYS'e eklendi, yoksa onay kartı delta kipinde hiç gelmezdi.

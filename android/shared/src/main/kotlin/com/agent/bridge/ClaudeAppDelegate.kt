@@ -21,7 +21,7 @@ import org.json.JSONObject
 // Davranış değişikliği yok. Cowork coupling (claudeAppSessionId + claudeAppModel
 // cowork+claude-app sağlayıcıyla paylaşılır) callback'lerle soyutlanır:
 // openCoworkSocket, cancelCoworkSiblingPolling
-// (exitClaudeAppMode cowork branch'inde codex/opencode poll cancel). normalizeCoworkProvider
+// (exitClaudeAppMode cowork branch'inde codex poll cancel). normalizeCoworkProvider
 // top-level fonksiyon olduğu için delege doğrudan çağırır (callback gerekmez).
 // claudeAppPollJob delege içinde; onCleared cancelPolling() ile.
 //
@@ -328,7 +328,7 @@ class ClaudeAppDelegate(
         claudeAppPollJob?.cancel()
         claudeAppPollJob = scope.launch {
             while (isActive && (state().backend == "claude-app" || (state().backend == "cowork" && normalizeCoworkProvider(state().coworkProvider) == "claude-app"))) {
-                delay(2_500)
+                if (!SohbetYoklamasi.siradakiTur { state().wsConnected }) continue
                 val sid = state().claudeAppSessionId
                 if (sid.isBlank()) continue
                 val limit = state().messagePageSize.coerceAtLeast(100)
@@ -356,7 +356,6 @@ class ClaudeAppDelegate(
         val sid = if (state().backend == "cowork") {
             when (coworkProv) {
                 "codex-app" -> state().codexAppSessionId
-                "opencode2-app" -> state().opencodeAppSessionId
                 "omp" -> state().ompSessionId
                 else -> state().claudeAppSessionId
             }
@@ -368,7 +367,6 @@ class ClaudeAppDelegate(
                 backend = null,
                 claude = it.claude.copy(sessionId = "", lastSessionId = if (wasCowork) it.claude.lastSessionId else sid, cwd = "", diskSessions = emptyList(), info = null),
                 codex = if (wasCowork) it.codex.copy(sessionId = "", cwd = "") else it.codex,
-                opencode = if (wasCowork) it.opencode.copy(sessionId = "", cwd = "") else it.opencode,
                 // Cowork ve claude-app son-oturumu ayrı hatırlanır; birbirine bağlanmasın.
                 lastCoworkSessionId = if (wasCowork && clearLastCowork) "" else if (wasCowork) sid else it.lastCoworkSessionId,
                 lastCoworkProvider = if (wasCowork && clearLastCowork) "" else if (wasCowork) coworkProv else it.lastCoworkProvider,

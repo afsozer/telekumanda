@@ -119,6 +119,47 @@ class PhoneFilesTest {
     }
 
     @Test
+    fun nomediaFlagTogglesBothWays() {
+        val dir = temp.newFolder("gorseller").absolutePath
+        assertFalse(PhoneFiles.mediaHidden(dir))
+
+        assertTrue(PhoneFiles.setMediaHidden(dir, true))
+        assertTrue(PhoneFiles.mediaHidden(dir))
+        assertTrue(File(dir, PhoneFiles.NOMEDIA).isFile)
+
+        assertTrue(PhoneFiles.setMediaHidden(dir, false))
+        assertFalse(PhoneFiles.mediaHidden(dir))
+        assertFalse(File(dir, PhoneFiles.NOMEDIA).exists())
+    }
+
+    @Test
+    fun nomediaIsIdempotent() {
+        // Anahtar iki kez ayni yone itilirse hata vermemeli.
+        val dir = temp.newFolder("g2").absolutePath
+        assertTrue(PhoneFiles.setMediaHidden(dir, true))
+        assertTrue(PhoneFiles.setMediaHidden(dir, true))
+        assertTrue(PhoneFiles.setMediaHidden(dir, false))
+        assertTrue(PhoneFiles.setMediaHidden(dir, false))
+    }
+
+    @Test
+    fun hidingCreatesMissingFolder() {
+        // Henuz hic gorsel indirilmemisse Pictures klasoru olmayabilir.
+        val dir = File(temp.root, "henuz-yok").absolutePath
+        assertTrue(PhoneFiles.setMediaHidden(dir, true))
+        assertTrue(PhoneFiles.mediaHidden(dir))
+    }
+
+    @Test
+    fun filePathsInSkipsDirectories() {
+        val dir = temp.newFolder("g3")
+        File(dir, "a.png").writeText("x")
+        File(dir, "alt").mkdirs()
+        val yollar = PhoneFiles.filePathsIn(dir.absolutePath)
+        assertEquals(listOf(File(dir, "a.png").absolutePath), yollar)
+    }
+
+    @Test
     fun pathLogicIsPlatformIndependent() {
         // Bu fonksiyonlar Android yollarini isler ama testler Windows'ta kosuyor;
         // java.io.File kullanilirsa yol "C:\..." olup mantik sessizce bozulur.

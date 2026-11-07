@@ -30,15 +30,6 @@ data class ActiveStateResult(
     val modules: Map<String, ModuleHealth> = emptyMap(),
     val system: SystemMetrics? = null
 )
-data class NotificationPollResult(
-    val pending: Boolean,
-    val backend: String = "",
-    val sessionId: String = "",
-    val summary: String = "",
-    val eventId: String = "",
-    val events: List<OperationEvent> = emptyList(),
-    val pushEvents: List<PushEvent> = emptyList(),
-)
 data class HealthResult(val ok: Boolean, val protocolVersion: Int = 0, val protocolMinClient: Int = 0) {
     val compatible: Boolean get() = protocolVersion in 2..2 && protocolMinClient <= 2
 }
@@ -66,25 +57,6 @@ data class ConversationResult(
     // koprude yok -> mevcut hedefe dokunma). goal null iken goalPresent=true = temizle.
     val goalPresent: Boolean = false,
     val goal: CodexGoal? = null,
-    // GÖREV PANOSU (opencode). Soket kapalıyken panonun tek kaynağı bu yol;
-    // üç-durum ayrımı akıştakiyle aynı (bkz. parseTodoArray / parseContextPct).
-    val todos: List<OpencodeTodo>? = null,
-    val contextPctPresent: Boolean = false,
-    val contextPct: Int? = null,
-    // Checkpoint geri sarma durumu (opencode). Üç-durum: alan hiç yoksa
-    // (eski köprü) mevcut duruma DOKUNMA, alan var null ise şeridi kaldır.
-    val revertedPresent: Boolean = false,
-    val reverted: OpencodeRevertState? = null,
-    // ALT AJANLAR (opencode). Soket kapalıyken kart yığınının tek kaynağı bu
-    // yol; null = karede alan yok (eski köprü) -> mevcut listeye dokunma.
-    val subagents: List<OpencodeSubagent>? = null,
-    // Oturum paylaşım linki (opencode). null = alan yok (eski köprü) -> dokunma;
-    // "" = yayında değil. Soket kapalıyken menü satırının tek kaynağı bu yol.
-    val share: String? = null,
-    // Oto kipte turu koşacak ajan (opencode). null = alan yok (eski köprü) ->
-    // dokunma; "" = köprü henüz bilmiyor. Soket kapalıyken göstergenin tek
-    // kaynağı bu yol.
-    val resolvedAgent: String? = null,
 )
 
 data class ApprovalInfo(
@@ -341,10 +313,10 @@ data class LiveSession(
 )
 // Feature 10: Codex App info
 data class CodexAppInfo(val codexVersion: String = "", val appServer: Boolean = false, val features: Map<String, Boolean> = emptyMap(), val skills: List<String> = emptyList(), val skillDetails: List<SkillInfo> = emptyList())
-data class OpencodeAppInfo(val serveAlive: Boolean = false, val skills: List<String> = emptyList(), val skillDetails: List<SkillInfo> = emptyList())
+data class OmpAppInfo(val serveAlive: Boolean = false, val skills: List<String> = emptyList(), val skillDetails: List<SkillInfo> = emptyList())
 // Feature 4: dosya değişiklikleri artık ortak [BackendSessionDiff] ile taşınıyor
-// (`GET /codex-app/diff`) — codex'e özel liste tipi kaldırıldı; şemayı köprü
-// opencode'unkiyle aynı biçimde veriyor ve telefonda tek gövde çiziyor.
+// (`GET /codex-app/diff`) — codex'e özel liste tipi kaldırıldı; telefonda tek
+// gövde çiziliyor.
 // Feature 5: Command timeline item
 data class CodexCommand(val id: String = "", val command: String = "", val cwd: String = "", val status: String = "", val stdout: String = "", val stderr: String = "", val exitCode: Int = 0, val startedAt: Long = 0, val completedAt: Long = 0)
 // Feature 1: Fork result
@@ -381,48 +353,6 @@ data class ProjectDeleteUiState(
     val targetId: String = "",
     val result: CompleteProjectDeleteResult? = null,
 )
-data class RunPodStatus(
-    val ok: Boolean = true,
-    val enabled: Boolean = false,
-    val phase: String = "unknown",
-    val ready: Boolean = false,
-    val action: String = "",
-    val step: String = "",
-    val message: String = "",
-    val podStatus: String = "",
-    val tunnel: Boolean = false,
-    val tunnelPid: Int? = null,
-    val operationActive: Boolean = false,
-    val billingAvailable: Boolean = false,
-    val clientBalance: Double? = null,
-    val currentSpendPerHr: Double? = null,
-    val spendLimit: Double? = null,
-)
-
-/**
- * OpenCode silinmis oturum kalintilarinin durumu (`purge/status`, `purge/run`).
- * Not: yol onekini yorumda yildizla yazmayin — Kotlin ic ice yorum aciyor.
- *
- * opencode oturumu silince icerik gitmiyor: SQLite freelist sayfalari ve
- * checkpoint edilmemis -wal cerceveleri mesaj metnini aynen tutuyor.
- * [deadActive] uygulamanin kullandigi veritabanlarindaki iz sayisi — imha
- * tusu bunlari aliyor. [deadArchived] eski/kopya dosyalarin icindeki
- * sohbetler; onlar yalniz masaustunden `-EskiDb` ile gidiyor, bu yuzden
- * ikisi TOPLANMAZ.
- */
-data class SessionPurgeStatus(
-    val ok: Boolean = true,
-    val enabled: Boolean = false,
-    val running: Boolean = false,
-    val message: String = "",
-    val deadActive: Int = 0,
-    val deadArchived: Int = 0,
-    // Son imhanin dogrulama sonucu; hic kosulmadiysa null.
-    val clean: Boolean? = null,
-    val lastRunAt: String = "",
-    val lines: List<String> = emptyList(),
-)
-
 data class ProcInfo(val pid: Int, val name: String, val startTime: String?, val elapsedSec: Int, val cmdline: String)
 data class KillResult(val ok: Boolean, val killed: List<Int>, val errors: List<Any>, val cleared: Int = 0)
 // Rewind (mesaja geri dön) cevabı. claude-app transcript-fork yaptığından yeni
@@ -431,7 +361,7 @@ data class RewindResult(val ok: Boolean, val sessionId: String, val partial: Boo
 data class ProcessListResult(val processes: List<ProcInfo>, val count: Int)
 data class AgyModel(val label: String, val id: String)
 data class AgyDiskSession(val id: String, val cwd: String, val title: String, val lastText: String, val turns: Int, val mtime: Long, val source: String = "", val sourceLabel: String = "")
-// variants: modelin akil yurutme eforu kademeleri (opencode'da "variant").
+// variants: modelin akil yurutme eforu kademeleri.
 // Modele gore degisir — deepseek-flash/pro'da high|max, digerlerinde bos.
 // Sabit liste tutulmaz, kopruden gelir.
 // defaultVariant: config'te zorlanmis efor (model.options.reasoningEffort).
@@ -458,17 +388,6 @@ data class AppDiskSession(
 )
 data class PermissionMode(val id: String, val name: String = "", val description: String = "")
 
-// OpenCode ajani: turu kim kosacak. build/plan yerlesik (builtIn), digerleri
-// ~/.config/opencode/agent/*.md dosyalarindan gelir. model: ajanin KENDI modeli
-// (varsa); secilince oturum modeli de ona cekilir, cunku kopru her mesajda
-// modeli gonderiyor ve o alan ajanin modelini ezer.
-data class BackendAgent(
-    val name: String,
-    val description: String = "",
-    val mode: String = "",
-    val builtIn: Boolean = false,
-    val model: String = "",
-)
 data class OperationItem(
     val id: String,
     val backend: String,
@@ -484,7 +403,7 @@ data class OperationItem(
     // eski bridge surumleri bu alani gondermez, kart backendLabel'a duser.
     // Konumsal cagiranlari bozmamak icin sonda ve varsayilanli.
     val title: String = "",
-    // Kalici oturum kimligi (orn. opencode ses_...). sessionId kopru kabugunu
+    // Kalici oturum kimligi (orn. codex'te thread id). sessionId kopru kabugunu
     // gosterir ve kabuk oldugunde cozulmez olur; acarken bu tercih edilir.
     val diskId: String = "",
 )
@@ -643,9 +562,12 @@ open class BridgeClient(private val clientEdition: String = "") {
         // bildirim yalnız o cihaza gidiyor (kullanıcı şikayeti 23.08.2026 —
         // tabletten prompt verirken yandaki telefon da ötüyordu).
         //
+        // (21.10.2026: Android istemcisi artık bildirim almıyor; başlık köprünün
+        // tur-kaynağı kaydı için duruyor.)
+        //
         // Neden `Build.MODEL` ve neden HEADER: köprü bildirim kaydında cihazın
-        // modelini de tutuyor (NotificationRoute), yani model prompt isteğini
-        // kayıtlı cihaza bağlayan ortak alan. Header olması da altı ayrı prompt
+        // modelini de tutuyor, yani model prompt isteğini kayıtlı cihaza
+        // bağlayan ortak alan. Header olması da altı ayrı prompt
         // çağrı yerine tek tek eklemekten kurtarıyor. Gerekçenin tamamı
         // köprüdeki `prompt-origin.mjs` başında.
         if (cihazModeli.isNotBlank()) builder.header("X-Device-Model", cihazModeli)
@@ -692,7 +614,7 @@ open class BridgeClient(private val clientEdition: String = "") {
             docClient.newCall(request).await().use { it.readJsonOrThrow() }
         }
 
-    // Worker variants with 1.5x longer timeouts for OpenCode operations
+    // Worker variants with 1.5x longer timeouts for long-running operations
     open suspend fun getJsonWorker(settings: BridgeSettings, path: String): JSONObject =
         executeJsonWorker(buildRequest(settings, path).get().build())
 
@@ -765,96 +687,6 @@ fun parseMessages(json: JSONObject): List<ChatMessage> {
             }
         }
     }
-}
-
-/**
- * Görev panosunun todo dizisi. null = KAREDE ALAN YOK (eski köprü ya da
- * değişmemiş delta) — çağıran mevcut listeye dokunmamalı. Boş liste ise gerçek
- * bir "liste temizlendi" bilgisi; ikisini karıştırmak panoyu koşu ortasında
- * boşaltırdı.
- *
- * İçerik doğrulaması köprüde yapılıyor (durum normalize, boş madde eleme); burada
- * yalnız çözümleme var, ikinci bir kural seti kurulmuyor.
- */
-internal fun parseTodoArray(arr: org.json.JSONArray?): List<OpencodeTodo>? {
-    if (arr == null) return null
-    return buildList {
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val content = obj.optString("content")
-            if (content.isNotBlank()) {
-                add(OpencodeTodo(content, obj.optString("status", "pending"), obj.optString("priority", "")))
-            }
-        }
-    }
-}
-
-/** contextPct'in üç durumu: alan yok / alan var ama null / sayı. */
-internal fun parseContextPct(json: JSONObject): Int? =
-    if (!json.has("contextPct") || json.isNull("contextPct")) null else json.optInt("contextPct")
-
-/**
- * Alt-ajan kartları. parseTodoArray ile aynı üç-durum sözleşmesi: null = karede
- * alan yok, boş liste = gerçekten alt-ajan yok. Kimliksiz kayıt ELENİR — kart
- * kimliksizken transkript isteği kurulamaz, tıklanan ölü bir kart olurdu.
- */
-internal fun parseSubagentArray(arr: org.json.JSONArray?): List<OpencodeSubagent>? {
-    if (arr == null) return null
-    return buildList {
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val id = obj.optString("id")
-            if (id.isBlank()) continue
-            add(
-                OpencodeSubagent(
-                    id = id,
-                    title = obj.optString("title").ifBlank { "Alt ajan" },
-                    status = obj.optString("status", "idle"),
-                    lastText = obj.optString("lastText", ""),
-                    turns = obj.optInt("turns", 0),
-                    agent = obj.optString("agent", ""),
-                ),
-            )
-        }
-    }
-}
-
-/** Alt-ajan transkripti (salt-okunur sheet). Geçersiz cevap null döner. */
-internal fun parseSubagentTranscript(json: JSONObject): OpencodeSubagentTranscript? {
-    val childId = json.optString("childId")
-    if (childId.isBlank()) return null
-    val arr = json.optJSONArray("messages")
-    val lines = buildList {
-        for (i in 0 until (arr?.length() ?: 0)) {
-            val obj = arr?.optJSONObject(i) ?: continue
-            val text = obj.optString("text")
-            if (text.isBlank()) continue
-            add(OpencodeSubagentLine(obj.optString("role", "agent"), text))
-        }
-    }
-    return OpencodeSubagentTranscript(
-        childId = childId,
-        title = json.optString("title").ifBlank { "Alt ajan" },
-        agent = json.optString("agent", ""),
-        status = json.optString("status", "idle"),
-        messages = lines,
-        truncated = json.optBoolean("truncated", false),
-    )
-}
-
-/**
- * Snapshot/poll yükündeki `reverted` nesnesi. null = geri sarılmış nokta yok.
- * `messageID` boşsa kayıt anlamsız — şerit çizilmesin diye null'a düşülüyor.
- */
-internal fun parseRevertState(json: JSONObject): OpencodeRevertState? {
-    val obj = json.optJSONObject("reverted") ?: return null
-    val id = obj.optString("messageID")
-    if (id.isBlank()) return null
-    return OpencodeRevertState(
-        messageID = id,
-        filesReverted = obj.optBoolean("filesReverted", false),
-        files = obj.optInt("files", 0),
-    )
 }
 
 internal fun parseStringArray(arr: org.json.JSONArray?): List<String> {

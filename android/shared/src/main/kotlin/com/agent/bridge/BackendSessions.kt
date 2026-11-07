@@ -65,19 +65,6 @@ fun RemoteUiState.backendDiskSessions(id: String): List<BackendDiskSessionUi> {
             archived = it.archived
         )
     }
-    // v1 ve v2 AYNI dal: sema ayni, yalniz durum ailesi ayri. Dal yokken
-    // opencode2 cekmecesi HEP BOS geliyordu (`else -> emptyList()`).
-    "opencode2-app" -> opencodeFamily(id).diskSessions.map {
-        BackendDiskSessionUi(
-            id = it.id,
-            cwd = it.cwd,
-            title = it.title,
-            lastText = it.lastText,
-            turns = it.turns,
-            mtime = it.mtime,
-            pinned = it.pinned,
-        )
-    }
     "omp" -> omp.diskSessions.map {
         BackendDiskSessionUi(
             id = it.id,
@@ -97,7 +84,6 @@ fun RemoteUiState.backendDiskSessions(id: String): List<BackendDiskSessionUi> {
             title = it.title.ifBlank {
                 when (it.provider) {
                     "codex-app" -> "Yeni Codex oturumu"
-                    "opencode2-app" -> "Yeni OpenCode oturumu"
                     else -> "Yeni Claude oturumu"
                 }
             },
@@ -125,8 +111,7 @@ private fun parseIsoEpochMillis(value: String): Long =
     runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrDefault(0L)
 
 fun backendSessionPinSupported(id: String): Boolean =
-    id == "claude-app" || id == "codex-app" || id == "opencode2-app" ||
-        id == "opencode2-app" || id == "omp"
+    id == "claude-app" || id == "codex-app" || id == "omp"
 
 fun backendSessionRenameSupported(id: String): Boolean = backendSessionPinSupported(id)
 

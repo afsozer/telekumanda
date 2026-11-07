@@ -59,7 +59,7 @@ class ChatDisplayRowsTest {
         val longThought = "x".repeat(250)
         val rows = buildChatDisplayRows(listOf(
             msg("user", "selam"),
-            msg("thought", longThought),            // eski opencode uzun düşüncesi → gizli
+            msg("thought", longThought),            // eski uzun düşünce → gizli
             msg("thought", "süreç beklenmedik kapandı"), // hata/durum şeridi → kalır
             msg("agent", "cevap"),
         ))

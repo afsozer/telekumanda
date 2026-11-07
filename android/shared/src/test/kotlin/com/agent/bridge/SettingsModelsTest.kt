@@ -57,7 +57,6 @@ class SettingsModelsTest {
         assertTrue(summary.connectionHealthy)
         assertFalse(summary.protocolCompatible)
         assertTrue(summary.devicePaired)
-        assertTrue(summary.notificationsEnabled)
         assertEquals(2, summary.visibleProviderCount)
         assertEquals(3, summary.providerCount)
     }
@@ -65,7 +64,7 @@ class SettingsModelsTest {
 
     @Test
     fun mcpTargetsExposeExplicitGlobalDestinations() {
-        assertEquals(listOf("claude", "codex-app", "opencode2-app", "omp", "antigravity"), SETTINGS_MCP_TARGETS.map { it.id })
+        assertEquals(listOf("claude", "codex-app", "omp", "antigravity"), SETTINGS_MCP_TARGETS.map { it.id })
         assertFalse(SETTINGS_MCP_TARGETS.first { it.id == "claude" }.supportsToggle)
         assertTrue(SETTINGS_MCP_TARGETS.first { it.id == "codex-app" }.supportsToggle)
         assertFalse(SETTINGS_MCP_TARGETS.first { it.id == "omp" }.supportsEdit)

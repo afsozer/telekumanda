@@ -218,7 +218,7 @@ test('security profiles are explicitly mapped per provider and audited', async (
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'projects-security-'));
   const calls = [];
   const session = backend => [{ id: `${backend}-1`, cwd: root, status: 'idle' }];
-  const modules = Object.fromEntries(['claude-app', 'codex-app', 'opencode2-app'].map(backend => [backend, {
+  const modules = Object.fromEntries(['claude-app', 'codex-app'].map(backend => [backend, {
     listSessions: () => session(backend),
     setPermissionMode: args => { calls.push({ backend, args }); return { ok: true }; },
   }]));
@@ -229,13 +229,13 @@ test('security profiles are explicitly mapped per provider and audited', async (
     const safe = await store.applySecurityProfile(id, 'safe');
     assert.equal(safe.ok, true);
     assert.deepEqual(calls.map(call => [call.backend, call.args.mode || call.args.permissionMode]), [
-      ['claude-app', 'plan'], ['codex-app', 'untrusted'], ['opencode2-app', 'plan'],
+      ['claude-app', 'plan'], ['codex-app', 'untrusted'],
     ]);
 
     calls.length = 0;
     await store.applySecurityProfile(id, 'standard');
     assert.deepEqual(calls.map(call => [call.backend, call.args.mode || call.args.permissionMode]), [
-      ['claude-app', 'default'], ['codex-app', 'ask'], ['opencode2-app', 'ask'],
+      ['claude-app', 'default'], ['codex-app', 'ask'],
     ]);
     const detail = await store.detail(id);
     assert.equal(detail.security.profile, 'standard');
@@ -326,7 +326,7 @@ test('deleteProject removes session history across backends but never the folder
     // deleteDiskSession'ı olmayan backend atlanır, hata vermez.
     const noDelete = { listSessions: () => [] };
     const store = createProjectsStore({
-      modules: { 'claude-app': claude, 'opencode2-app': noDelete },
+      modules: { 'claude-app': claude, 'omp': noDelete },
       labels: { 'claude-app': 'Claude' },
       filePath: path.join(root, 'registry.json'),
       cacheTtl: 0,
@@ -634,7 +634,7 @@ test('silinmiş test workspace kayıtları purge edilir, normal eksik proje koru
 test('lastActivityAt zaman damgasi olmayan canli oturumda SABIT kalir', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'projects-activity-'));
   const modules = {
-    // Hicbir zaman alani yok: gercek dunyada claude/opencode boyle donuyor.
+    // Hicbir zaman alani yok: gercek dunyada claude/codex boyle donuyor.
     'claude-app': { listSessions: () => [{ id: 'a1', cwd: root, status: 'idle' }] },
   };
   try {

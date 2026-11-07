@@ -10,9 +10,9 @@ class ConversationComposerPolicyTest {
     private val draft = PendingComposerDraft(input = "mesaj", attachments = listOf(attachment))
 
     @Test
-    fun codexAndOpencodeClearImmediatelyIncludingCowork() {
+    fun codexAndOmpClearImmediatelyIncludingCowork() {
         assertTrue(shouldClearComposerOptimistically(RemoteUiState(backend = Backend.CODEX_APP.id)))
-        assertTrue(shouldClearComposerOptimistically(RemoteUiState(backend = Backend.OPENCODE2_APP.id)))
+        assertTrue(shouldClearComposerOptimistically(RemoteUiState(backend = Backend.OMP.id)))
         assertTrue(
             shouldClearComposerOptimistically(
                 RemoteUiState(backend = Backend.COWORK.id, cowork = CoworkUiState(provider = Backend.CODEX_APP.id)),
@@ -20,7 +20,7 @@ class ConversationComposerPolicyTest {
         )
         assertTrue(
             shouldClearComposerOptimistically(
-                RemoteUiState(backend = Backend.COWORK.id, cowork = CoworkUiState(provider = Backend.OPENCODE2_APP.id)),
+                RemoteUiState(backend = Backend.COWORK.id, cowork = CoworkUiState(provider = Backend.OMP.id)),
             ),
         )
     }

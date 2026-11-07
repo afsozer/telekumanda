@@ -21,16 +21,9 @@ export interface BackendCapabilities {
   interrupt: boolean
   /** POST /<b>/steer — süren tura enjeksiyon. Telefondaki "Yönlendir". */
   userInputSteer: boolean
-  /**
-   * GET /<b>/instructions + POST/DELETE — oturum talimatları ("Kurallar"
-   * paneli). Bugün yalnız opencode2-app; diğerlerinde düğme çizilmez.
-   */
-  sessionInstructions: boolean
-  /** GET /<b>/permissions/saved — kayıtlı izin kuralları listesi. */
-  savedPermissions: boolean
   /** GET /<b>/diff — oturumun dosya değişiklikleri ("Değişiklikler" paneli). */
   sessionDiff: boolean
-  /** POST /<b>/fork-from — mesajdan çatallama. Bugün yalnız opencode2-app. */
+  /** POST /<b>/fork-from — mesajdan çatallama. Bugün hiçbir backend ilan etmiyor. */
   sessionFork: boolean
   /** POST /<b>/rewind — sondan sayımlı geri sarma. */
   sessionRewind: boolean
@@ -60,8 +53,6 @@ export const DEFAULT_CAPABILITIES: BackendCapabilities = {
   efforts: false,
   interrupt: false,
   userInputSteer: false,
-  sessionInstructions: false,
-  savedPermissions: false,
   sessionDiff: false,
   sessionFork: false,
   sessionRewind: false,
@@ -81,9 +72,6 @@ export const FALLBACK_BACKENDS: BackendInfo[] = [
   { id: 'codex-app', apiBackend: 'codex-app', label: 'Codex', adapterBacked: true,
     capabilities: { ...DEFAULT_CAPABILITIES, ...APP_AGENT, plan: true, efforts: true,
       sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
-  { id: 'opencode-app', apiBackend: 'opencode-app', label: 'OpenCode', adapterBacked: true,
-    capabilities: { ...DEFAULT_CAPABILITIES, ...APP_AGENT, userInput: false,
-      sessionPin: true, sessionRename: true, sessionDelete: true } },
   { id: 'agy', apiBackend: 'agy', label: 'Agy', adapterBacked: true,
     capabilities: { ...DEFAULT_CAPABILITIES, context: false, sessionDelete: true } },
 ]

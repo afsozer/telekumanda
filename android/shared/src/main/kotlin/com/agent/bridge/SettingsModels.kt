@@ -13,7 +13,6 @@ data class SettingsSummary(
     val connectionHealthy: Boolean,
     val protocolCompatible: Boolean,
     val devicePaired: Boolean,
-    val notificationsEnabled: Boolean,
     val visibleProviderCount: Int,
     val providerCount: Int,
 )
@@ -29,7 +28,6 @@ data class SettingsMcpTarget(
 val SETTINGS_MCP_TARGETS = listOf(
     SettingsMcpTarget(MCP_TARGET_CLAUDE, "Claude", false, "Yeni Claude oturumunda etkin olur"),
     SettingsMcpTarget("codex-app", "Codex", true, "Yeni Codex oturumunda etkin olur"),
-    SettingsMcpTarget("opencode2-app", "OpenCode", true, "OpenCode sunucusu yeniden başlayınca etkin olur"),
     SettingsMcpTarget("omp", "OMP", false, "Çalışan OMP runtime envanteri", supportsEdit = false),
     SettingsMcpTarget(MCP_TARGET_ANTIGRAVITY, "Antigravity", true, "Canlı yenileme desteklenir"),
 )
@@ -49,8 +47,6 @@ fun RemoteUiState.settingsSummary(): SettingsSummary = SettingsSummary(
     connectionHealthy = healthOk,
     protocolCompatible = protocolCompatible,
     devicePaired = devicePaired,
-    // Ayar yok: tam sürümde bildirim kanalı hep açık, Lite'ta hiç yok.
-    notificationsEnabled = !liteEdition,
     visibleProviderCount = backendOrder.count { it in visibleBackends },
     providerCount = backendOrder.size,
 )

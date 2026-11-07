@@ -8,7 +8,6 @@ import {
   arrangeUsageGroups,
   fetchDeepSeekUsage,
   fetchNanoGptUsage,
-  fetchOpenCodeGoUsage,
   fetchOpenRouterUsage,
 } from '../usage.mjs';
 
@@ -81,9 +80,18 @@ describe('Nano-GPT balance usage', () => {
         seen.push(url);
         if (url.startsWith('https://nano-gpt.com/api/v1/usage')) {
           assert.equal(options.headers.Authorization, 'Bearer nano-secret');
+          // Ucun gerçek biçimi: harcamasız gün byDay'de hiç yok.
           return {
             ok: true,
-            json: async () => ({ totals: { requests: 39, costUsd: 0.05, netCostUsd: 0.04690731 } }),
+            json: async () => ({
+              from: '2026-09-05',
+              to: '2026-10-04',
+              totals: { requests: 120, costUsd: 1.3, netCostUsd: 1.23456789 },
+              byDay: [
+                { date: '2026-10-03', requests: 81, costUsd: 1.2, netCostUsd: 1.18766058 },
+                { date: '2026-10-04', requests: 39, costUsd: 0.05, netCostUsd: 0.04690731 },
+              ],
+            }),
           };
         }
         assert.equal(url, 'https://nano-gpt.com/api/check-balance');
@@ -96,7 +104,7 @@ describe('Nano-GPT balance usage', () => {
       },
     });
 
-    assert.ok(seen.includes('https://nano-gpt.com/api/v1/usage?group_by=model&from=2026-10-04&to=2026-10-04'));
+    assert.ok(seen.includes('https://nano-gpt.com/api/v1/usage?group_by=day'));
     assert.equal(group.name, 'Nano-GPT');
     assert.equal(group.source, 'nanogpt');
     assert.equal(group.buckets[0].value, '$9.55');
@@ -108,6 +116,15 @@ describe('Nano-GPT balance usage', () => {
     assert.equal(group.buckets[0].todaySpendUsd, 0.0469);
     assert.equal(group.buckets[0].todayRequests, 39);
     assert.equal(group.buckets[0].description, 'Bugün $0.05 • 39 istek');
+    // 30 günlük pencere: toplam ve her gün için bir değer, son eleman bugün.
+    assert.equal(group.buckets[0].windowSpendUsd, 1.2346);
+    assert.equal(group.buckets[0].windowRequests, 120);
+    assert.equal(group.buckets[0].windowDays, 30);
+    const daily = group.buckets[0].dailySpendUsd;
+    assert.equal(daily.length, 30);
+    assert.equal(daily[29], 0.0469);
+    assert.equal(daily[28], 1.1877);
+    assert.equal(daily[0], 0);
     assert.doesNotMatch(group.description, /kota değil/);
     assert.doesNotMatch(JSON.stringify(group), /nano-secret/);
   });
@@ -122,6 +139,8 @@ describe('Nano-GPT balance usage', () => {
     assert.equal(group.buckets[0].value, '$3.74');
     assert.equal('todaySpendUsd' in group.buckets[0], false);
     assert.equal('todayRequests' in group.buckets[0], false);
+    assert.equal('dailySpendUsd' in group.buckets[0], false);
+    assert.equal('windowSpendUsd' in group.buckets[0], false);
     assert.equal(group.buckets[0].description, '');
   });
 
@@ -249,76 +268,5 @@ describe('DeepSeek balance usage', () => {
 
   it('returns null without a key so the card simply does not appear', async () => {
     assert.equal(await fetchDeepSeekUsage({ apiKey: '', fetchImpl: async () => { throw new Error('çağrılmamalı'); } }), null);
-  });
-});
-
-describe('OpenCode Go subscription quota', () => {
-  const respond = payload => async (url, options) => ({
-    ok: true,
-    json: async () => {
-      assert.equal(url, 'https://opencode.ai/zen/go/v1/usage');
-      assert.equal(options.headers.Authorization, 'Bearer oc-secret');
-      return payload;
-    },
-  });
-
-  it('üç pencereyi kalan yüzdeye çevirir ve anahtarı sızdırmaz', async () => {
-    const group = await fetchOpenCodeGoUsage({
-      apiKey: 'oc-secret',
-      fetchImpl: respond({
-        usage: {
-          rolling: { status: 'ok', percent: 0, resetsAt: '2026-08-16T16:53:13.978Z' },
-          weekly: { status: 'ok', percent: 40, resetsAt: '2026-08-17T00:00:00.000Z' },
-          monthly: { status: 'ok', percent: 20, resetsAt: '2026-09-16T11:45:50.000Z' },
-        },
-      }),
-    });
-
-    assert.equal(group.name, 'OpenCode Go');
-    assert.equal(group.source, 'opencode-go');
-    assert.deepEqual(group.buckets.map(b => b.id), ['opencode-go-5h', 'opencode-go-week', 'opencode-go-month']);
-    assert.equal(group.buckets[0].value, '%100 kaldı');
-    assert.equal(group.buckets[1].value, '%60 kaldı');
-    assert.equal(group.buckets[1].remainingFraction, 0.6);
-    assert.equal(group.buckets[2].resetTime, '2026-09-16T11:45:50.000Z');
-    // Durum normalken açıklama satırı kalabalık etmemeli.
-    assert.equal(group.buckets[0].description, '');
-    // Kota kartı: çubuk çizilmeli. metered:false olsaydı istemci hiç çizmezdi.
-    assert.ok(group.buckets.every(b => b.metered === true));
-    assert.doesNotMatch(JSON.stringify(group), /oc-secret/);
-  });
-
-  it('beklenmedik durum kodunu yutmaz', async () => {
-    const group = await fetchOpenCodeGoUsage({
-      apiKey: 'oc-secret',
-      fetchImpl: respond({ usage: { weekly: { status: 'exceeded', percent: 100, resetsAt: '2026-08-17T00:00:00.000Z' } } }),
-    });
-
-    assert.equal(group.buckets.length, 1);
-    assert.equal(group.buckets[0].value, '%0 kaldı');
-    assert.equal(group.buckets[0].remainingFraction, 0);
-    assert.equal(group.buckets[0].description, 'Durum: exceeded');
-  });
-
-  it('yüzdesi olmayan pencereyi "%100 kaldı" diye uydurmaz', async () => {
-    const group = await fetchOpenCodeGoUsage({
-      apiKey: 'oc-secret',
-      fetchImpl: respond({
-        usage: {
-          rolling: { status: 'ok', resetsAt: '2026-08-16T16:53:13.978Z' },
-          weekly: { status: 'ok', percent: 10, resetsAt: '2026-08-17T00:00:00.000Z' },
-        },
-      }),
-    });
-
-    assert.deepEqual(group.buckets.map(b => b.id), ['opencode-go-week']);
-  });
-
-  it('tek bir pencere bile gelmezse kart hiç çıkmaz', async () => {
-    assert.equal(await fetchOpenCodeGoUsage({ apiKey: 'oc-secret', fetchImpl: respond({ usage: {} }) }), null);
-  });
-
-  it('anahtar yoksa uca hiç gitmez', async () => {
-    assert.equal(await fetchOpenCodeGoUsage({ apiKey: '', fetchImpl: async () => { throw new Error('çağrılmamalı'); } }), null);
   });
 });

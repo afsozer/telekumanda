@@ -1,14 +1,15 @@
 {
-  "name": "telekumanda",
+  "name": "agent-bridge",
   "version": "1.0.0",
-  "private": true,
-  "description": "Remote control for desktop coding agents from an Android phone or browser",
-  "license": "AGPL-3.0-only",
-  "author": "Alpaslan Fatih Sözer",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/afsozer/telekumanda.git"
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
     "ws": "^8.21.0"
   }

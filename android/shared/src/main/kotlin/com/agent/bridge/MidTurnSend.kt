@@ -8,7 +8,7 @@ package com.agent.bridge
 // Hangi backend'in hangisine sahip olduğu ÖLÇÜLMÜŞ bir gerçek ve tek kaynak
 // backend-contract.mjs (userInputSteer / userInputQueue). Buraya backend ADI
 // GÖMÜLMEZ: 25.08.2026'ya kadar iki ekran da `backend == "omp" || ...` yazıyordu
-// ve OpenCode'un kuyruk desteği (köprüde vardı) telefonda hiç görünmedi.
+// ve backend'in kuyruk desteği (köprüde vardı) telefonda hiç görünmedi.
 //
 // COWORK: backendCapabilities zaten seçili sağlayıcıdan türetiyor, o yüzden
 // aşağıdaki iki soruda cowork'e özel dal YOK. Gönderimin hangi delege'ye

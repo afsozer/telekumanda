@@ -54,9 +54,6 @@ const CATALOG = {
     { id: 'codex-app', apiBackend: 'codex-app', label: 'Codex', adapterBacked: true,
       capabilities: { approvals: true, userInput: true, permissionModes: true, context: true,
         plan: true, outputs: false, efforts: true, interrupt: false } },
-    { id: 'opencode-app', apiBackend: 'opencode-app', label: 'OpenCode', adapterBacked: true,
-      capabilities: { approvals: true, userInput: false, permissionModes: true, context: true,
-        plan: false, outputs: false, efforts: false, interrupt: false } },
     { id: 'agy', apiBackend: 'agy', label: 'Agy', adapterBacked: true,
       capabilities: { approvals: false, userInput: false, permissionModes: false, context: false,
         plan: false, outputs: false, efforts: false, interrupt: false } },
@@ -64,7 +61,6 @@ const CATALOG = {
 }
 
 const AGY_SESSIONS = [{ ...SESSIONS[0], id: 'agy1', title: 'Agy oturumu' }]
-const OPENCODE_SESSIONS = [{ ...SESSIONS[0], id: 'open1', model: 'opencode/test', title: 'OpenCode oturumu' }]
 
 // Yalnız DİSKTE duran oturum: köprüde canlı kabuğu yok, açılırken adopt edilir.
 const DISK_SESSIONS = [
@@ -99,7 +95,6 @@ beforeEach(() => {
     if (path === '/backends') return Promise.resolve(json(CATALOG))
     if (path === '/claude-app/sessions') return Promise.resolve(json({ sessions: SESSIONS }))
     if (path === '/agy/sessions') return Promise.resolve(json({ sessions: AGY_SESSIONS }))
-    if (path === '/opencode-app/sessions') return Promise.resolve(json({ sessions: OPENCODE_SESSIONS }))
     if (path === '/claude-app/disk-sessions')
       return Promise.resolve(json({ ok: true, sessions: DISK_SESSIONS }))
     if (path === '/claude-app/disk-sessions-search' && parsed.searchParams.get('archived') === 'true')
@@ -227,7 +222,7 @@ describe('ChatScreen — çok backend (M3)', () => {
     const picker = await screen.findByLabelText('Ajan')
     await waitFor(() =>
       expect([...(picker as HTMLSelectElement).options].map((o) => o.textContent)).toEqual([
-        'Tümü', 'Claude', 'Codex', 'OpenCode', 'Agy',
+        'Tümü', 'Claude', 'Codex', 'Agy',
       ]),
     )
   })

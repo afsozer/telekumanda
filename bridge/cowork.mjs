@@ -11,29 +11,28 @@ import { spawn } from 'node:child_process';
 import { slugifyNoteName } from './note-slug.mjs';
 import * as claudeApp from './claude-app.mjs';
 import * as codexApp from './codex-app.mjs';
-// OpenCode v1 (opencode-app.mjs) 30.09.2026'da söküldü; tek OpenCode girişi v2.
-import * as opencode2App from './opencode2-app.mjs';
 import * as ompApp from './omp-app.mjs';
 
 // claude-app disinda hepsinde bridge-uuid gecici, kalici kimlik ayri: codex
-// threadId, opencode ses_..., omp'de OMP'nin kendi sessionId'si (canli listede
-// `diskId` alani). Dedupe ve resume bu kalici kimlik uzerinden yurur.
-const NATIVE_ID_PROVIDERS = new Set(['codex-app', 'opencode2-app', 'omp']);
-const PROVIDERS = new Set(['claude-app', 'codex-app', 'opencode2-app', 'omp']);
-// v1 söküldükten sonra DİSKTE kalan cowork kayıtları ve güncellenmemiş istemciler
-// hâlâ 'opencode-app' gönderiyor. "unknown provider" hatası vermek yerine tek
-// OpenCode girişine yönlendiriyoruz: eski proje kaydı sekmesini kaybetmesin.
-const PROVIDER_ALIASES = { 'opencode-app': 'opencode2-app' };
-export function normalizeProvider(p) { return PROVIDER_ALIASES[String(p || '')] || p; }
+// threadId, omp'de OMP'nin kendi sessionId'si (canli listede `diskId` alani).
+// Dedupe ve resume bu kalici kimlik uzerinden yurur.
+const NATIVE_ID_PROVIDERS = new Set(['codex-app', 'omp']);
+const PROVIDERS = new Set(['claude-app', 'codex-app', 'omp']);
+// Diskteki proje kayitlarinda artik taninmayan bir `activeProvider` kalmis
+// olabilir (kaldirilan saglayicilar, elle duzenlenmis dosyalar): projeyi
+// "unknown provider" ile kilitlemek yerine Claude'a dusulur.
+export function normalizeProvider(p) {
+  const id = String(p || '');
+  return PROVIDERS.has(id) ? id : 'claude-app';
+}
 const PROVIDER_MODULES = {
   'claude-app': claudeApp,
   'codex-app': codexApp,
-  'opencode2-app': opencode2App,
   'omp': ompApp,
 };
 
 // Workspace şablonları: template id → oluşturulacak klasörler + dosyalar.
-// Dosya içerikleri hem CLAUDE.md (claude-app) hem AGENTS.md (codex/opencode)
+// Dosya içerikleri hem CLAUDE.md (claude-app) hem AGENTS.md (codex/omp)
 // olarak yazılır; iki ajan ailesi de kendi talimat dosyasını okur.
 const WORKSPACE_TEMPLATES = {
   'dava-dosyasi': {
@@ -90,7 +89,7 @@ function sessionSort(a, b) {
   return String(b.lastUsedAt || b.createdAt || '').localeCompare(String(a.lastUsedAt || a.createdAt || ''));
 }
 
-// codex threadId'si ve opencode ses_... kimliği kalıcı native anahtardır; bridge
+// codex threadId'si ve omp sessionId'si kalıcı native anahtardır; bridge
 // uuid'i her adopt/new'de değişebilir. threadId varsa dedupe onun üzerinden.
 function sessionDedupeKey(provider, data) {
   if (NATIVE_ID_PROVIDERS.has(provider) && data?.threadId) return 'thread:' + data.threadId;
@@ -110,7 +109,6 @@ function samePath(a, b) {
 
 function providerSessionLabel(provider) {
   if (provider === 'codex-app') return 'Yeni Codex oturumu';
-  if (provider === 'opencode2-app') return 'Yeni OpenCode oturumu';
   if (provider === 'omp') return 'Yeni OMP oturumu';
   return 'Yeni Claude oturumu';
 }
@@ -652,7 +650,7 @@ export function listProjects() {
     return {
       name: w.name,
       path: w.path,
-      activeProvider: meta.activeProvider || 'claude-app',
+      activeProvider: normalizeProvider(meta.activeProvider || 'claude-app'),
       updatedAt: meta.updatedAt || '',
       matter: meta.matter || '',
     };
@@ -661,8 +659,6 @@ export function listProjects() {
 }
 
 export async function providerCatalog() {
-  let opencode2Models = [];
-  try { opencode2Models = await opencode2App.getModels(); } catch {}
   // OMP'de de katalog RPC'den gelir (statik MODELS yalnız iki deepseek satırı);
   // çekilemezse seçici boş kalmasın diye statik yedeğe düşülür.
   let ompModels = ompApp.MODELS || [];
@@ -675,7 +671,6 @@ export async function providerCatalog() {
       // ozel bir saglayiciya ait olabilir ve statik MODELS'te bulunmaz — o zaman
       // cowork'te varsayilan model secilemez gorunurdu.
       { id: 'codex-app', label: 'Codex', defaultModel: codexApp.defaultModel(), models: codexApp.listSelectableModels() },
-      { id: 'opencode2-app', label: 'OpenCode', defaultModel: opencode2App.defaultModel(), models: opencode2Models },
       { id: 'omp', label: 'Oh My Pi', defaultModel: ompApp.defaultModel(), models: ompModels },
     ],
   };
@@ -755,7 +750,7 @@ export function guardProviderPrompt({ provider, sessionId } = {}) {
   const mod = PROVIDER_MODULES[provider];
   const live = (mod.listSessions?.() || []).find(s => s.id === sessionId);
   if (!live?.cwd || !isInsideCoworkRoot(live.cwd) || !fs.existsSync(projectFile(live.cwd))) return { ok: true };
-  const record = findSessionFile(live.cwd, provider, sessionId, live.threadId || live._opencodeSid || '');
+  const record = findSessionFile(live.cwd, provider, sessionId, live.threadId || '');
   if (!record) return { ok: true };
   const lease = activeLease(live.cwd);
   if (lease?.provider === provider && lease?.sessionId === sessionId) return { ok: true };
@@ -818,7 +813,7 @@ export function createProject({ name, template } = {}) {
   const meta = {
     name: r.name,
     path: r.path,
-    activeProvider: prev.activeProvider || 'claude-app',
+    activeProvider: normalizeProvider(prev.activeProvider || 'claude-app'),
     createdAt: prev.createdAt || nowIso(),
     updatedAt: nowIso(),
   };
@@ -863,7 +858,14 @@ export function getProject({ projectPath } = {}) {
   });
   return {
     ok: true,
-    project: { ...meta, name: meta.name || base, path: p },
+    project: {
+      ...meta,
+      name: meta.name || base,
+      path: p,
+      // Diskte taninmayan bir kimlik kalmis olabilir; liste ile ayni degeri
+      // dondur ki istemci startSession'a gecerli bir saglayici gondermis olsun.
+      activeProvider: normalizeProvider(meta.activeProvider || 'claude-app'),
+    },
     sessions: listProjectSessions({ projectPath: p }).sessions,
     outputs: claudeApp.scanOutputsSnapshot(p),
   };
@@ -1020,7 +1022,7 @@ function saveProjectSession(projectPath, provider, data) {
 }
 
 // Ortak: turdan sonra netleşen kalıcı native kimliği (codex threadId /
-// opencode ses_...) mevcut kayda işle. Kayıt bridge-uuid'le açılmış olabilir;
+// omp sessionId) mevcut kayda işle. Kayıt bridge-uuid'le açılmış olabilir;
 // önce sessionId, sonra threadId üzerinden eşleşir.
 function updateProviderSessionThread(provider, { sessionId, threadId, cwd, model, permissionMode } = {}) {
   if (!sessionId || !threadId || !cwd) return { ok: false, error: 'sessionId, threadId and cwd required' };
@@ -1074,10 +1076,6 @@ function updateProviderSessionThread(provider, { sessionId, threadId, cwd, model
 
 export function updateCodexSessionThread(args = {}) {
   return updateProviderSessionThread('codex-app', args);
-}
-
-export function updateOpencode2SessionSid(args = {}) {
-  return updateProviderSessionThread('opencode2-app', args);
 }
 
 export function updateOmpSessionId(args = {}) {
@@ -1157,7 +1155,7 @@ export function archiveProject({ projectPath } = {}) {
 }
 
 // Sağlayıcının kendi kaydını (canlı child + transcript/db + bellek kopyası) düşür.
-// Bridge-uuid ile native kimlik (codex threadId / opencode ses_...) farklı olabilir;
+// Bridge-uuid ile native kimlik (codex threadId / omp sessionId) farklı olabilir;
 // ikisi de denenir — deleteDiskSession'lar idempotent, best-effort çağrılır.
 async function providerDeleteSession(provider, rec) {
   const mod = PROVIDER_MODULES[provider];
@@ -1263,11 +1261,11 @@ async function resolveTargetSession(projectPath, provider, sessionId) {
   return { ok: true, session: await latestProviderSession(projectPath, provider) };
 }
 
-// Codex/OpenCode cowork varsayılan onay modu (madde 6): 'ask' = interaktif onay.
+// Codex/OMP cowork varsayılan onay modu (madde 6): 'ask' = interaktif onay.
 // 'yolo' yalnızca UI'dan açık opt-in ile geçebilir — asla örtük fallback değil.
 const DEFAULT_NATIVE_PERMISSION_MODE = 'ask';
 
-// permissionMode çözümleme önceliği (madde 6) — codex ve opencode ortak:
+// permissionMode çözümleme önceliği (madde 6) — codex ve omp ortak:
 //   1. Açıkça geçirilen permissionMode (UI opt-in dahil)
 //   2. latest?.permissionMode — yalnızca kullanıcının önceden seçtiği bir mod ise korunur
 //   3. DEFAULT_NATIVE_PERMISSION_MODE ('ask')
@@ -1338,31 +1336,6 @@ async function resumeOrCreate(projectPath, provider, model, sessionId, permissio
     });
     return { ok: true, provider, apiBackend: 'codex-app', sessionId: r.sessionId, model: rec.model, record: rec };
   }
-  if (provider === 'opencode2-app') {
-    const resolvedMode = resolveNativePermissionMode(permissionMode, latest);
-    let r;
-    if (latest?.threadId && !forceNew) {
-      r = await opencode2App.adoptSession({ id: latest.threadId, cwd: projectPath });
-    }
-    if (sessionId && (!r || !r.ok)) return { ok: false, error: r?.error || 'OpenCode 2 oturumu resume edilemedi' };
-    if (!r || !r.ok) r = opencode2App.newSession({ cwd: projectPath, model: model || latest?.model || opencode2App.defaultModel(), permissionMode: resolvedMode });
-    if (!r?.ok) return r || { ok: false, error: 'OpenCode 2 oturumu baslatilamadi' };
-    if (model && r.sessionId) await opencode2App.setModel({ sessionId: r.sessionId, model });
-    if (r.sessionId) {
-      const permission = await opencode2App.setPermissionMode({ sessionId: r.sessionId, permissionMode: resolvedMode });
-      if (!permission.ok) return permission;
-    }
-    const rec = saveProjectSession(projectPath, provider, {
-      sessionId: r.sessionId,
-      threadId: latest?.threadId || '',
-      model: model || r.model || latest?.model || opencode2App.defaultModel(),
-      permissionMode: resolvedMode,
-      permissionModeExplicit: !!permissionMode,
-      title: latest?.title || '',
-      lastText: latest?.lastText || '',
-    });
-    return { ok: true, provider, apiBackend: 'opencode2-app', sessionId: r.sessionId, model: rec.model, record: rec };
-  }
   if (provider === 'omp') {
     const resolvedMode = resolveNativePermissionMode(permissionMode, latest);
     let r;
@@ -1406,5 +1379,4 @@ export async function switchSession(args = {}) {
 }
 
 codexApp.onThreadResolved?.((payload) => updateCodexSessionThread(payload));
-opencode2App.onSessionResolved?.((payload) => updateOpencode2SessionSid(payload));
 ompApp.onSessionResolved?.((payload) => updateOmpSessionId(payload));

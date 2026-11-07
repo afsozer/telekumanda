@@ -5,13 +5,18 @@
     <!-- WirelessDebugHealer'in Wi-Fi kontrolu icin (normal izin, otomatik verilir). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- On plan servisi ve pil optimizasyonu muafiyeti YOK (21.10.2026):
+         bildirim servisi ve kapsul tamamen kaldirildi. Servis 7/24 long-poll
+         yapip telefonda 10 saatte 247 MB mobil veri cekiyordu.
+         Kalan tek bildirim cihaz-yerel hatirlatma (Hatirlaticilar.kt): liste
+         acilista/ADB ile gelir, alarm kurulur, vakti gelince ag olmadan
+         bildirim atilir. USE_EXACT_ALARM 33+ kurulumda verilir (yan yukleme,
+         Play kisiti yok); 31-32 icin SCHEDULE_EXACT_ALARM. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Kapsul (Android 16 Live Updates / Honor Magic Capsule): bildirimin
-         "promoted ongoing" olarak terfi etmesi icin. protectionLevel
-         normal|appop, kurulumda kendiliginden veriliyor (olculdu,
-         capsule-test/live/SONUC.md:45-52). DUZ METIN yaziliyor cunku
-         Manifest.permission sabiti yalniz API 36.1'de var, compileSdk 36. -->
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Kablosuz hata ayiklamayi ag degisimi sonrasi geri acmak icin (WirelessDebugHealer);
          yalniz adb'den `pm grant` verilen cihazda etkin, digerlerinde no-op. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -29,15 +34,12 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
     <!-- Telefon dosya gezgini icin. Normal izin diyaloguyla VERILEMEZ; kullanici
          Ayarlar > Tum dosyalara erisim'den elle acar (PhoneStorage.requestIntent).
          Play Store bu izni kisitlar — uygulama zaten sideload (REQUEST_INSTALL_PACKAGES).
-         Gerekce: /sdcard/AgentBridge standart bir MediaStore koleksiyonu degil,
+         Gerekce: /sdcard/Telekumanda standart bir MediaStore koleksiyonu degil,
          oraya MediaStore RELATIVE_PATH ile yazilamaz. -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
@@ -161,33 +163,24 @@
                 <data android:pathPattern=".*\\.udfx" />
             </intent-filter>
         </activity>
-        <service
-            android:name=".BridgeMonitorService"
-            android:exported="false"
-            android:foregroundServiceType="remoteMessaging" />
+        <!-- Hatirlatma alarmi + telefon acilisi/guncelleme sonrasi yeniden kurma.
+             Sistem yayinlari disari kapali alicaya da ulasir. -->
         <receiver
-            android:name=".ApprovalReceiver"
+            android:name=".HatirlaticiAlarmReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.agent.bridge.ACTION_APPROVE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        <!-- Bildirimdeki "Sil" tusu. Yalniz kendi PendingIntent'imizden
-             tetiklenir, disari kapali. -->
+        <!-- Koprunun ADB itmesi (bridge/hatirlatici-adb.mjs). DUMP izni: adb
+             shell'de var, ucuncu taraf uygulamalarda yok. -->
         <receiver
-            android:name=".NoteActionReceiver"
-            android:exported="false">
+            android:name=".HatirlaticiAdbReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
-                <action android:name="com.agent.bridge.ACTION_NOTE_DELETE" />
-            </intent-filter>
-        </receiver>
-        <!-- Kapsuldeki "Durdur" tusu. Yalniz kendi PendingIntent'imizden
-             tetiklenir, disari kapali. -->
-        <receiver
-            android:name=".TurDurdurReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.agent.bridge.ACTION_TUR_DURDUR" />
+                <action android:name="com.agent.bridge.HATIRLATICI_LISTESI" />
             </intent-filter>
         </receiver>
         <!-- Ana ekran kota kartı (4×2): Claude kalan limit + Nano-GPT bakiyesi.

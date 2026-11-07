@@ -1,6 +1,7 @@
 package com.agent.bridge
 
-val LITE_BACKEND_ORDER: List<String> = listOf("claude-app", "codex-app", "agy")
+// Lite sürümün sağlayıcıları. Codex 24.10.2026'da çıkarıldı (kullanıcı isteği).
+val LITE_BACKEND_ORDER: List<String> = listOf("claude-app", "agy")
 
 fun RemoteUiState.supportsEditionBackend(id: String): Boolean =
     !liteEdition || id in LITE_BACKEND_ORDER

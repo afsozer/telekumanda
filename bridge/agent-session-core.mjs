@@ -8,34 +8,10 @@ const META_KEYS = [
   'permissionMode', 'effort', 'cowork', 'outputs', 'init',
   'interruptStuck', 'choices', 'plan', 'planDraft', 'availableModels',
   'permissionModes', 'commands',
-  // opencode ajan secimi (build/plan/yerel/…). Cip cihazlar arasi ayni degeri
-  // gostersin diye delta kipinde de tasinmali.
-  'agent',
-  // Oto kipte turu GERCEKTEN kosan/kosacak ajan. Ayni gerekce + bir tanesi daha:
-  // deger tam da tur baslarken degisiyor ve uzun kosuda tam snapshot neredeyse
-  // hic gitmiyor — META_KEYS'te olmasa gosterge o anda hic guncellenmezdi.
-  'resolvedAgent',
-  // Görev panosu (opencode): todo listesi + bağlam doluluk yüzdesi. Uzun otonom
-  // koşuda tam snapshot neredeyse hiç gitmiyor (delta ring), o yüzden panonun
-  // yaşayabilmesi için ikisi de delta kipinde taşınmak ZORUNDA.
-  'todos', 'contextPct',
-  // Alt-ajan kartları (opencode `task`). Aynı gerekçe: kart yığınının bütün
-  // değeri uzun otonom koşuda ve orada tam snapshot neredeyse hiç gitmiyor.
-  'subagents',
   // agy'nin onay kartı bu alandan besleniyor. META_KEYS'te olmayan bir alan
   // delta kipinde HİÇ gönderilmez — agy delta'ya bağlanırken eklendi, yoksa
   // OAuth/login istemi telefonda hiç görünmezdi.
   'pendingPrompt',
-  // opencode checkpoint geri sarma: {messageID, filesReverted, files} ya da
-  // null. Sohbetin üstündeki "Geri sarıldı · Geri Al" şeridi bundan doğuyor;
-  // META_KEYS'te olmasaydı delta kipinde HİÇ gelmezdi (uzun koşuda tam
-  // snapshot neredeyse hiç gitmiyor — todos/contextPct'nin aynı gerekçesi).
-  'reverted',
-  // opencode oturum paylaşımı: opncd.ai linki ya da '' (yayında değil).
-  // reverted'ın aynı gerekçesi — menüdeki "Paylaş / Paylaşımı kaldır" satırı
-  // delta kipinde de doğru duruma dönsün (uzun koşuda tam snapshot neredeyse
-  // hiç gitmiyor) ve başka bir cihazdan yapılan paylaşım burada da görünsün.
-  'share',
 ];
 
 export function reducerAction(type, payload = {}) {

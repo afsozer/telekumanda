@@ -38,8 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agent.bridge.RemoteUiState
 import com.agent.bridge.RemoteViewModel
-import com.agent.bridge.RunPodStatus
-import com.agent.bridge.RUNPOD_USAGE_CARD_KEY
 import com.agent.bridge.UsageBucket
 import com.agent.bridge.creditAbundant
 import com.agent.bridge.formatIsoTime
@@ -55,8 +53,6 @@ import com.agent.bridge.ui2.components.ScreenHeader
 import com.agent.bridge.ui2.components.StatusBadge
 import com.agent.bridge.ui2.components.StatusKind
 import com.agent.bridge.ui2.components.SurfaceCard
-import com.agent.bridge.ui2.chat.runPodPillLabel
-import com.agent.bridge.ui2.chat.runPodShouldStop
 import com.agent.bridge.ui2.theme.Ui2
 import com.agent.bridge.ui2.theme.Ui2Tokens
 import kotlin.math.roundToInt
@@ -70,17 +66,14 @@ fun HubUsageScreen(
 ) {
     LaunchedEffect(Unit) {
         actions.loadUsage()
-        actions.refreshRunPodStatus(showErrors = false)
     }
     val usage = uiState.usage
-    val runpodEnabled = uiState.opencode.runpod.enabled
     var editingCards by remember { mutableStateOf(false) }
     // Gizleme, sıralamadan ÖNCE uygulanır: Claude bloğuna göre bölen mantık
-    // gizlenmiş kartları saymasın, yoksa RunPod kartı yanlış yere düşer.
+    // gizlenmiş kartları saymasın.
     val shownGroups = visibleUsageGroups(usage.groups, uiState.hiddenUsageCards)
     val (throughClaude, afterClaude) = splitUsageGroupsAfterClaude(shownGroups)
-    val showRunpod = runpodEnabled && isUsageCardVisible(RUNPOD_USAGE_CARD_KEY, uiState.hiddenUsageCards)
-    val hiddenCount = hiddenUsageCardCount(usage.groups, runpodEnabled, uiState.hiddenUsageCards)
+    val hiddenCount = hiddenUsageCardCount(usage.groups, uiState.hiddenUsageCards)
 
     Column(Modifier.fillMaxSize().background(Ui2.colors.bg)) {
         ScreenHeader(
@@ -90,7 +83,7 @@ fun HubUsageScreen(
             trailing = {
                 // Kart listesi boşken düzenlenecek bir şey de yok; tuş yalnız
                 // gerçekten kart varken çizilir.
-                if (usage.groups.isNotEmpty() || runpodEnabled) {
+                if (usage.groups.isNotEmpty()) {
                     IconButton(onClick = { editingCards = true }) {
                         Icon(
                             Icons.Default.Tune,
@@ -103,7 +96,6 @@ fun HubUsageScreen(
                 // tuş o süre boyunca aynı sayıları geri getiriyordu.
                 IconButton(onClick = {
                     actions.loadUsage(force = true)
-                    actions.refreshRunPodStatus(showErrors = false)
                 }, enabled = !uiState.usageLoading) {
                     if (uiState.usageLoading) {
                         CircularProgressIndicator(Modifier.size(20.dp), color = Ui2.colors.ink2, strokeWidth = 2.dp)
@@ -113,18 +105,15 @@ fun HubUsageScreen(
                 }
             },
         )
-        if (usage.groups.isEmpty() && !runpodEnabled) {
+        if (usage.groups.isEmpty()) {
             EmptyState(
                 title = "Kullanım bilgisi alınamadı",
                 description = "Köprü bağlıysa yeniden yüklemeyi deneyebilirsin.",
                 icon = Icons.Outlined.Assessment,
                 actionLabel = "Yenile",
-                onAction = {
-                    actions.loadUsage(force = true)
-                    actions.refreshRunPodStatus(showErrors = false)
-                },
+                onAction = { actions.loadUsage(force = true) },
             )
-        } else if (throughClaude.isEmpty() && afterClaude.isEmpty() && !showRunpod) {
+        } else if (throughClaude.isEmpty() && afterClaude.isEmpty()) {
             // Kart VAR ama hepsi gizli. "Alınamadı" demek yanıltıcı olurdu ve
             // kullanıcıyı çıkışsız bırakırdı; doğrudan geri getirme yolu sun.
             EmptyState(
@@ -151,15 +140,6 @@ fun HubUsageScreen(
                     adaptiveItems(throughClaude, columns, key = { "${it.source}:${it.name}" }) { group ->
                         UsageGroupCard(group)
                     }
-                    if (showRunpod) {
-                        item(key = "runpod") {
-                            RunPodUsageCard(
-                                status = uiState.opencode.runpod,
-                                onStart = actions::startRunPod,
-                                onStop = actions::stopRunPod,
-                            )
-                        }
-                    }
                     adaptiveItems(afterClaude, columns, key = { "${it.source}:${it.name}" }) { group ->
                         UsageGroupCard(group)
                     }
@@ -170,7 +150,7 @@ fun HubUsageScreen(
 
     if (editingCards) {
         UsageCardVisibilitySheet(
-            rows = usageCardToggles(usage.groups, runpodEnabled, uiState.hiddenUsageCards),
+            rows = usageCardToggles(usage.groups, uiState.hiddenUsageCards),
             onToggle = actions::setUsageCardVisible,
             onShowAll = actions::showAllUsageCards,
             onDismiss = { editingCards = false },
@@ -250,129 +230,6 @@ internal fun splitUsageGroupsAfterClaude(groups: List<UsageGroup>): Pair<List<Us
     return groups.take(splitAt) to groups.drop(splitAt)
 }
 
-internal fun formatRunPodUsd(value: Double?): String =
-    value?.takeIf { it.isFinite() }?.let { String.format(Locale.US, "$%.2f", it) } ?: "—"
-
-internal fun runPodRuntimeEstimate(balance: Double?, spendPerHour: Double?): String? {
-    if (balance == null || spendPerHour == null || !balance.isFinite() || !spendPerHour.isFinite() || spendPerHour <= 0.0) return null
-    val totalMinutes = ((balance / spendPerHour) * 60.0).toLong().coerceAtLeast(1L)
-    val days = totalMinutes / (24 * 60)
-    val hours = (totalMinutes / 60) % 24
-    val minutes = totalMinutes % 60
-    return when {
-        days > 0 -> "~${days} gün ${hours} sa"
-        totalMinutes >= 60 -> "~${totalMinutes / 60} sa ${minutes} dk"
-        else -> "~${totalMinutes} dk"
-    }
-}
-
-@Composable
-fun RunPodUsageCard(
-    status: RunPodStatus,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
-) {
-    val active = runPodShouldStop(status)
-    val busy = status.operationActive || status.phase == "starting" || status.phase == "stopping"
-    val error = status.phase == "error" || !status.ok
-    val tint = when {
-        active -> Ui2.colors.running
-        error -> Ui2.colors.danger
-        else -> Ui2.colors.line
-    }
-    val background = when {
-        active -> Ui2.colors.running.copy(alpha = 0.14f)
-        error -> Ui2.colors.danger.copy(alpha = 0.07f)
-        else -> Ui2.colors.surface
-    }
-    val statusText = when {
-        status.phase == "starting" -> "Başlatılıyor"
-        status.phase == "stopping" -> "Durduruluyor"
-        status.ready -> "Çalışıyor"
-        status.phase == "running" -> "Pod çalışıyor"
-        error -> "Hata"
-        else -> "Kapalı"
-    }
-    val statusKind = when {
-        busy -> StatusKind.Attention
-        error -> StatusKind.Danger
-        active -> StatusKind.Running
-        else -> StatusKind.Done
-    }
-    val estimate = runPodRuntimeEstimate(status.clientBalance, status.currentSpendPerHr)
-
-    SurfaceCard(
-        verticalGap = Ui2Tokens.s12,
-        containerColor = background,
-        borderColor = tint.copy(alpha = if (active || error) 0.7f else 1f),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("RunPod", style = MaterialTheme.typography.titleSmall, color = Ui2.colors.ink)
-                Text(
-                    status.message.ifBlank { "RunPod GPU ve hesap durumu" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Ui2.colors.ink2,
-                )
-            }
-            StatusBadge(statusText, statusKind)
-        }
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                Text("Kalan kredi", style = MaterialTheme.typography.labelSmall, color = Ui2.colors.ink3)
-                Text(
-                    if (status.billingAvailable) formatRunPodUsd(status.clientBalance) else "Alınamadı",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Ui2.colors.ink,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("Anlık harcama", style = MaterialTheme.typography.labelSmall, color = Ui2.colors.ink3)
-                Text(
-                    if (status.billingAvailable) "${formatRunPodUsd(status.currentSpendPerHr)}/saat" else "—",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Ui2.colors.ink2,
-                )
-            }
-        }
-
-        if (estimate != null) {
-            Text("Mevcut harcama değişmezse $estimate kullanım.", style = MaterialTheme.typography.bodySmall, color = Ui2.colors.ink2)
-        }
-        status.spendLimit?.takeIf { it.isFinite() }?.let {
-            Text("Hesap harcama sınırı: ${formatRunPodUsd(it)}/saat", style = MaterialTheme.typography.labelSmall, color = Ui2.colors.ink3)
-        }
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when {
-                    busy -> runPodPillLabel(status)
-                    active -> "RunPod açık"
-                    else -> "RunPod kapalı"
-                },
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (active) Ui2.colors.running else Ui2.colors.ink2,
-            )
-            Switch(
-                checked = active,
-                onCheckedChange = { checked -> if (checked) onStart() else onStop() },
-                enabled = status.enabled && !busy,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Ui2.colors.surface,
-                    checkedTrackColor = Ui2.colors.running,
-                    uncheckedThumbColor = Ui2.colors.ink3,
-                    uncheckedTrackColor = Ui2.colors.surface2,
-                    uncheckedBorderColor = Ui2.colors.lineStrong,
-                ),
-            )
-        }
-    }
-}
-
-// Public: sohbetteki "Kalan kullanım" sheet'i AYNI bileşeni kullanır
-// (anayasa 2: bir işlev iki yüzeyden erişilir ama TEK implementasyonu olur).
 @Composable
 fun UsageGroupCard(group: UsageGroup) {
     SurfaceCard(verticalGap = Ui2Tokens.s12) {

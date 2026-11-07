@@ -100,7 +100,7 @@ fun viewerKindFor(path: String): ViewerKind = when {
     else -> ViewerKind.EXTERNAL
 }
 
-// ExoPlayer'ın oynattığı kap biçimleri.
+// Yerel LTX-Video üretimi mp4 döndürüyor; ExoPlayer bunları oynatır.
 // webp/gif BİLEREK burada değil: hareketli de olsalar tek kare olarak da
 // gelebiliyorlar ve görsel görüntüleyicinin zoom/paylaş akışını kaybetmesinler.
 private val VideoFileExtensions = setOf("mp4", "webm", "mkv", "mov", "m4v", "3gp", "avi")

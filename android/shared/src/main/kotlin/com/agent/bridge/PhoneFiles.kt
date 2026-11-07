@@ -14,12 +14,38 @@ enum class FileSource { PC, PHONE }
 
 object PhoneFiles {
 
-    // AgentBridge kökünün altındaki sabit düzen. PC'deki ~/CoworkSpaces ile aynı
+    // Telekumanda kökünün altındaki sabit düzen. PC'deki ~/CoworkSpaces ile aynı
     // yazım — eşleştirme kodu ad dönüştürmek zorunda kalmasın.
-    const val ROOT_NAME = "AgentBridge"
+    const val ROOT_NAME = "Telekumanda"
+
+    // Uygulama "AgentBridge" adıyla yayımlandığı dönemin kökü. Yalnız GÖÇ ve
+    // ESKİ KAYIT çözümünde kullanılır (PhoneStorageMigration, indirilenler
+    // geçmişindeki göreli yollar); yeni yazımların hiçbirinde geçmez.
+    const val LEGACY_ROOT_NAME = "AgentBridge"
     const val COWORK_DIR = "CoworkSpaces"
     const val PICTURES_DIR = "Pictures"
     const val OLD_DOWNLOADS_DIR = "old downloads"
+
+    // Klasörde bu dosya varsa medya tarayıcı orayı (ve altını) atlar; görseller
+    // Galeri'de ve diğer uygulamaların medya seçicilerinde çıkmaz. Dosyalar
+    // yerinde durur, yalnız indeksten düşer.
+    const val NOMEDIA = ".nomedia"
+
+    fun mediaHidden(dir: String): Boolean = File(dir, NOMEDIA).isFile
+
+    /** Dönüş: istenen duruma gelindi mi. */
+    fun setMediaHidden(dir: String, hidden: Boolean): Boolean {
+        if (!ensureDir(dir)) return false
+        val bayrak = File(dir, NOMEDIA)
+        return runCatching {
+            if (hidden) bayrak.isFile || bayrak.createNewFile()
+            else !bayrak.exists() || bayrak.delete()
+        }.getOrDefault(false)
+    }
+
+    /** Klasördeki dosyaların yolları (gizleme kalkınca yeniden taratmak için). */
+    fun filePathsIn(dir: String): List<String> =
+        File(dir).listFiles()?.filter { it.isFile }?.map { it.absolutePath }.orEmpty()
 
     fun listDir(path: String): WorkerDirs {
         val dir = File(path)

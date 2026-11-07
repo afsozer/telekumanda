@@ -14,7 +14,6 @@ import {
 
 import * as claudeApp from '../claude-app.mjs';
 import * as codexApp from '../codex-app.mjs';
-import * as opencode2App from '../opencode2-app.mjs';
 import * as omp from '../omp-app.mjs';
 import * as agy from '../agy.mjs';
 import * as cowork from '../cowork.mjs';
@@ -24,7 +23,6 @@ import * as cowork from '../cowork.mjs';
 const MODULES = {
   'claude-app': claudeApp,
   'codex-app': codexApp,
-  'opencode2-app': opencode2App,
   'omp': omp,
   'agy': agy,
   'cowork': cowork,
@@ -61,61 +59,30 @@ describe('backend contract catalog', () => {
     // /efforts + /effort: Claude, Codex ve OMP.
     assert.equal(caps['claude-app'].efforts, true);
     assert.equal(caps['codex-app'].efforts, true);
-    assert.equal(caps['opencode2-app'].efforts, false);
     assert.equal(caps['omp'].efforts, true);
     assert.equal(caps['agy'].efforts, false);
 
     // /interrupt: yalnız claude-app. (/stop hepsinde var, o ayrı.)
     assert.equal(caps['claude-app'].interrupt, true);
     assert.equal(caps['codex-app'].interrupt, false);
-    assert.equal(caps['opencode2-app'].interrupt, false);
     assert.equal(caps['agy'].interrupt, false);
 
-    // /runpod/*: yalnız RunPod yaşam döngüsünü barındıran OpenCode.
-    assert.equal(caps['opencode2-app'].runpod, true);
-    assert.equal(caps['claude-app'].runpod, false);
-    assert.equal(caps['codex-app'].runpod, false);
-
-    // GET /<b>/diff: "Değişiklikler" görünümü. opencode'da kaynak serve'ün tur
-    // başına diff'i, codex'te akan fileChange item'ları; şema ikisinde de aynı.
-    // Claude/OMP'de karşılığı yok, ilan da edilmiyor.
-    assert.equal(caps['opencode2-app'].sessionDiff, true);
+    // GET /<b>/diff: "Değişiklikler" görünümü. Kaynak codex'te akan fileChange
+    // item'ları; Claude/OMP'de karşılığı yok, ilan da edilmiyor.
     assert.equal(caps['claude-app'].sessionDiff, false);
     assert.equal(caps['codex-app'].sessionDiff, true);
     assert.equal(caps.omp.sessionDiff, false);
 
-    // Checkpoint geri sarma (checkpoints + revert + unrevert). Kaba `rewind`
-    // her backend'de var ama BU ayrı: kimlikli nokta + geri alınabilirlik.
-    assert.equal(caps['opencode2-app'].sessionRevert, true);
-    assert.equal(caps['claude-app'].sessionRevert, false);
-    assert.equal(caps['codex-app'].sessionRevert, false);
-    assert.equal(caps.omp.sessionRevert, false);
-
-    // Oturum paylaşımı (share + unshare): v1 söküldükten sonra HİÇBİR backend'de
-    // yok. v2 API'sinde paylaşım linki bulunmuyor, o yüzden arayüz o satırı hiç
-    // çizmemeli (İNTERNETE yayın yapan tek eylemdi, sessizce açık kalmasın).
-    assert.equal(caps['opencode2-app'].sessionShare, false);
-    assert.equal(caps['claude-app'].sessionShare, false);
-    assert.equal(caps['codex-app'].sessionShare, false);
-    assert.equal(caps.omp.sessionShare, false);
-
-    // Özel komutlar (GET /commands + POST /command). Statik /slash tablosundan
-    // AYRI: bu serve'ün gerçek komut kataloğu, o telefonun istem şablonları.
-    assert.equal(caps['opencode2-app'].sessionCommands, true);
-    assert.equal(caps['claude-app'].sessionCommands, false);
-    assert.equal(caps['codex-app'].sessionCommands, false);
-    assert.equal(caps.omp.sessionCommands, false);
-
-    // AGENTS.md init — bir tur koşturan POST /init.
-    assert.equal(caps['opencode2-app'].agentsInit, true);
-    assert.equal(caps['claude-app'].agentsInit, false);
-    assert.equal(caps['codex-app'].agentsInit, false);
-    assert.equal(caps.omp.agentsInit, false);
+    // Şemadan düşen alanlar artık hiçbir backend'de yayınlanmıyor; telefon
+    // onları görürse ölü kontrol çizerdi.
+    for (const alan of ['runpod', 'agents', 'sessionRevert', 'subagents', 'sessionShare',
+      'sessionCommands', 'agentsInit', 'sessionInstructions', 'savedPermissions']) {
+      assert.equal(alan in CAPABILITY_SCHEMA, false, alan);
+    }
+    assert.deepEqual(Object.keys(BACKENDS).sort(), ['agy', 'claude-app', 'codex-app', 'cowork', 'omp']);
 
     assert.equal(caps['claude-app'].sessionPin, true);
     assert.equal(caps['codex-app'].sessionArchive, true);
-    assert.equal(caps['opencode2-app'].sessionRename, true);
-    assert.equal(caps['opencode2-app'].sessionArchive, false);
     assert.equal(caps.omp.sessionDelete, true);
     assert.equal(caps.agy.sessionDelete, true);
   });
@@ -130,12 +97,6 @@ describe('backend contract catalog', () => {
     // OMP: ikisi de kayıtlı (server.mjs /steer + /follow-up).
     assert.equal(caps.omp.userInputSteer, true, 'omp steer');
     assert.equal(caps.omp.userInputQueue, true, 'omp queue');
-
-    // OpenCode (v2): İKİSİ DE var — v2 teslim kipi delivery:"steer" süren tura
-    // enjekte ediyor, "queue" tur bitince işliyor. v1'de yalnız kuyruk vardı.
-    assert.equal(caps['opencode2-app'].userInputQueue, true);
-    assert.equal(caps['opencode2-app'].userInputSteer, true);
-    assert.equal(caps['opencode2-app'].userInput, true);
 
     // Codex'te /steer var ama /follow-up yok; Claude'da ikisi de yok.
     assert.equal(caps['codex-app'].userInputSteer, true);

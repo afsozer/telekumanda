@@ -38,7 +38,7 @@ private val TEXT_MODEL_INFO = mapOf(
 
 /**
  * Model kimliğinden katalog anahtarını çıkarır. Kimlik biçimi backend'e göre
- * değişiyor: OpenCode `<saglayici>/<model>`, Codex düz `<model>`, bazı
+ * değişiyor: OMP `<saglayici>/<model>`, Codex düz `<model>`, bazı
  * istemciler `custom:<saglayici>:<model>`.
  */
 private fun normalizedTextModelName(id: String, label: String): String = when {

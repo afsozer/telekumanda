@@ -73,34 +73,48 @@ internal class KotaCardPainter(
             return@card
         }
         val rest = claude.rest
-        val ring = if (rest.size >= 2) 56f else 60f
+        val ring = if (rest.size >= 2) 58f else 62f
         val numberSize = if (rest.size >= 2) 18f else 20f
 
-        // Alt barlar tabandan yukarı.
-        val barHeight = if (rest.size > 1) 7f else 9f
-        val rowGap = if (rest.size > 1) 6f else 8f
-        val rowHeight = max(barHeight, 15f)
+        // Alt satırlar tabandan yukarı, iki katlı (Mac geniş kartının satırı):
+        // üstte ad ve kalan yüzde, altında kartın eni boyunca bar. Tek satırda
+        // "%100" değer sütununa sığmayıp "%1…" diye kırpılıyordu.
+        val barHeight = if (rest.size > 1) 6f else 8f
+        val rowGap = if (rest.size > 1) 7f else 8f
+        val rowHeight = ROW_LINE_PT + ROW_INNER_GAP_PT + barHeight
         val rowsHeight = rest.size * u(rowHeight) + max(0, rest.size - 1) * u(rowGap)
         val rowsTop = h - u(PAD) - rowsHeight
 
-        // Halka satırı ortada.
-        val ringPx = u(ring)
+        // Halka satırı ortada. Kısa kartta (yatay ekran, küçük hücre) iki katlı
+        // satırlar yer kapladığı için halka boşluğa sığdırılıyor: 150x120 dp'de
+        // "7 gün" satırına biniyordu (17.10.2026, cihaz render'ında görüldü).
         val freeTop = headerBottom + u(2f)
         val freeBottom = rowsTop - u(2f)
+        val ringPx = min(u(ring), max(u(40f), freeBottom - freeTop))
         val ringTop = freeTop + max(0f, (freeBottom - freeTop - ringPx) / 2f)
         val ringLeft = u(PAD)
         val tone = tone(KotaWidgetData.remainingTone(hero.remaining), CLAUDE_ACCENT)
-        gaugeDial(c, RectF(ringLeft, ringTop, ringLeft + ringPx, ringTop + ringPx), hero.remaining, null, tone, numberSize)
+        // Halkadaki çizgi 5 saatlik pencerenin kalan süresi (Mac geniş kartında
+        // bu pencerenin barında duruyor; kare kartta 5 saatin barı yok).
+        gaugeDial(
+            c, RectF(ringLeft, ringTop, ringLeft + ringPx, ringTop + ringPx), hero.remaining, null, tone, numberSize,
+            marker = KotaWidgetData.timeLeftPercent(hero, now),
+        )
 
         // Halkanın sağı: pencere adı, yenilenme saati, kullanılan yüzde.
         val textX = ringLeft + ringPx + u(9f)
         val textW = w - u(PAD) - textX
-        val lines = listOfNotNull(
+        val lineGap = u(2f)
+        var lines = listOfNotNull(
             Triple(hero.label, 13f, textPrimary to semibold),
             hero.resetAt?.let { Triple("↻ " + KotaWidgetData.resetLabel(it, now, zone), 12f, textSecondary to regular) },
             Triple("%${(100 - hero.remaining).roundToInt()} dolu", 11f, textSecondary to regular),
         )
-        val lineGap = u(2f)
+        // Halka küçüldüyse üç satır yanına sığmıyor: halkadaki sayının tersi
+        // olan "dolu" satırı düşüyor.
+        if (lines.sumOf { (u(it.second) * 1.2f).toDouble() } + lineGap * (lines.size - 1) > ringPx + u(4f)) {
+            lines = lines.dropLast(1)
+        }
         val heights = lines.map { u(it.second) * 1.2f }
         var y = ringTop + (ringPx - heights.sum() - lineGap * (lines.size - 1)) / 2f
         for ((i, line) in lines.withIndex()) {
@@ -118,14 +132,15 @@ internal class KotaCardPainter(
             y += heights[i] + lineGap
         }
 
-        // Kalan pencereler altta tam genişlikte.
+        // Kalan pencereler altta tam genişlikte; bardaki çizgi kalan süre.
         var rowTop = rowsTop
         for (b in rest) {
             val bTone = tone(KotaWidgetData.remainingTone(b.remaining), CLAUDE_ACCENT)
-            meterRow(
-                c, u(PAD), rowTop, w - u(PAD), u(rowHeight),
-                KotaWidgetData.compactLabel(b.label), b.remaining, "%${b.remaining.roundToInt()}",
-                bTone, CLAUDE_ACCENT, labelWidth = 44f, barHeight = barHeight, fontSize = 11.5f,
+            stackedRow(
+                c, u(PAD), rowTop, w - u(PAD),
+                KotaWidgetData.compactLabel(b.label), "%${b.remaining.roundToInt()}", b.remaining,
+                bTone, CLAUDE_ACCENT, barHeight = barHeight, fontSize = 11.5f,
+                marker = KotaWidgetData.timeLeftPercent(b, now),
             )
             rowTop += u(rowHeight) + u(rowGap)
         }
@@ -149,35 +164,57 @@ internal class KotaCardPainter(
         }
         val fill = KotaWidgetData.nanoFill(nano)
         val color = tone(KotaWidgetData.nanoTone(nano), NANO_ACCENT)
+        val daily = nano.dailySpendUsd?.takeIf { it.isNotEmpty() }
 
-        // Alt blok: kapasite çubuğu + bugün satırı.
+        // Alt blok: 30 günlük harcama grafiği ve pencerenin toplamı (Mac geniş
+        // kartı). Grafik yoksa (eski köprü, kullanım ucu düştü) eski kapasite
+        // çubuğu ve ölçek satırı: yer boş kalmıyor.
         val lineSize = 10f
-        val barH = u(7f)
-        val bottomH = barH + u(5f) + u(lineSize) * 1.25f
+        val chartH = u(if (daily != null) 22f else 7f)
+        val bottomH = chartH + u(5f) + u(lineSize) * 1.25f
         val bottomTop = h - u(PAD) - bottomH
-        capsuleBar(c, RectF(u(PAD), bottomTop, w - u(PAD), bottomTop + barH), fill, color, withAlpha(color, 0.12f), gradient = false)
+        val area = RectF(u(PAD), bottomTop, w - u(PAD), bottomTop + chartH)
+        if (daily != null) dailyChart(c, area, daily, NANO_ACCENT)
+        else capsuleBar(c, area, fill, color, withAlpha(color, 0.12f), gradient = false)
+        val caption = when {
+            daily != null -> KotaWidgetData.nanoWindowLine(nano)
+            nano.todaySpendUsd != null -> KotaWidgetData.nanoScaleLine(nano)
+            else -> "harcama okunamadı"
+        }
         drawFitted(
-            c, KotaWidgetData.nanoBottomLine(nano), u(PAD),
-            bottomTop + barH + u(5f) + u(lineSize) * 0.625f, w - 2 * u(PAD),
+            c, caption, u(PAD), bottomTop + chartH + u(5f) + u(lineSize) * 0.625f, w - 2 * u(PAD),
             textPaint(lineSize, textSecondary, regular),
         )
 
-        val ringPx = u(56f)
+        // Halka bakiyenin kendisini taşıyor (10 $ ölçeğinde doluyor); eskiden
+        // ortada yüzde, sağında dolar yazıyordu.
         val freeTop = headerBottom + u(2f)
         val freeBottom = bottomTop - u(2f)
+        val ringPx = min(u(62f), max(u(40f), freeBottom - freeTop))
         val ringTop = freeTop + max(0f, (freeBottom - freeTop - ringPx) / 2f)
         val ringLeft = u(PAD)
-        gaugeDial(c, RectF(ringLeft, ringTop, ringLeft + ringPx, ringTop + ringPx), fill, "10 $", color, 18f)
+        gaugeDial(
+            c, RectF(ringLeft, ringTop, ringLeft + ringPx, ringTop + ringPx), fill, "BAKİYE", color, 18f,
+            valueText = KotaWidgetData.usdNumber(nano.usd), unit = "$", unitLeading = true,
+        )
 
+        // Halkanın sağı: bugünün harcaması (grafiğin parlak son çubuğu); o da
+        // yoksa ölçek.
         val textX = ringLeft + ringPx + u(9f)
         val textW = w - u(PAD) - textX
+        val today = nano.todaySpendUsd
+        val (bigText, smallText) = when {
+            today != null -> KotaWidgetData.usdLabel(today) to KotaWidgetData.nanoTodayCaption(nano)
+            KotaWidgetData.nanoOverflow(nano) -> "10 $+" to "ölçeğin üstünde"
+            else -> "%${fill.roundToInt()}" to "10 $ ölçeği"
+        }
         val big = textPaint(15f, textPrimary, semibold)
         val small = textPaint(10f, textSecondary, regular)
         val bigH = u(15f) * 1.2f
         val smallH = u(10f) * 1.25f
         val top = ringTop + (ringPx - bigH - smallH) / 2f
-        drawFitted(c, KotaWidgetData.usdLabel(nano.usd), textX, top + bigH / 2f, textW, big)
-        drawFitted(c, "bakiye", textX, top + bigH + smallH / 2f, textW, small)
+        drawFitted(c, bigText, textX, top + bigH / 2f, textW, big)
+        drawFitted(c, smallText, textX, top + bigH + smallH / 2f, textW, small)
     }
 
     // ── Ortak parçalar ─────────────────────────────────────────────────────
@@ -342,8 +379,16 @@ internal class KotaCardPainter(
         }
     }
 
-    /** Ailenin ortak kadranı: yuvarlatılmış kare halka, ortada sayı, altında isteğe bağlı etiket. */
-    private fun gaugeDial(c: Canvas, rect: RectF, value: Double, label: String?, color: Int, numberSize: Float) {
+    /**
+     * Ailenin ortak kadranı: yuvarlatılmış kare halka, ortada sayı, altında
+     * isteğe bağlı etiket. `valueText` verilirse ortada yüzde yerine o yazıyor
+     * (bakiye: "$2,22"), halka yine `value` kadar doluyor. `marker` (0..100)
+     * halkayı dikine kesen kısa çizgi: pencerenin kalan süresi.
+     */
+    private fun gaugeDial(
+        c: Canvas, rect: RectF, value: Double, label: String?, color: Int, numberSize: Float,
+        valueText: String? = null, unit: String = "%", unitLeading: Boolean = false, marker: Double? = null,
+    ) {
         val lw = rect.width() * 0.11f
         val r = RectF(rect).apply { inset(lw / 2 + u(1f), lw / 2 + u(1f)) }
         val outline = gaugeOutline(r)
@@ -377,12 +422,29 @@ internal class KotaCardPainter(
         c.drawPath(seg, p)
         p.maskFilter = null
 
-        // Ortadaki sayı (+ küçük %), iç çapa sığdırılır.
-        val num = value.roundToInt().toString()
+        if (marker != null) {
+            // Teğete dik, kalemin iki yanından biraz taşan çizgi.
+            val pos = FloatArray(2)
+            val tan = FloatArray(2)
+            measure.getPosTan(measure.length * (marker / 100).coerceIn(0.0, 1.0).toFloat(), pos, tan)
+            val half = lw / 2f + u(3f)
+            val tick = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                this.color = withAlpha(textPrimary, 0.85f)
+                strokeWidth = u(2f)
+                strokeCap = Paint.Cap.ROUND
+                setShadowLayer(u(1f), 0f, 0f, withAlpha(Color.BLACK, 0.35f))
+            }
+            c.drawLine(pos[0] + tan[1] * half, pos[1] - tan[0] * half, pos[0] - tan[1] * half, pos[1] + tan[0] * half, tick)
+        }
+
+        // Ortadaki sayı (+ küçük birim), iç çapa sığdırılır. Öndeki para birimi
+        // fiyat etiketindeki gibi üst simge, sondaki yüzde işareti tabanda.
+        val num = valueText ?: value.roundToInt().toString()
         val numPaint = textPaint(numberSize, textPrimary, semibold)
-        val pctPaint = textPaint(numberSize * 0.42f, textSecondary, medium)
+        val pctPaint = textPaint(numberSize * (if (unitLeading) 0.5f else 0.42f), textSecondary, medium)
         val maxW = rect.width() * 0.66f
-        val total = numPaint.measureText(num) + pctPaint.measureText("%")
+        val unitGap = if (unitLeading) u(1f) else 0f
+        val total = numPaint.measureText(num) + pctPaint.measureText(unit) + unitGap
         if (total > maxW) {
             val k = max(0.6f, maxW / total)
             numPaint.textSize *= k
@@ -392,12 +454,18 @@ internal class KotaCardPainter(
         val numH = numPaint.textSize
         val labelH = labelPaint?.textSize?.times(1.1f) ?: 0f
         val blockTop = rect.centerY() - (numH + labelH) / 2f
-        val numW = numPaint.measureText(num) + pctPaint.measureText("%")
+        val numW = numPaint.measureText(num) + pctPaint.measureText(unit) + unitGap
         val baseline = blockTop + numH * 0.86f
         var x = rect.centerX() - numW / 2f
-        c.drawText(num, x, baseline, numPaint)
-        x += numPaint.measureText(num)
-        c.drawText("%", x, baseline - numH * 0.04f, pctPaint)
+        if (unitLeading) {
+            c.drawText(unit, x, baseline - numH * 0.3f, pctPaint)
+            x += pctPaint.measureText(unit) + unitGap
+            c.drawText(num, x, baseline, numPaint)
+        } else {
+            c.drawText(num, x, baseline, numPaint)
+            x += numPaint.measureText(num)
+            c.drawText(unit, x, baseline - numH * 0.04f, pctPaint)
+        }
         if (label != null && labelPaint != null) {
             labelPaint.letterSpacing = 0.02f
             val text = label.uppercase()
@@ -423,27 +491,63 @@ internal class KotaCardPainter(
         }
     }
 
-    /** Ölçüm satırı: etiket, dolan bar, sağda değer (Mac MeterRow). */
-    private fun meterRow(
-        c: Canvas, left: Float, top: Float, right: Float, height: Float,
-        label: String, fill: Double, value: String, color: Int, accent: Int,
-        labelWidth: Float, barHeight: Float, fontSize: Float,
+    /**
+     * İki katlı ölçüm satırı (Mac StackedBucketRow): üstte ad ve sağda değer,
+     * altında satırın eni boyunca bar. Değer önce yerleşiyor, ad kalan yere
+     * sığdırılıyor: "%100" hiç kırpılmıyor.
+     */
+    private fun stackedRow(
+        c: Canvas, left: Float, top: Float, right: Float,
+        label: String, value: String, fill: Double, color: Int, accent: Int,
+        barHeight: Float, fontSize: Float, marker: Double?,
     ) {
-        val mid = top + height / 2f
-        val gap = u(6f)
-        drawFitted(c, label, left, mid, u(labelWidth), textPaint(fontSize, textSecondary, regular))
-        val valuePaint = textPaint(fontSize + 3f, textPrimary, semibold)
-        val valueW = u(34f)
-        val barLeft = left + u(labelWidth) + gap
-        val barRight = right - valueW - gap
-        val bh = u(barHeight)
-        capsuleBar(c, RectF(barLeft, mid - bh / 2, barRight, mid + bh / 2), fill, color, withAlpha(accent, 0.12f), gradient = true)
-        val vw = min(valuePaint.measureText(value), valueW)
-        drawFitted(c, value, right - vw, mid, valueW, valuePaint)
+        val mid = top + u(ROW_LINE_PT) / 2f
+        val valuePaint = textPaint(fontSize + 2f, textPrimary, semibold)
+        val valueW = drawFittedRight(c, value, right, mid, (right - left) / 2f, valuePaint)
+        drawFitted(c, label, left, mid, right - left - valueW - u(6f), textPaint(fontSize, textSecondary, regular))
+        val barTop = top + u(ROW_LINE_PT) + u(ROW_INNER_GAP_PT)
+        capsuleBar(
+            c, RectF(left, barTop, right, barTop + u(barHeight)), fill, color, withAlpha(accent, 0.13f),
+            gradient = true, marker = marker,
+        )
     }
 
-    /** Kapsül bar: iz + dolan gövde + üst yarıda cam tüp ışığı. */
-    private fun capsuleBar(c: Canvas, rect: RectF, fill: Double, color: Int, track: Int, gradient: Boolean) {
+    /** Günlük harcama: her gün bir çubuk, en sağdaki bugün (parlak); harcamasız gün izde çentik. */
+    private fun dailyChart(c: Canvas, rect: RectF, values: List<Double>, color: Int) {
+        val n = values.size
+        val gap = if (n > 20) u(1.5f) else u(3f)
+        val barW = max(u(1.2f), (rect.width() - gap * (n - 1)) / n)
+        // Ölçek pencerenin en pahalı günü.
+        val peak = max(values.maxOrNull() ?: 0.0, 0.0001)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        for ((i, v) in values.withIndex()) {
+            val today = i == n - 1
+            val barH = if (v <= 0) u(2f) else max(u(3f), rect.height() * (v / peak).toFloat())
+            val left = rect.left + i * (barW + gap)
+            val bar = RectF(left, rect.bottom - barH, left + barW, rect.bottom)
+            val alpha = when {
+                v <= 0 -> 0.22f
+                today -> 1f
+                else -> 0.68f
+            }
+            p.color = Color.BLACK // shader alfası Paint'ten gelir
+            p.shader = LinearGradient(0f, bar.top, 0f, bar.bottom, withAlpha(color, alpha), withAlpha(color, alpha * 0.6f), Shader.TileMode.CLAMP)
+            if (today && v > 0) p.setShadowLayer(u(2.5f), 0f, 0f, withAlpha(color, 0.7f)) else p.clearShadowLayer()
+            val r = min(barW / 2f, u(1.6f))
+            c.drawRoundRect(bar, r, r, p)
+        }
+        p.shader = null
+        p.clearShadowLayer()
+    }
+
+    /**
+     * Kapsül bar: iz + dolan gövde + üst yarıda cam tüp ışığı. `marker`
+     * (0..100) barı dikine kesen ince çizgi: pencerenin kalan süresi.
+     */
+    private fun capsuleBar(
+        c: Canvas, rect: RectF, fill: Double, color: Int, track: Int, gradient: Boolean,
+        marker: Double? = null,
+    ) {
         val r = rect.height() / 2f
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         p.color = track
@@ -467,6 +571,16 @@ internal class KotaCardPainter(
             c.drawRoundRect(glass, gr, gr, p)
         }
         p.shader = null
+        if (marker != null) {
+            // Uçlarda kapsülün yuvarlağına binmesin.
+            val x = rect.left + r + (rect.width() - 2 * r) * (marker / 100).coerceIn(0.0, 1.0).toFloat()
+            val half = u(1f)
+            val tick = RectF(x - half, rect.top - u(3f), x + half, rect.bottom + u(3f))
+            p.color = withAlpha(textPrimary, 0.85f)
+            p.setShadowLayer(u(1f), 0f, 0f, withAlpha(Color.BLACK, 0.35f))
+            c.drawRoundRect(tick, half, half, p)
+            p.clearShadowLayer()
+        }
     }
 
     /** ↻: 300°'lik yay ve ucunda ok. */
@@ -544,6 +658,19 @@ internal class KotaCardPainter(
         return w
     }
 
+    /** `drawFitted`in sağa yaslı eşi: metnin sağ kenarı `right`. Çizilen genişliği döner. */
+    private fun drawFittedRight(c: Canvas, text: String, right: Float, midY: Float, maxWidth: Float, paint: Paint): Float {
+        val original = paint.textSize
+        var w = paint.measureText(text)
+        if (w > maxWidth) {
+            paint.textSize = max(original * 0.6f, original * maxWidth / w)
+            w = min(paint.measureText(text), maxWidth)
+        }
+        val drawn = drawFitted(c, text, right - w, midY, maxWidth, paint)
+        paint.textSize = original
+        return drawn
+    }
+
     private fun drawCentered(c: Canvas, text: String, x: Float, midY: Float, paint: Paint) {
         val fm = paint.fontMetrics
         c.drawText(text, x, midY - (fm.ascent + fm.descent) / 2f, paint)
@@ -555,6 +682,9 @@ internal class KotaCardPainter(
         private const val PAD = 14f
         private const val HEADER_PT = 16f
         private const val CORNER_PT = 22f
+        /** İki katlı satırın üst katı (13,5 pt değer) ve bara olan aralığı. */
+        private const val ROW_LINE_PT = 15f
+        private const val ROW_INNER_GAP_PT = 3.5f
 
         /** Anthropic turuncusu (Mac UsageModel.swift `.claude`). */
         val CLAUDE_ACCENT = Color.rgb(217, 112, 61)

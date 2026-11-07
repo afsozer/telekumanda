@@ -38,7 +38,7 @@ describe('oturum budama secimi', () => {
 
   it('cowork oturumu ne kadar eski olursa olsun MUAF', () => {
     // Bir dava dosyasi aylarca sessiz kalip sonra devam edebilir.
-    const r = sec([oturum('dava', 200, { cwd: path.join(COWORK, 'ornek-dava') })]);
+    const r = sec([oturum('dava', 200, { cwd: path.join(COWORK, 'ercan-ak-or') })]);
     assert.deepEqual(r.stale, []);
     assert.equal(r.cowork, 1);
   });
@@ -49,10 +49,10 @@ describe('oturum budama secimi', () => {
   });
 
   it('cowork cwd egik bolu ile gelse de taninir', () => {
-    // opencode `directory` alanini '/' ile veriyor; ayirici normalize edilmezse
-    // muafiyet sessizce kacar ve calisma alani oturumu silinirdi.
-    const egik = path.join(COWORK, 'test-alani').replace(/\\/g, '/');
-    const r = sec([oturum('opencode-cowork', 60, { cwd: egik })]);
+    // Bazi backend'ler `directory` alanini '/' ile veriyor; ayirici normalize
+    // edilmezse muafiyet sessizce kacar ve calisma alani oturumu silinirdi.
+    const egik = path.join(COWORK, 'hasan-tenbeli').replace(/\\/g, '/');
+    const r = sec([oturum('egik-bolu-oturumu', 60, { cwd: egik })]);
     assert.equal(r.cowork, 1);
     assert.deepEqual(r.stale, []);
   });

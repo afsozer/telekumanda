@@ -75,22 +75,15 @@ import com.agent.bridge.coworkProvider
 import com.agent.bridge.normalizeCoworkProvider
 import com.agent.bridge.midTurnSteerSupported
 import com.agent.bridge.buildChatDisplayRows
-import com.agent.bridge.backendRevertSupported
-import com.agent.bridge.backendCommandsSupported
-import com.agent.bridge.opencodeFamily
 import com.agent.bridge.backendSlashSuggestions
-import com.agent.bridge.backendSubagentsSupported
-import com.agent.bridge.loadBackendSubagentTranscript
-import com.agent.bridge.loadBackendCommands
-import com.agent.bridge.runBackendCommand
-import com.agent.bridge.unrevertBackend
 import com.agent.bridge.backendSession
 import com.agent.bridge.visibleTabs
 import com.agent.bridge.isToolSummary
 import com.agent.bridge.permissionModeIsPermissive
-import com.agent.bridge.isRunPodModel
 import com.agent.bridge.shortModelLabel
 import com.agent.bridge.AttachmentChip
+import com.agent.bridge.ui2.chat.ChatImageRow
+import com.agent.bridge.ui2.chat.parseMessageImages
 import com.agent.bridge.ui3.material.GlassLikeSurface
 import com.agent.bridge.ui3.material.GlassSurface
 import com.agent.bridge.ui3.material.GlassTint
@@ -175,13 +168,6 @@ internal fun Ui3ChatScreen(
     // onay, slash) bu kadar yukarı iter; LİSTE ise dock'un ALTINA kadar uzar.
     altBosluk: Dp,
     modifier: Modifier = Modifier,
-    // Geniş ekranda composer şeridi tur sürerken de Yenile + Kullanım'ı taşır
-    // (yer var). Karar kökte, ölçü `UI3_SERIT_TAM_ESIK`.
-    seritTam: Boolean = false,
-    // Oturumun çalışma klasörünü dosya yöneticisinde açar (şeritteki tuş) —
-    // cowork'te çalışma alanı, diğer backend'lerde proje cwd'si. Gezinme
-    // yaptığı için karar kökte; null = cwd henüz yok.
-    onCalismaKlasoru: (() -> Unit)? = null,
     // OKUNAN YERİN OTURUM BAŞINA BELLEĞİ. Kökten geliyor çünkü NavHost hedefi
     // değişince bu ekran bileşimden düşüyor; buradaki bir `remember` sekme
     // değiştirip dönmeyi hatırlamaya yetmez. ui2'nin sınıfının AYNISI
@@ -189,7 +175,6 @@ internal fun Ui3ChatScreen(
     // kopyalanamayan index matematiği `Ui3KaydirmaCapasi`de.
     kaydirmaBellegi: ChatScrollMemory = remember { ChatScrollMemory() },
     sekmelerEtkin: Boolean = true,
-    bildirimlerEtkin: Boolean = true,
 ) {
     val mesajlar = uiState.messagesList
     val satirlar = remember(mesajlar) { buildChatDisplayRows(mesajlar) }
@@ -213,50 +198,7 @@ internal fun Ui3ChatScreen(
             actions.loadSlashCommands()
         }
     }
-    // ÖZEL KOMUTLAR (bugün yalnız opencode): sağlayıcının KENDİ komut+skill
-    // kataloğu. Yukarıdaki statik listeden ayrı bir yol, çünkü ayrı bir şey:
-    // seçilen satır composer'a yazılmıyor, ÇALIŞIYOR.
-    //
-    // Aynı "kendini onaran" kural: liste boşken "/" yazılınca yeniden istenir.
-    // Köprü serve'e ulaşamadığında boş dönüyor ve şerit hiç çizilmiyor — bir
-    // sonraki "/" yeniden dener, yani sunucu geç açılırsa kendiliğinden düzelir.
-    val komutlarDestekli = backendId != null && uiState.backendCommandsSupported(backendId)
-    val komutlar = uiState.opencodeFamily(backendId).commands
-    LaunchedEffect(slashIsteniyor, komutlar.isEmpty(), komutlarDestekli, backendId) {
-        if (backendId != null && komutlarDestekli && slashIsteniyor && komutlar.isEmpty()) {
-            actions.loadBackendCommands(backendId)
-        }
-    }
-
-    // ── AÇIK SOHBETİ BİLDİRİM KATMANINA DUYUR ─────────────────────────────
-    //
-    // Bu efekt ui2'de vardı (ChatRootScreen.kt), ui3'e taşınmamıştı. Sonuç:
-    // `AppForeground.openKey` ui3'te HİÇ dolmuyordu, yani bastırma kararını
-    // veren `suppressesNotification` her zaman "bastırma" diyordu — sohbetin
-    // içinde otururken o sohbetin "bitti" bildirimi düşüyordu (kullanıcı
-    // bildirdi 18.08.2026: "ui2'de öyleydi, şu an nedense geliyor").
-    //
-    // Susturma mekanizmasının kendisi sağlamdı; ona kimin açık olduğunu
-    // söyleyen taraf eksikti. Bildirim nonce'ları, `pendingShare` ve paylaş/
-    // harici-aç olaylarıyla aynı boşluk: ui2 kökünün uygulama geneli topladığı
-    // şeyler ui3'e taşınırken düşmüş.
-    //
-    // `clearFor` de ui2'deki gerekçeyle burada: ekrana GİRİLDİĞİNDE o oturumun
-    // bekleyen bildirimleri düşsün. Yalnız eşleşen tag iptal edilir, başka
-    // oturumların bildirimleri durmaya devam eder.
-    val bildirimBaglami = LocalContext.current
     val acikOturumId = if (backendId != null) uiState.backendSession(backendId).sessionId else ""
-    DisposableEffect(backendId, acikOturumId) {
-        if (bildirimlerEtkin && backendId != null && acikOturumId.isNotBlank()) {
-            AppForeground.openChat(backendId, acikOturumId)
-            AppForeground.clearFor(bildirimBaglami, backendId, acikOturumId)
-        }
-        // Ekrandan çıkınca (başka rotaya gidince, sekme değişince) kilit açılır;
-        // yoksa sohbetten çıktıktan sonra da o oturumun bildirimi bastırılırdı.
-        onDispose {
-            if (bildirimlerEtkin && backendId != null) AppForeground.closeChat(backendId, acikOturumId)
-        }
-    }
 
     // Satır yüksekliği önbelleği — yukarı kaydırırken atlamayı önler, gerekçe
     // [Ui3YukseklikCapasi] KDoc'unda. Oturum başına: sohbet değişince sıfırlanır,
@@ -423,20 +365,6 @@ internal fun Ui3ChatScreen(
     // Çip yalnız kısa model adını taşır ("gpt sol", "opus"). Effort ayrı bir
     // tur ayarıdır ve ⋯ menüsündeki Effort satırından görülüp değiştirilebilir;
     // model çipine eklenmesi dar şeritte gereksiz gürültü yaratıyordu.
-    val modelEtiketi = if (oturum == null) "model" else {
-        shortModelLabel(oturum.model.ifBlank { oturum.defaultModel }).ifBlank { "model" }
-    }
-    // RUNPOD IŞIĞI — çipin başındaki nokta; null = çizilmez.
-    //
-    // Model kimliğini etiketin okuduğu YERDEN okuyor (`model.ifBlank {
-    // defaultModel }`). İkisi ayrı yazılsaydı oturum modeli boşken çip
-    // varsayılanı gösterirken nokta sönük kalırdı — bu depodaki tekrarlayan
-    // hata sınıfı ("yazan dal düzeltildi, okuyan dal unutuldu").
-    val runpodIsigi = if (backendId != "opencode2-app" || oturum == null) null else {
-        val model = oturum.model.ifBlank { oturum.defaultModel }
-        if (isRunPodModel(model)) ui3RunPodIsigi(uiState.opencode.runpod) else null
-    }
-
     val kapsam = rememberCoroutineScope()
 
     // CAMIN ARKASINDAN İÇERİK GEÇSİN (kullanıcı: "açık temada glass efekt var mı
@@ -505,12 +433,11 @@ internal fun Ui3ChatScreen(
 
     // Çatallama yalnız köprünün fork ucu olan backend'lerde (cowork'te de
     // sağlayıcısı bunlardansa). ui2'deki `forkSupported`'ın aynısı — OMP'de
-    // native `branch` RPC'si, opencode v1/agy'de hiç yok; opencode2'de v2'nin
-    // native /fork ucu köprüye bağlı (26.09.2026).
+    // native `branch` RPC'si, agy'de hiç yok.
     val catalDestekli = when (uiState.backend) {
-        "claude-app", "codex-app", "omp", "opencode2-app" -> true
+        "claude-app", "codex-app", "omp" -> true
         "cowork" -> normalizeCoworkProvider(uiState.coworkProvider) in
-            setOf("claude-app", "codex-app", "omp", "opencode2-app")
+            setOf("claude-app", "codex-app", "omp")
         else -> false
     }
 
@@ -763,11 +690,22 @@ internal fun Ui3ChatScreen(
                                 dusunceDetaylari = dusunceDetaylari,
                                 onDusunceYukle = { actions.loadThought(it) },
                                 onDosya = onDosya,
+                                gorselYukle = { yol -> actions.loadAttachmentBytes(yol) },
+                                // Dosya yöneticisiyle AYNI tam ekran görüntüleyici
+                                // (zoom, kardeşler arası kaydırma, paylaş).
+                                // attachment=true: "PC'de sakla" / "PC'den sil"
+                                // tuşları açılsın — paylaşılan görseller iş bitince
+                                // siliniyor.
+                                onGorsel = { yollar, yol ->
+                                    actions.setImageNavigation(yollar, local = false, attachment = true)
+                                    actions.openImage(yol, local = false, attachment = true)
+                                    onGoruntuleyici()
+                                },
                                 // Geri sarma her backend'de var: köprü ucu yoksa
                                 // delege görünümü yerel olarak geri sarıyor.
                                 onDon = { actions.returnToMessage(satir.index) },
                                 // Çatallama YOK ise tuş hiç çizilmez — köprünün fork
-                                // ucu opencode/agy'de bulunmuyor.
+                                // ucu agy'de bulunmuyor.
                                 onCatalla = if (catalDestekli) ({ actions.forkFromMessage(satir.index) }) else null,
                             )
                         }
@@ -870,88 +808,12 @@ internal fun Ui3ChatScreen(
                     if (yeni != yiginY) yiginY = yeni
                 },
         ) {
-        // RUNPOD HAPI ARTIK BURADA DEĞİL (25.08.2026, kullanıcı: "eğreti
-        // duruyor"). Kendine ait bir satırda, yığının en üstünde duruyordu:
-        // opencode oturumunun tamamı boyunca yer yiyen, kardeşi olmayan yalnız
-        // bir tuş — RunPod seçili olmasa bile. Hap MODEL SEÇ sheet'ine, RunPod
-        // satırının sonuna taşındı (bkz. Ui3Root); sohbette geriye model
-        // çipindeki nokta kaldı (aşağıda `runpodIsigi`).
-        //
-        // Geçiş sürerken durumu tazeleyen döngü BURADA KALDI: noktayı besleyen
-        // o. Uygulama runpod'i aksi halde yalnız elle (Kullanım > Yenile)
-        // yokluyor; başlatma arka planda bitince nokta "açılıyor"da takılırdı.
-        // Geçiş bitince rpMesgul false olur, anahtar değişir, döngü iptal edilir.
-        if (backendId == "opencode2-app") {
-            val rpMesgul = uiState.opencode.runpod.operationActive ||
-                uiState.opencode.runpod.phase == "starting" ||
-                uiState.opencode.runpod.phase == "stopping"
-            LaunchedEffect(rpMesgul) {
-                if (rpMesgul) {
-                    while (true) {
-                        delay(3000)
-                        actions.refreshRunPodStatus(showErrors = false)
-                    }
-                }
-            }
-        }
-
-        // GERİ SARILDI ŞERİDİ — panonun da üstünde, çünkü konuşmanın TAMAMINA
-        // dair bir durum: altındaki her şey (pano, onay kartı, composer) o
-        // sarılmış hâlin üstünde çalışıyor. "Geri Al" yalnız yeni bir mesaj
-        // gönderilene kadar işe yarıyor (köprüde ölçüldü), o yüzden burada
-        // durup göze çarpması gerekiyor.
-        uiState.opencodeFamily(backendId).reverted?.takeIf { backendId != null && uiState.backendRevertSupported(backendId) }?.let { sarilmis ->
-            Ui3GeriSarSeridi(
-                durum = sarilmis,
-                onGeriAl = { actions.unrevertBackend(backendId!!) },
-                modifier = Modifier.padding(start = Ui3Tokens.s16, end = Ui3Tokens.s16, bottom = 6.dp),
-            )
-        }
-
-        // GÖREV PANOSU — yalnız opencode'da ve yalnız gösterecek bir şey varken
-        // (todo listesi dolu ya da bağlam eşiği aşıldı; bkz. gorevPanosuGorunur).
-        // Yığının EN ÜSTÜNDE: onay ve kuyruk eylem kartları, pano ise durum —
-        // eylem her zaman composer'a daha yakın durmalı.
-        if (backendId == "opencode2-app") {
-            Ui3GorevPanosu(
-                todos = uiState.opencode.todos,
-                baglamYuzdesi = uiState.opencode.contextPct,
-                calisiyor = uiState.running,
-                onSikistir = { actions.opencodeAppCompact() },
-                modifier = Modifier.padding(start = Ui3Tokens.s16, end = Ui3Tokens.s16, bottom = 6.dp),
-            )
-        }
-
-        // ALT AJAN KARTLARI — panonun hemen ALTINDA. Sıra bilinçli: pano ana
-        // ajanın kendi planı, bu yığın onun delege ettikleri; alt olan her
-        // zaman daha türev olan. Alt-ajan yokken hiçbir şey çizilmez, o yüzden
-        // yığın normalde tek satır bile yer kaplamıyor.
-        if (uiState.backendSubagentsSupported(backendId.orEmpty())) {
-            Ui3AltAjanlar(
-                subagents = uiState.opencode.subagents,
-                onAc = { childId ->
-                    actions.loadBackendSubagentTranscript(backendId.orEmpty(), childId)
-                    onSheetAc(Ui3Sheet.ALT_AJAN)
-                },
-                modifier = Modifier.padding(start = Ui3Tokens.s16, end = Ui3Tokens.s16, bottom = 6.dp),
-            )
-        }
-
         // Slash komut önerileri — girdi "/" ile başlayınca. ui2'deki filtre ve
         // 6 satır sınırı aynen: liste uzayınca composer ekrandan taşıyordu.
-        //
-        // GÖVDE ORTAK, MALZEME FARKLI: opencode'da liste sağlayıcının GERÇEK
-        // komut kataloğu ve seçilen satır ÇALIŞIYOR; diğerlerinde statik istem
-        // şablonları ve seçilen satır composer'a YAZILIYOR (bkz.
-        // backendSlashSuggestions). Kaynak boşsa hiçbir şey çizilmiyor —
-        // opencode'da statik tabloya DÜŞMÜYOR, çünkü o satırlar çalıştırılamaz
-        // ve "seçtiğin komut koşar" sözünü sessizce bozardı.
+        // Satırlar statik istem şablonları; seçilen satır composer'a YAZILIYOR
+        // (bkz. backendSlashSuggestions).
         val slashSorgu = uiState.input.takeIf { it.startsWith("/") }
             ?.removePrefix("/")?.substringBefore(' ')?.lowercase().orEmpty()
-        // "/review HEAD~1" → argüman "HEAD~1". Komut adından SONRAKİ her şey
-        // argümandır; serve şablondaki $ARGUMENTS'a bunu koyuyor.
-        val slashArguman = uiState.input.takeIf { it.startsWith("/") }
-            ?.substringAfter(' ', "")?.trim().orEmpty()
         val slashKaynak = if (backendId != null) uiState.backendSlashSuggestions(backendId) else emptyList()
         val slashEslesme = if (slashSorgu.isBlank()) slashKaynak else {
             slashKaynak.filter {
@@ -987,13 +849,7 @@ internal fun Ui3ChatScreen(
                         Column(
                             Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    if (komutlarDestekli && backendId != null) {
-                                        actions.runBackendCommand(backendId, komut.name, slashArguman)
-                                    } else {
-                                        actions.insertSlashCommand(komut.name)
-                                    }
-                                }
+                                .clickable { actions.insertSlashCommand(komut.name) }
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                         ) {
                             Text(
@@ -1094,11 +950,10 @@ internal fun Ui3ChatScreen(
         }
 
         // Şeritteki tuş SÜREN TURU YÖNLENDİRİR; kuyruk değil. O yüzden steer
-        // yeteneği soruluyor — yalnız kuyruğu olan bir backend'de (OpenCode) bu
-        // tuş çizilirse mesaj sessizce başka anlamda gönderilirdi.
+        // yeteneği soruluyor — yönlendirme ucu olmayan bir backend'de bu tuş
+        // çizilirse mesaj sessizce başka anlamda gönderilirdi.
         val turOrtasiDestekli = uiState.midTurnSteerSupported()
         Ui3Composer(
-            hazeState = akisHaze,
             metin = uiState.input,
             onMetin = { actions.updateInput(it) },
             calisiyor = uiState.running,
@@ -1115,22 +970,9 @@ internal fun Ui3ChatScreen(
                 actions.sendPrompt()
             },
             onDurdur = { actions.stop() },
-            modelEtiketi = modelEtiketi,
-            runpodIsigi = runpodIsigi,
-            onModel = { onSheetAc(Ui3Sheet.MODEL) },
-            izinGevsek = permissionModeIsPermissive(oturum?.permissionMode.orEmpty()),
-            onMenu = { onSheetAc(Ui3Sheet.MENU) },
-            yenileniyor = uiState.conversationRefreshing,
-            onYenile = { actions.resyncConversation() },
-            onKullanim = { onSheetAc(Ui3Sheet.KULLANIM) },
-            kullanimGoster = !uiState.liteEdition,
+            // Lite'ta kök bunu doğrudan telefon seçicisine çevirir.
             onEk = { onSheetAc(Ui3Sheet.EK_KAYNAK) },
-            // Lite: klasör kısayolunun yerine arama ikonu gelir. Klasör aynı
-            // eylemle ⋯ menüsünde yaşamaya devam eder.
-            onKlasor = if (uiState.liteEdition) null else onCalismaKlasoru,
-            onAra = if (uiState.liteEdition) ({ actions.openChatSearch() }) else null,
             modifier = Modifier.padding(horizontal = Ui3Tokens.s16, vertical = 6.dp),
-            seritTam = seritTam,
             // Tur ortası yönlendirme yalnız steer'i olan backend'lerde. EK VARKEN
             // KAPALI: bu uçlar yalnız metin taşıyor, ek sessizce düşerdi — kuyruk
             // yolu ekleri koruyor, o yüzden ek varken tek yol kuyruk.
@@ -1164,12 +1006,34 @@ private fun Satir(
     dusunceDetaylari: Map<Int, String>,
     onDusunceYukle: (Int) -> Unit,
     onDosya: (String) -> Unit,
+    // Mesaja gömülü "Ek dosyalar" bloğundaki görselleri çizmek için: byte'lar
+    // köprüden gelir, dokunuş tam ekran görüntüleyiciye gider. ui2 ile AYNI
+    // ayrıştırma ([parseMessageImages]) ve AYNI şerit ([ChatImageRow]) —
+    // ui3 kendi kopyasını yazmıyor, gövdeyi ödünç alıyor (Ui3OduncKap).
+    gorselYukle: suspend (String) -> ByteArray?,
+    onGorsel: (List<String>, String) -> Unit,
     onDon: (() -> Unit)? = null,
     onCatalla: (() -> Unit)? = null,
 ) {
     val kullanici = mesaj.role.equals("user", ignoreCase = true)
+    // Hem kullanıcı eki hem asistanın paylaştığı ekran görüntüsü aynı bloktan
+    // çıkar; görsel olmayan ekler metinde kalır.
+    val (govde, gorseller) = remember(mesaj.text) { parseMessageImages(mesaj.text) }
     if (kullanici) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+            if (gorseller.isNotEmpty()) {
+                Ui3OduncKap {
+                    ChatImageRow(
+                        images = gorseller,
+                        load = gorselYukle,
+                        onClick = { yol -> onGorsel(gorseller.map { it.path }, yol) },
+                        modifier = Modifier.padding(bottom = Ui3Tokens.s4),
+                    )
+                }
+            }
+            // Ek bloğu küçük resimlere dönüştüyse balon boş kalabilir —
+            // o zaman balon hiç çizilmez (ui2 ile aynı davranış).
+            if (govde.isNotBlank()) {
             GlassLikeSurface(
                 // İÇERİĞE GÖRE DARALIR: `fillMaxWidth(0.82f)` üst sınırı verir,
                 // `wrapContentWidth(End)` çocuğu min=0 ile ölçüp sağa yaslar.
@@ -1187,7 +1051,7 @@ private fun Satir(
                 tint = GlassTint.Vio,
             ) {
                 Text(
-                    mesaj.text,
+                    govde,
                     // Ajandan yarım punto küçük — bilinçli ayrım (kullanıcı,
                     // 18.08.2026); gerekçe Ui3Type.akis'in üstünde.
                     style = Ui3Type.akisKullanici,
@@ -1195,11 +1059,14 @@ private fun Satir(
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp),
                 )
             }
+            }
             // Eylem satırı balonun ALTINDA, İÇİNDE değil (ui2'de içindeydi):
             // balon içeriğe göre daralabilsin diye. Ajan tarafındaki kopyalama
             // satırının aynısı, sağa yaslı ve iki tuş fazlası.
             Ui3KopyalaSatiri(
-                metin = mesaj.text,
+                // Kopyalanan şey GÖVDE: ek yolları thumbnail'e dönüştüyse
+                // panoya yapıştırılacak metinde de durmamalı.
+                metin = govde,
                 zaman = mesaj.time,
                 onDon = onDon,
                 onCatalla = onCatalla,
@@ -1236,7 +1103,7 @@ private fun Satir(
                         )
                     }
                 }
-                // Detay indeksi OLMAYAN uzun düşünce (eski opencode geçmişi):
+                // Detay indeksi OLMAYAN uzun düşünce (eski oturum geçmişi):
                 // tam metin satırın kendisinde, gövde yerelden açılır.
                 mesaj.text.length > 200 -> {
                     var acik by rememberSaveable(
@@ -1256,11 +1123,38 @@ private fun Satir(
         }
         return
     }
-    RayliSatir(canli = canli, dugum = DugumTuru.Metin) {
-        Column(verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s4)) {
-            Ui3AjanMetni(metin = mesaj.text, onDosya = onDosya)
-            Ui3KopyalaSatiri(metin = mesaj.text, zaman = mesaj.time)
+    // Ajan metni de balonda (kullanıcı isteği, 7 Kas 2026): kullanıcı balonunun
+    // aynası, sola yaslı, sol altı kırık. Markdown genişliği doldurduğu için
+    // balon üst sınıra kadar açılır; sağda kalan pay kimin konuştuğunu ayırır.
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+        // Asistan da "Ek dosyalar" bloğuyla görsel paylaşabiliyor
+        // (masaustu skill'in ekran görüntüsü) — aynı şerit, aynı yol.
+        if (gorseller.isNotEmpty()) {
+            Ui3OduncKap {
+                ChatImageRow(
+                    images = gorseller,
+                    load = gorselYukle,
+                    onClick = { yol -> onGorsel(gorseller.map { it.path }, yol) },
+                    modifier = Modifier.padding(bottom = Ui3Tokens.s4),
+                )
+            }
         }
+        if (govde.isNotBlank()) {
+            GlassLikeSurface(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .wrapContentWidth(Alignment.Start)
+                    .testTag("mesaj_ajan"),
+                shape = RoundedCornerShape(
+                    topStart = 24.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = 8.dp,
+                ),
+            ) {
+                Box(Modifier.padding(horizontal = 15.dp, vertical = 11.dp)) {
+                    Ui3AjanMetni(metin = govde, onDosya = onDosya)
+                }
+            }
+        }
+        Ui3KopyalaSatiri(metin = govde, zaman = mesaj.time, modifier = Modifier.padding(top = 1.dp))
     }
 }
 
@@ -1327,102 +1221,19 @@ private enum class DugumTuru { Metin, Arac }
  * tur bitince `rememberInfiniteTransition` hiç kurulmaz, kare üretimi durur.
  */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 private fun RayliSatir(
     canli: Boolean,
     dugum: DugumTuru,
     icerik: @Composable () -> Unit,
 ) {
-    val dugumBoyu = if (dugum == DugumTuru.Arac) 11.dp else 8.dp
-    val akis = if (canli) {
-        val gecis = rememberInfiniteTransition(label = "ray")
-        gecis.animateFloat(
-            initialValue = -0.4f,
-            targetValue = 1.4f,
-            animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart),
-            label = "ray-akis",
-        ).value
-    } else null
-
-    // Palet renkleri DrawScope'a girmeden ÖNCE okunur: `Ui3Colors.*` artık
-    // composable erişimci (tema paletinden okuyor) ve `drawBehind` lambdası
-    // composable değil.
-    val rayUst = Ui3Colors.vurguHi.copy(alpha = 0.55f)
-    val rayOrta = Ui3Colors.cizgi
-    val rayAlt = Ui3Colors.cizgi.copy(alpha = 0.04f)
-    val rayCanli = Ui3Colors.running
-
-    // IntrinsicSize.Min: ray, satırın gerçek yüksekliği kadar uzasın. Bu olmadan
-    // Row yüksekliği içerikten gelir ama ray'in fillMaxHeight'ı ölçülemez.
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        Box(
-            Modifier
-                .width(OLUK)
-                .fillMaxHeight()
-                // KIRPMA ŞART: akan ışık dikdörtgeni -0.4h ile 1.74h arasında
-                // geziyor, yani satırın üstüne ve altına TAŞIYOR. `drawBehind`
-                // düğümün sınırlarına kendiliğinden kırpmaz; ışık komşu
-                // satırların üstüne biniyor ve "efekt çizginin dışına çıkıyor"
-                // olarak görünüyordu (kullanıcı iki kez bildirdi).
-                .clipToBounds()
-                .drawBehind {
-                    val x = RAY_MERKEZ.toPx()
-                    // Sabit ray: yukarıdan aşağı sönen vurgu rengi hat.
-                    drawLine(
-                        brush = Brush.verticalGradient(
-                            0f to rayUst,
-                            0.45f to rayOrta,
-                            1f to rayAlt,
-                        ),
-                        start = Offset(x, 0f),
-                        end = Offset(x, size.height),
-                        strokeWidth = RAY_GENISLIK.toPx(),
-                    )
-                    // Akan ışık: rayın üstünde aşağı kayan cyan parça.
-                    if (akis != null) {
-                        val boy = size.height * 0.34f
-                        val ust = size.height * akis
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.5f to rayCanli,
-                                1f to Color.Transparent,
-                                startY = ust,
-                                endY = ust + boy,
-                            ),
-                            topLeft = Offset(x - RAY_GENISLIK.toPx() / 2f, ust),
-                            size = Size(RAY_GENISLIK.toPx(), boy),
-                        )
-                    }
-                },
-        )
-        Column(Modifier.weight(1f)) {
-            Box(Modifier.fillMaxWidth()) {
-                icerik()
-                // Düğüm: rayın üstünde, satırın başında duran işaret. Metin
-                // satırında içi boş daire, araç satırında kare — mockup'ın
-                // .node.hollow / .node.tool ayrımı. Canlıyken uç nabız atar.
-                Box(
-                    Modifier
-                        .align(Alignment.TopStart)
-                        // Düğümün MERKEZİ rayın merkezine otursun:
-                        // sol kenar = RAY_MERKEZ − boy/2, oluk kadar geri kaydır.
-                        .offset(x = RAY_MERKEZ - dugumBoyu / 2 - OLUK, y = 4.dp)
-                        .size(dugumBoyu)
-                        .clip(if (dugum == DugumTuru.Arac) RoundedCornerShape(4.dp) else CircleShape)
-                        .background(if (canli) Ui3Colors.running else Ui3Colors.bg0)
-                        .border(
-                            1.5.dp,
-                            if (canli) Ui3Colors.running else Ui3Colors.ink3,
-                            if (dugum == DugumTuru.Arac) RoundedCornerShape(4.dp) else CircleShape,
-                        ),
-                )
-            }
-        }
-    }
+    // Sol ray ve düğüm 7 Kas 2026'da kaldırıldı (kullanıcı isteği: "soldaki
+    // dikey çizgi kalksın"). Canlılık araç çipindeki noktadan ve adadan okunur.
+    Box(Modifier.fillMaxWidth()) { icerik() }
 }
 
 // NOT: burada eskiden `ui3TurOrtasiDestekli()` vardı ve iki yolu (yönlendir /
 // ajana bırak) TEK koşulda birleştirip backend adına gömüyordu. 25.08.2026'da
-// kaldırıldı: OpenCode'da yalnız kuyruk var, yönlendirme yok — birleşik koşul
+// kaldırıldı: her backend'de iki uçtan yalnız biri var — birleşik koşul
 // olmayan bir uca tuş çizerdi. Yerine shared/MidTurnSend.kt'teki iki ayrı,
 // capability'den türeyen soru geçti (midTurnSteerSupported / midTurnQueueSupported).

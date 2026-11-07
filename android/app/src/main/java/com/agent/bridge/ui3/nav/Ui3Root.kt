@@ -82,6 +82,7 @@ import com.agent.bridge.AppAlertHost
 import com.agent.bridge.BACKEND_LABELS
 import com.agent.bridge.COWORK_PROVIDER_OPTIONS
 import com.agent.bridge.RemoteUiState
+import com.agent.bridge.shortModelLabel
 import com.agent.bridge.RemoteViewModel
 import com.agent.bridge.PendingShare
 import android.content.ClipData
@@ -91,17 +92,12 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.agent.bridge.mimeTypeForExtension
-import com.agent.bridge.backendAgentOptions
 import com.agent.bridge.backendEffortOptions
 import com.agent.bridge.backendModelOptions
 import com.agent.bridge.backendPermissionModeOptions
 import com.agent.bridge.backendDiff
 import com.agent.bridge.backendDiffLoading
 import com.agent.bridge.backendDiffSupported
-import com.agent.bridge.backendRevertSupported
-import com.agent.bridge.backendShareSupported
-import com.agent.bridge.backendAgentsInitSupported
-import com.agent.bridge.backendSubagentsSupported
 import com.agent.bridge.backendDiskSessions
 import com.agent.bridge.activeCoworkProjectPath
 import com.agent.bridge.backendSession
@@ -119,30 +115,18 @@ import com.agent.bridge.coworkProvider
 import com.agent.bridge.coworkRootPath
 import com.agent.bridge.coworkProviderLabel
 import com.agent.bridge.hubProjects
-import com.agent.bridge.isRunPodModel
-import com.agent.bridge.loadBackendAgents
-import com.agent.bridge.loadBackendCheckpoints
 import com.agent.bridge.loadBackendDiff
 import com.agent.bridge.loadBackendEfforts
 import com.agent.bridge.loadBackendInfo
 import com.agent.bridge.loadBackendPermissionModes
 import com.agent.bridge.loadBackendSkills
-import com.agent.bridge.revertBackendToMessage
-import com.agent.bridge.shareBackendSession
-import com.agent.bridge.unshareBackendSession
-import com.agent.bridge.initBackendAgentsFile
-import com.agent.bridge.unrevertBackend
 import com.agent.bridge.loadBackendDiskSessions
 import com.agent.bridge.normalizeCoworkProvider
-import com.agent.bridge.opencodeAktif
-import com.agent.bridge.opencodeFamily
 import com.agent.bridge.orderedVisibleBackends
-import com.agent.bridge.setBackendAgent
 import com.agent.bridge.setBackendEffort
 import com.agent.bridge.setBackendModel
 import com.agent.bridge.setBackendPermissionMode
 import com.agent.bridge.ui2.chat.ChatScrollMemory
-import com.agent.bridge.ui2.chat.runPodPillAction
 import com.agent.bridge.ui2.chat.SessionDrawerContent
 import com.agent.bridge.ui2.chat.SessionTabUi
 import com.agent.bridge.ui2.components.SelectorOption
@@ -166,7 +150,6 @@ import com.agent.bridge.ui2.settings.SettingsAdvancedScreen
 import com.agent.bridge.ui2.settings.SettingsConnectionScreen
 import com.agent.bridge.ui2.settings.SettingsMcpAddScreen
 import com.agent.bridge.ui2.settings.SettingsMcpScreen
-import com.agent.bridge.ui2.settings.SettingsNotificationsScreen
 import com.agent.bridge.ui2.settings.SettingsProvidersScreen
 import com.agent.bridge.ui2.settings.SettingsUpdateScreen
 import com.agent.bridge.ui2.theme.Ui2Theme
@@ -174,18 +157,10 @@ import com.agent.bridge.ui3.ayarlar.Ui3AyarRota
 import com.agent.bridge.ui3.ayarlar.Ui3AyarlarScreen
 import com.agent.bridge.ui3.ayarlar.Ui3GuvenliAglarScreen
 import com.agent.bridge.ui3.chat.Ui3ChatScreen
-import com.agent.bridge.ui3.chat.Ui3AltAjanSohbeti
 import com.agent.bridge.ui3.chat.Ui3BaglamAyrintisi
 import com.agent.bridge.ui3.chat.Ui3Degisiklikler
-import com.agent.bridge.ui3.chat.Ui3Kurallar
-import com.agent.bridge.ui3.chat.Ui3GeriSar
-import com.agent.bridge.ui3.chat.Ui3OturumPaylas
-import com.agent.bridge.ui3.chat.Ui3AgentsInit
 import com.agent.bridge.ui3.chat.Ui3Kullanim
-import com.agent.bridge.ui3.chat.Ui3RunPodTusu
 import com.agent.bridge.ui3.chat.Ui3Sheet
-import com.agent.bridge.ChatBackAction
-import com.agent.bridge.chatBackAction
 import com.agent.bridge.ui3.chat.Ui3TurAyarlariMenusu
 import com.agent.bridge.midTurnQueueSupported
 import com.agent.bridge.ui3.chat.ui3OduncOdagiBirak
@@ -193,14 +168,11 @@ import com.agent.bridge.ui3.hub.Ui3HubScreen
 import com.agent.bridge.ui3.material.MeshBackground
 import com.agent.bridge.ui3.material.Ui3OduncKap
 import com.agent.bridge.ui3.material.GlassSurface
-import com.agent.bridge.ui3.shell.AppIsland
 import com.agent.bridge.ui3.shell.adaBaglamYuzdesi
-import com.agent.bridge.ui3.shell.BigTitle
-import com.agent.bridge.ui3.shell.GlassDock
-import com.agent.bridge.ui3.shell.GlassRail
 import com.agent.bridge.ui3.shell.GlassSheet
+import com.agent.bridge.ui3.shell.KovanUstBar
+import com.agent.bridge.ui3.shell.Ui3SohbetUstBari
 import com.agent.bridge.ui3.shell.GlassYanPanel
-import com.agent.bridge.ui3.shell.GlassTabBar
 import com.agent.bridge.ui3.shell.LiteTitleBar
 import com.agent.bridge.ui3.shell.SheetBasligi
 import com.agent.bridge.ui3.shell.Ui3Onayla
@@ -215,16 +187,8 @@ import com.agent.bridge.ui3.shell.Ui3Spotlight
 import com.agent.bridge.ui3.shell.SpotlightEylem
 import com.agent.bridge.ui3.shell.Ui3OkumaSutunu
 import com.agent.bridge.ui3.shell.UI3_GENIS_ESIK
-import com.agent.bridge.ui3.shell.UI3_IKI_PANEL_ESIK
 import com.agent.bridge.ui3.shell.UI3_MERKEZ_AZAMI
 import com.agent.bridge.ui3.shell.UI3_MERKEZ_IKI_SUTUN_ESIK
-import com.agent.bridge.ui3.shell.UI3_SERIT_TAM_ESIK
-import com.agent.bridge.ui3.shell.UI3_OTURUM_PANEL_ALAN
-import com.agent.bridge.ui3.shell.UI3_OTURUM_PANEL_G
-import com.agent.bridge.ui3.shell.UI3_RAIL_ALAN
-import com.agent.bridge.ui3.shell.UI3_RAIL_ARA
-import com.agent.bridge.ui3.shell.UI3_RAIL_KENAR
-import com.agent.bridge.ui3.shell.ui3AdaSeritPayi
 import com.agent.bridge.ui3.theme.Ui3Colors
 import com.agent.bridge.ui3.theme.Ui3Tema
 import com.agent.bridge.ui3.theme.Ui3Tokens
@@ -252,9 +216,8 @@ import com.agent.bridge.BuildConfig
  *   Box
  *   ├─ Box .hazeSource(state)      ← KAYNAK: mesh + ekran içeriği
  *   │   ├─ MeshBackground
- *   │   └─ (sekme çubuğu | büyük başlık) + NavHost
- *   ├─ AppIsland                    ← camlar kaynağın DIŞINDA, kardeş olarak
- *   ├─ GlassDock
+ *   │   └─ (Lite başlığı) + NavHost (her ekran kendi Kovan üst barını taşır)
+ *   ├─ GlassYanPanel                ← katmanlar kaynağın DIŞINDA, kardeş olarak
  *   └─ GlassSheet
  *
  * Camlar kaynak ağacının içine alınırsa Haze kendi çıktısını örneklemeye
@@ -443,49 +406,24 @@ internal fun Ui3Root(
         }
     }
 
-    /*
-     * GERİ TUŞU KÖK ALANLARDA — ui2 paritesi, ui3'e hiç taşınmamıştı.
-     *
-     * Kullanıcı bildirdi (18.08.2026): "aktif bir sekme açıkken geri tuşu
-     * uygulamadan çıkıyor." Doğru: ui3'ün tek geri işleyicisi sheet'lerdi,
-     * gerisini sistem alıyordu ve NavHost kök hedefte boş yığınla oturduğu için
-     * uygulama kapanıyordu. ui2 aynı sorunu `chatBackAction` ile çözmüş
-     * (`Ui2Root`, satır ~214) ve mantık zaten shared'da — ui3 onu ÇAĞIRMIYORDU.
-     *
-     * Kural:
-     *  - Merkez/Ayarlar/Operasyon kökündeyken geri → Sohbet'e döner.
-     *  - Sohbet kökündeyken SEKMELER TEK TEK TÜKETİLİR: dolu sekme çarpı
-     *    tuşuyla aynı onayı ister, boş sekme sessizce kapanır.
-     *  - Elde tek boş sekme kalınca `SYSTEM_BACK` döner, işleyici kapanır ve
-     *    uygulama normal şekilde kapanır. "Geri asla çıkmaz" bir tuzak olurdu.
-     *
-     * KAPANINCA HANGİ SEKMEYE GEÇİLİR motorun kararı (`TabsDelegate.closeTab`):
-     * kapanan sekmenin İNDEKSİ korunuyor, yani yerine geçen (sağdaki) sekme
-     * aktif oluyor; en sağdaki kapanırken soldaki. Kullanıcının tarif ettiği
-     * "bir soldaki" hâli en sık karşılaşılan durum, çünkü yeni sekme sona
-     * ekleniyor. Kuralı sola sabitlemek motor katmanını değiştirmek ve ui2'yi
-     * de etkilemek demekti (değişmez 3) — dokunulmadı.
-     */
+    // KOVAN KABUĞU (7 Kas 2026): kök ana ekran. Sohbet, Merkez ve Ayarlar
+    // kökünde geri → ana ekran; ana ekranda geri sisteme kalır. Sekmeleri geri
+    // tuşuyla tek tek kapatma kuralı kalktı: sekmeler artık ana ekranda listede,
+    // kapatma uzun basış menüsünde.
     val aktifRota = girdi?.destination?.route
     val kokAlanda = Ui3Area.entries.any { it.rotali && aktifRota == it.rota }
-    val sohbetKokunde = aktifRota == Ui3Area.Sohbet.rota
-    val geriEylemi = chatBackAction(uiState.visibleTabs, uiState.activeTabId, uiState.backend != null)
+    val anaKokunde = aktifRota == Ui3Area.Ana.rota
+    val anaEkranaDon: () -> Unit = {
+        acikSheet = null
+        oturumlarAcik = false
+        navController.kokeGit(Ui3Area.Ana.rota)
+    }
     BackHandler(
         // acikSheet/çekmece null şartı: onların kendi işleyicisi yukarıda ve
         // ikisi aynı anda etkin olmamalı.
-        enabled = !BuildConfig.IS_LITE && acikSheet == null && !oturumlarAcik && kokAlanda &&
-            (!sohbetKokunde || geriEylemi != ChatBackAction.SYSTEM_BACK),
+        enabled = !BuildConfig.IS_LITE && acikSheet == null && !oturumlarAcik && kokAlanda && !anaKokunde,
     ) {
-        if (!sohbetKokunde) {
-            navController.kokeGit(Ui3Area.Sohbet.rota)
-        } else when (geriEylemi) {
-            ChatBackAction.CONFIRM_CLOSE_TAB ->
-                actions.requestCloseTab(uiState.activeTabId, fromBack = true)
-            // Boş sekmede soru sormanın anlamı yok: içinde kaybolacak bir şey yok.
-            ChatBackAction.CLOSE_EMPTY_TAB -> actions.tabsDelegate.closeTab(uiState.activeTabId)
-            // enabled=false olduğu için buraya düşülmez; sistem devralır.
-            ChatBackAction.SYSTEM_BACK -> Unit
-        }
+        anaEkranaDon()
     }
 
     val aktifSekme = uiState.visibleTabs.firstOrNull { it.id == uiState.activeTabId }
@@ -508,42 +446,12 @@ internal fun Ui3Root(
         )
     }
 
-    // TUR BAŞLANGIÇ ANLARI, sekme başına.
+    // ── DIŞARIDAN DOSYA AÇMA ──────────────────────────────────────────────
     //
-    // Ada'nın sayacı önce bileşen kompozisyona girdiğinde sıfırlanıyordu; sekme
-    // değiştirip geri gelince tur sürerken sayaç baştan başlıyordu (kullanıcı
-    // bildirdi). Kaynak state'te turun başlangıç anı YOK, o yüzden burada
-    // tutuluyor: kök, sekme değişiminden etkilenmiyor.
-    val turBaslangici = remember { mutableStateMapOf<String, Long>() }
-    LaunchedEffect(uiState.running, uiState.activeTabId, uiState.tabStatuses) {
-        val aktif = uiState.activeTabId
-        uiState.visibleTabs.forEach { sekme ->
-            // Aktif sekmede `uiState.running` daha taze; diğerlerinde tabStatuses.
-            val calisiyor = if (sekme.id == aktif) {
-                uiState.running || uiState.tabStatuses[sekme.id]?.running == true
-            } else {
-                uiState.tabStatuses[sekme.id]?.running == true
-            }
-            if (calisiyor) {
-                turBaslangici.getOrPut(sekme.id) { System.currentTimeMillis() }
-            } else {
-                turBaslangici.remove(sekme.id)
-            }
-        }
-    }
-
-    // ── BİLDİRİMDEN GEZİNME ───────────────────────────────────────────────
-    //
-    // Bu üç nonce ui2 kökünde tüketiliyordu (Ui2Root.kt) ve ui3'e HİÇ
-    // taşınmamıştı. Sonuç: bildirime dokununca motor tarafı doğru işi yapıyor
-    // — `openApprovalSession` → `openOperation` → `activateTab` ilgili sekmeyi
-    // gerçekten aktif ediyor — ama EKRAN değişmiyordu; uygulama en son hangi
-    // ekranda bırakıldıysa orası açılıyordu (kullanıcı 18.08.2026: "bildirime
-    // bastığımda o ilgili sekmeye değil uygulama hangi ekranda kaldıysa orası
-    // açılıyor"). Yani hata sekmenin seçilmemesi değil, sohbete gidilmemesiydi.
-    //
-    // Hatırlatıcı/not ve dosya görüntüleyici bildirimleri de aynı boşluğa
-    // düşüyordu; üçü tek mekanizma olduğu için üçü birden bağlanıyor.
+    // Dışarıdan açılan dosya ve hatırlatma bildirimi, motor tarafında
+    // görüntüleyiciyi/notu hazırlıyor ama ekranı değiştirmiyordu; nonce ile
+    // ilgili ekrana gidilir. (Bildirimden onay açan kardeşi bildirim servisiyle
+    // birlikte 21.10.2026'da kalktı.)
     // ── PAYLAŞILAN DOSYA GELDİ ────────────────────────────────────────────
     //
     // ui2 bunu kökte bir diyalogla soruyordu (Ui2Root.kt); ui3 `pendingShare`i
@@ -630,29 +538,19 @@ internal fun Ui3Root(
         }
     }
 
-    val onayNonce by actions.approvalNavigationNonce.collectAsState()
     val goruntuleyiciNonce by actions.fileViewerNavigationNonce.collectAsState()
     val notNonce by actions.noteNavigationNonce.collectAsState()
-    // Sohbete KÖK geçişi (dock'un kendi yolu): ayarlar/merkez derinliğinden
-    // gelinse bile yığın biriktirmez, geri tuşu başlangıca döner.
-    NonceIleGit(onayNonce) { navController.kokeGit(Ui3Area.Sohbet.rota) }
     NonceIleGit(goruntuleyiciNonce) { navController.navigate(GORUNTULEYICI_ROTASI) }
     NonceIleGit(notNonce) { navController.navigate(NOT_EDITORU_ROTASI) }
 
-    // Lite'ta bağlam göstergesi ve onu taşıyan ada yok. Hesabı da çalıştırma;
-    // tam sürüm AppIsland için mevcut davranışını korur.
+    // Bağlam doluluğu sohbet üst barının alt satırında (eskiden adada). Lite'ta yok.
     val baglam = if (BuildConfig.IS_LITE) null else adaBaglamYuzdesi(
-        opencodeAktif = uiState.opencodeAktif,
-        contextPct = uiState.opencode.contextPct,
         contextTokens = uiState.contextTokens,
         contextWindow = uiState.contextWindow,
     )
 
-    // Dock'un ekrandan yediği yer. Klavye açıkken de aynı: dock gizlenmiyor,
-    // klavyenin üstünde duruyor (gerekçesi aşağıdaki uzun notta).
-    // 66dp = 50 öğe + 2×4 dock dolgusu + 8 alt boşluk. Lite kabuğunda
-    // dock/rail çizilmediği için ekranlar yalnız 8dp nefes payı bırakır.
-    val dockYuksekligi = if (BuildConfig.IS_LITE) Ui3Tokens.s8 else 66.dp
+    // Dock 7 Kas 2026'da kalktı (Kovan kabuğu): her ekran yalnız 8dp nefes payı bırakır.
+    val dockYuksekligi = Ui3Tokens.s8
     val dockBoslugu = dockYuksekligi
     // Gezinme çubuğunun yediği yer. NavHost artık bunu kendisi almıyor (yukarı
     // bkz.), o yüzden ekranların iz boşluğuna ekleniyor.
@@ -681,51 +579,25 @@ internal fun Ui3Root(
             .imePadding()
             .semantics { testTagsAsResourceId = true },
     ) {
-        // GENİŞ YERLEŞİM (tablet, 18.08.2026): dock altta yatay şerit olmaktan
-        // çıkıp SOL kenarda dikey raile döner ve sohbette oturum listesi kalıcı
-        // olarak solda durur. Rail ve panel içeriğin ÜSTÜNDE yüzen cam
-        // katmanlar (dock gibi, hazeSource ağacının dışında) — bu yüzden
-        // içeriğe onların kapladığı kadar sol dolgu veriliyor.
+        // GENİŞ YERLEŞİM (tablet): okuma sütunu ortalanır, sheet'ler sağdan
+        // gelir. Rail ve kalıcı oturum paneli Kovan kabuğuyla kalktı.
         val genis = maxWidth >= UI3_GENIS_ESIK
-        // Kalıcı panel yalnız GERÇEKTEN yer varken (bkz. UI3_IKI_PANEL_ESIK):
-        // tablet dikeyde geniş sayılıyor ama iki panel sohbeti telefondan dar
-        // bırakıyor. Dar kalan geniş ekranlarda liste çekmece olarak sürüyor.
-        val ikiPanel = maxWidth >= UI3_IKI_PANEL_ESIK
-        val oturumPaneliVar = !BuildConfig.IS_LITE && ikiPanel && aktifAlan == Ui3Area.Sohbet
         // Composer şeridi ve ⋯ menüsü AYNI ölçüye bakar: menü, şeritte
         // gizlenenleri satır olarak gösteriyor — ikisi ayrı eşikten karar
         // verse aynı anda ikisi birden çizilirdi.
-        val seritTam = maxWidth >= UI3_SERIT_TAM_ESIK
         // Merkez'in iki sütunu ve sheet'in yan panele dönmesi geniş yerleşimin
         // parçası ama kendi eşikleri var (yer gerçekten yetiyor mu).
         val merkezIkiSutun = maxWidth >= UI3_MERKEZ_IKI_SUTUN_ESIK
-        val icerikSolBosluk = when {
-            BuildConfig.IS_LITE || !genis -> 0.dp
-            oturumPaneliVar -> UI3_RAIL_ALAN + UI3_OTURUM_PANEL_ALAN
-            else -> UI3_RAIL_ALAN
-        }
-        // SEKME ÇUBUĞUNUN "＋"I ADANIN ALTINDA KALMASIN.
-        //
-        // Geniş yerleşimde ikisi AYNI dikey bantta: ada durum çubuğunun hemen
-        // altında ekranın sağ ucunda, "＋" ise okuma sütununun sağ ucunda ve
-        // aynı 28dp'lik satırda. Sütun ekrandan ne kadar dar kalıyorsa ada o
-        // kadar uzağa düşüyor; sütun ekranı doldurduğunda (840-1080dp bandı,
-        // tablet DİKEY dahil) ada tam "＋"ın üstüne oturuyor. Salt gösterge
-        // iken bu yalnız görüntü kusuruydu; ada dokunulabilir olunca "＋"ın
-        // dokunuşunu yiyor. Eksik kalan payı çubuğa iz boşluğu olarak veriyoruz
-        // — sütun zaten yeterince içerideyse bu 0'dır ve hiçbir şey değişmez.
-        val adaSeritPayi = if (BuildConfig.IS_LITE) 0.dp
-            else ui3AdaSeritPayi(genis, maxWidth, icerikSolBosluk)
-
         Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             MeshBackground(Modifier.fillMaxSize())
             Column(
                 Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(start = icerikSolBosluk),
+                    .statusBarsPadding(),
             ) {
-                if (BuildConfig.IS_LITE) {
+                // Lite başlığı yalnız sohbette; Ayarlar ve alt ekranlar kendi
+                // geri oklu barlarını taşıyor (iki bar üst üste binmesin).
+                if (BuildConfig.IS_LITE && aktifRota == Ui3Area.Sohbet.rota) {
                     LiteTitleBar(
                         uiState = uiState,
                         onOturumlarAc = { oturumlarAcik = true },
@@ -739,12 +611,8 @@ internal fun Ui3Root(
                         },
                         guncellemeVar = liteUpdateInfo != null,
                         guncellemeEkraniAcik = girdi?.destination?.route == Ui3AyarRota.GUNCELLEME,
-                        modifier = Modifier.padding(
-                            start = Ui3Tokens.s16,
-                            end = Ui3Tokens.s16,
-                            top = Ui3Tokens.s4,
-                            bottom = Ui3Tokens.s4,
-                        ),
+                        // Composer şeridi kalktı: tur ayarları başlıktaki sürgüden.
+                        onMenu = { acikSheetAc(Ui3Sheet.MENU, backendId, actions) { acikSheet = it } },
                     )
                 }
                 // BAŞLIK ARTIK NAVHOST'UN İÇİNDE.
@@ -755,7 +623,7 @@ internal fun Ui3Root(
                 // parçası olunca içerikle birlikte animasyonlanıyor.
                 NavHost(
                     navController = navController,
-                    startDestination = Ui3Area.Sohbet.rota,
+                    startDestination = if (BuildConfig.IS_LITE) Ui3Area.Sohbet.rota else Ui3Area.Ana.rota,
                     // NavHost'a ALT İNSET YOK — ne dock payı ne de gezinme
                     // çubuğu payı (kullanıcı kararı 18.08.2026).
                     //
@@ -806,46 +674,47 @@ internal fun Ui3Root(
                     for (alan in Ui3Area.entries.filter { it.rotali }) {
                         composable(alan.rota) {
                             when (alan) {
-                                Ui3Area.Sohbet -> Ui3OkumaSutunu(genis) {
-                                    Column(Modifier.fillMaxSize()) {
-                                    if (!BuildConfig.IS_LITE) GlassTabBar(
+                                Ui3Area.Ana -> Ui3OkumaSutunu(genis) {
+                                    Ui3AnaEkran(
                                         sekmeler = sekmeler,
-                                        aktifId = uiState.activeTabId,
-                                        onSec = sekmeSec,
-                                        // ui2 ile aynı: "+" gerçek bir BOŞ sekme
-                                        // açar, yeni-oturum ekranına ATLAMAZ.
-                                        onYeni = { actions.tabsDelegate.newTab() },
-                                        onKapat = { actions.requestCloseTab(it) },
-                                        onUzunBas = {
+                                        onSekme = { id ->
+                                            sekmeSec(id)
+                                            navController.kokeGit(Ui3Area.Sohbet.rota)
+                                        },
+                                        onSekmeMenusu = {
                                             uzunBasilanSekme = it
                                             acikSheet = Ui3Sheet.SEKME_MENU
                                         },
-                                        // Ada artık durum çubuğunun içinde; sekmelerin
-                                        // ona yer açması gerekmiyor, o 32dp akışa döndü.
-                                        //
-                                        // ÜST PAY 4dp (18.08.2026): ada sistem
-                                        // kapsülüyle aynı yüksekliğe çekilince
-                                        // (31.4dp) dibi 40.0dp'ye indi, sekme
-                                        // çubuğu ise durum çubuğunun hemen altında
-                                        // 40.3dp'de başlıyordu — cihazdan ölçüldü,
-                                        // aralarında 1px kalmıştı ve üst üste
-                                        // biniyor gibi duruyordu (kullanıcı bildirdi).
-                                        // Sağdaki iz boşluğu adanın altına
-                                        // düşmemek için (bkz. `adaSeritPayi`);
-                                        // dar ekranda 0.
-                                        modifier = Modifier.padding(
-                                            top = Ui3Tokens.s4,
-                                            bottom = Ui3Tokens.s4,
-                                            end = adaSeritPayi,
-                                        ),
+                                        // ui2 ile aynı: "+" gerçek bir BOŞ sekme açar.
+                                        onYeniSekme = {
+                                            actions.tabsDelegate.newTab()
+                                            navController.kokeGit(Ui3Area.Sohbet.rota)
+                                        },
+                                        onAra = { acikSheet = Ui3Sheet.SPOTLIGHT },
+                                        onAyarlar = { navController.kokeGit(Ui3Area.Ayarlar.rota) },
+                                        onOturumlar = { oturumlarAcik = true },
+                                        onMerkez = { navController.kokeGit(Ui3Area.Merkez.rota) },
+                                        merkezUyarisi = uiState.hasOperationsAttention(),
+                                        altBosluk = navCubugu,
+                                    )
+                                }
+                                Ui3Area.Sohbet -> Ui3OkumaSutunu(genis) {
+                                    Column(Modifier.fillMaxSize()) {
+                                    // KOVAN ÜST BARI (7 Kas 2026): sekme çubuğu
+                                    // kalktı, sekmeler ana ekranda listeleniyor.
+                                    // Lite'ın kendi başlığı NavHost'un üstünde.
+                                    if (!BuildConfig.IS_LITE) Ui3SohbetUstBari(
+                                        uiState = uiState,
+                                        baglamYuzdesi = baglam,
+                                        onGeri = anaEkranaDon,
+                                        onMenu = { acikSheetAc(Ui3Sheet.MENU, backendId, actions) { acikSheet = it } },
+                                        onBaglam = { acikSheet = Ui3Sheet.BAGLAM },
                                     )
                                     Ui3ChatScreen(
                                     modifier = Modifier.weight(1f),
-                                    // Geniş yerleşimde dock yok (rail solda).
-                                    altBosluk = if (genis) Ui3Tokens.s8 + navCubugu else dockBoslugu + navCubugu,
+                                    altBosluk = dockBoslugu + navCubugu,
                                     uiState = uiState,
                                     sekmelerEtkin = !BuildConfig.IS_LITE,
-                                    bildirimlerEtkin = !BuildConfig.IS_LITE,
                                     actions = actions,
                                     hazeState = hazeState,
                                     backendId = backendId,
@@ -881,16 +750,6 @@ internal fun Ui3Root(
                                         }
                                     },
                                     onGoruntuleyici = { navController.navigate(GORUNTULEYICI_ROTASI) },
-                                    seritTam = seritTam,
-                                    // Tüm backend oturumlarında cwd varsa klasör
-                                    // tuşu görünür. Cowork kilitli gezgine, diğerleri
-                                    // normal PC gezginine gider; ikisi de son alt
-                                    // klasörü hatırlar.
-                                    onCalismaKlasoru = backendId?.let { oturumId ->
-                                        uiState.backendSession(oturumId).cwd
-                                            .takeIf { it.isNotBlank() }
-                                            ?.let { yol -> { oturumKlasoruAc(oturumId, yol) } }
-                                    },
                                     kaydirmaBellegi = sohbetKaydirmaBellegi,
                                     )
                                     }
@@ -903,23 +762,14 @@ internal fun Ui3Root(
                                     azami = if (merkezIkiSutun) UI3_MERKEZ_AZAMI else 720.dp,
                                 ) {
                                     Column(Modifier.fillMaxSize()) {
-                                    BigTitle(Ui3Area.Merkez.etiket)
+                                    KovanUstBar(Ui3Area.Merkez.etiket, onGeri = anaEkranaDon)
                                     Ui3HubScreen(
-                                    altBosluk = if (genis) {
-                                        Ui3Tokens.s8 + navCubugu
-                                    } else {
-                                        dockYuksekligi + navCubugu
-                                    },
+                                    altBosluk = dockYuksekligi + navCubugu,
                                     uiState = uiState,
                                     actions = actions,
                                     ikiSutun = merkezIkiSutun,
                                     onAlanAc = { hedef -> navController.kokeGit(hedef.rota) },
-                                    // Geniş yerleşimde çekmece yok: oturum listesi
-                                    // sohbetin solunda kalıcı, oraya götürüyoruz.
-                                    onOturumlarAc = {
-                                        if (ikiPanel) navController.kokeGit(Ui3Area.Sohbet.rota)
-                                        else oturumlarAcik = true
-                                    },
+                                    onOturumlarAc = { oturumlarAcik = true },
                                     onDosyalarAc = genelDosyalariAc,
                                     onNotlarAc = { navController.navigate(NOTLAR_ROTASI) },
                                     onProjelerAc = { navController.navigate(PROJELER_ROTASI) },
@@ -959,26 +809,26 @@ internal fun Ui3Root(
                                     )
                                     }
                                 }
-                                // Operasyon kök bir alan: ui2 ekranı geri oku
-                                // OLMADAN çağrılır (onBack = null), dock zaten
-                                // gezinmeyi taşıyor.
+                                // Dock kalktı (7 Kas 2026): Operasyon'un geri oku
+                                // ana ekrana döner.
                                 Ui3Area.Operasyon -> Ui2AltEkran(dockYuksekligi + navCubugu) {
                                     HubOperationsScreen(
                                         uiState = uiState,
                                         actions = actions,
-                                        onBack = null,
+                                        onBack = anaEkranaDon,
                                         onOpenChat = { navController.kokeGit(Ui3Area.Sohbet.rota) },
                                     )
                                 }
                                 Ui3Area.Ayarlar -> Ui3OkumaSutunu(genis) {
                                     Column(Modifier.fillMaxSize()) {
-                                        BigTitle(Ui3Area.Ayarlar.etiket)
+                                        KovanUstBar(
+                                            Ui3Area.Ayarlar.etiket,
+                                            onGeri = if (BuildConfig.IS_LITE) liteSohbeteDon else anaEkranaDon,
+                                        )
                                         Ui3AyarlarScreen(
                                             uiState = uiState,
                                             onAc = { navController.navigate(it) },
-                                            // Geniş yerleşimde dock yok (rail solda):
-                                            // alta o boşluğu bırakmak gereksiz.
-                                            altBosluk = if (genis) Ui3Tokens.s8 + navCubugu else dockYuksekligi + navCubugu,
+                                            altBosluk = dockYuksekligi + navCubugu,
                                         )
                                     }
                                 }
@@ -1003,7 +853,7 @@ internal fun Ui3Root(
                         // Geniş yerleşimde alt dock yok, sol rail var. Burada
                         // 66 dp dock payı bırakmak belge yüzeyinin altında ölü
                         // bir şerit oluşturuyordu; yalnız sistem çubuğunu koru.
-                        Ui2AltEkran(if (genis) navCubugu else dockYuksekligi + navCubugu) {
+                        Ui2AltEkran(dockYuksekligi + navCubugu) {
                             HubFileViewerScreen(actions, onBack = { navController.popBackStack() })
                         }
                     }
@@ -1200,9 +1050,6 @@ internal fun Ui3Root(
                         val hedef = girdi.arguments?.getString("hedef").orEmpty()
                         Ui2AltEkran(dockYuksekligi + navCubugu) { SettingsMcpAddScreen(hedef, actions, geri, geri) }
                     }
-                    composable(Ui3AyarRota.BILDIRIMLER) {
-                        Ui2AltEkran(dockYuksekligi + navCubugu) { SettingsNotificationsScreen(uiState, actions, geri) }
-                    }
                     composable(Ui3AyarRota.GUNCELLEME) {
                         Ui2AltEkran(dockYuksekligi + navCubugu) {
                             SettingsUpdateScreen(actions, if (BuildConfig.IS_LITE) liteSohbeteDon else geri)
@@ -1215,128 +1062,9 @@ internal fun Ui3Root(
             }
         }
 
-        // ADA DURUM ÇUBUĞUNUN İÇİNDE, KAMERANIN İKİ YANINDA.
-        //
-        // Önce `padding(top = 12.dp)` ile en tepeye konmuştu ve tam kameranın
-        // altına denk geliyordu (kullanıcı bileşeni hiç görememiş). Sonra
-        // `statusBarsPadding` ile çubuğun ALTINA indirildi — o da yanlıştı:
-        // sistem kapsülleri çentiği kuşatır, altına inmez. Şimdi ada kesiğin
-        // sağ ve sol bandına yerleşiyor, ortası boş; dikey konumu ve bant
-        // genişlikleri AppIsland içinde ölçülmüş sayılardan geliyor.
-        if (!BuildConfig.IS_LITE) {
-            AppIsland(
-                calisiyor = uiState.running,
-                onayBekliyor = uiState.awaitingApproval,
-                baglamYuzdesi = baglam,
-                turBaslangici = turBaslangici[uiState.activeTabId],
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    // Geniş yerleşimde ada durum çubuğunun ALTINA iner (bkz.
-                    // AppIsland/hizaSaga); dar ekranda çubuğun içinde kalır.
-                    .then(if (genis) Modifier.statusBarsPadding() else Modifier),
-                hizaSaga = genis,
-                // Dokunuş yalnız geniş yerleşimde bağlanıyor — dar ekranda ada
-                // sistem durum çubuğunun içinde ve dokunuşu SystemUI yutuyor
-                // (ölçüldü; gerekçe AppIsland.YedekAda'da). Orada null geçmek
-                // "yapılamadı" değil, YAPILAMAZ demek.
-                onTikla = if (genis) ({ acikSheet = Ui3Sheet.BAGLAM }) else null,
-            )
-        }
-
-        // DOCK HİÇ GİZLENMİYOR — ui2'nin davranışının aynısı (kullanıcı kararı).
-        //
-        // Önce klavye açıkken çizilmiyordu; geri gelişi bir "giriş" olduğu için
-        // her düzeltmeden sonra gecikme hissi kaldı: animasyonu kaldırdım,
-        // `isImeVisible` ile hedef duruma bağladım, yine de yetmedi. Sebep
-        // yapısal: pencere `adjustResize` ile küçülüyor ve dock ancak klavye
-        // animasyonu boyunca yerine oturuyor.
-        //
-        // ui2'de böyle bir sorun yok çünkü alt navigasyon HİÇ kaybolmuyor,
-        // klavyenin üstünde durup onunla birlikte iniyor. Aynısını yapıyoruz.
-        // Karşılığında klavye açıkken 66dp daha az sohbet görünüyor; slash
-        // listesinin yükseklik sınırı geldiğinden beri composer taşmıyor.
-        // YATAY BOŞLUK COMPOSER'LA AYNI (16dp) — kullanıcı farkı gördü ve
-        // "aynı genişlikte olsun mu" diye sordu. Dock tam genişlikteydi,
-        // composer 16dp içeride: üst üste duran iki cam kartın kenarları
-        // kaçıktı. Dar olan kazandı, çünkü (a) tam genişlikte dock'un yuvarlak
-        // köşesini Magic7 Pro'nun kavisli ekran kenarı kesiyordu, (b) camın
-        // fikri "arkasından zemin akan yüzen levha" — kenara yapışınca o gider.
-        // Bedeli: öğe başına 71.5 → 65dp; en uzun etiket "Oturumlar" ~50dp,
-        // sığıyor.
-        //
-        // Alt boşluk s12 → s8: dock jest çubuğuna yaklaşsın ama değmesin
-        // (kullanıcı isteği). `dockYuksekligi` yorumundaki hesap zaten 8 diyordu.
-        // Dar ekranda altta dock, geniş ekranda solda rail — İKİSİ AYNI seçim
-        // mantığını paylaşıyor (aşağıdaki lambda). Ayrı ayrı yazılırsa dock'ta
-        // düzeltilen bir davranış (Oturumlar toggle'ı, alanın köküne geri sarma)
-        // rail'de sessizce eskir.
-        val alanSec: (Ui3Area) -> Unit = alanSec@{ alan ->
-                if (alan == Ui3Area.Oturumlar) {
-                    // ui2'deki davranış: sohbette değilsek önce sohbete geç,
-                    // sonra oturum listesini aç. Zaten açıksa kapat (toggle).
-                    if (aktifAlan != Ui3Area.Sohbet) {
-                        navController.kokeGit(Ui3Area.Sohbet.rota)
-                        oturumlarAcik = true
-                    } else {
-                        oturumlarAcik = !oturumlarAcik
-                    }
-                    return@alanSec
-                }
-                // Spotlight her ekrandan açılır: gezinme yapmaz, palet açar.
-                if (alan == Ui3Area.Spotlight) {
-                    acikSheet = if (acikSheet == Ui3Sheet.SPOTLIGHT) null else Ui3Sheet.SPOTLIGHT
-                    return@alanSec
-                }
-                // ZATEN O ALANDAYSAK: gezinme yok, alanın KÖKÜNE geri sarılır.
-                //
-                // `kokeGit` `restoreState = true` ile gidiyor, yani alanın
-                // kaydedilmiş alt rotası geri yükleniyor: Ayarlar > Bağlantı'dan
-                // Sohbet'e geçip Ayarlar'a dönünce yine Bağlantı açılıyordu ve
-                // oradan çıkmanın dock'ta yolu yoktu (kullanıcı bildirdi).
-                // Kaydedilmiş durumu geri yüklemek başka alandan gelirken DOĞRU
-                // — kaldığın yer kaybolmasın — o yüzden yalnız aktif alandaki
-                // ikinci basış geri sarıyor. Zaten kökteysek popBackStack
-                // hiçbir şey yapmıyor (false döner), geri yığını boşalmıyor.
-                if (alan == aktifAlan) {
-                    navController.popBackStack(alan.rota, inclusive = false)
-                    return@alanSec
-                }
-                navController.kokeGit(alan.rota)
-        }
-
-        if (!BuildConfig.IS_LITE && genis) {
-            // Rail dikeyde ortalanmış: tabletin üst kenarına yapışmıyor,
-            // başparmak menzili ekranın ortasına yakın.
-            GlassRail(
-                hazeState = hazeState,
-                aktif = aktifAlan,
-                onayBekliyor = uiState.awaitingApproval,
-                operasyonUyarisi = uiState.hasOperationsAttention(),
-                onSec = alanSec,
-                // Liste kalıcı değilse onu açan tuş raile geri gelir.
-                oturumlarTusu = !ikiPanel,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(start = UI3_RAIL_KENAR, top = Ui3Tokens.s8, bottom = Ui3Tokens.s8),
-            )
-        } else if (!BuildConfig.IS_LITE) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(start = Ui3Tokens.s16, end = Ui3Tokens.s16, bottom = Ui3Tokens.s8),
-            ) {
-                GlassDock(
-                    hazeState = hazeState,
-                    aktif = aktifAlan,
-                    onayBekliyor = uiState.awaitingApproval,
-                    operasyonUyarisi = uiState.hasOperationsAttention(),
-                    onSec = alanSec,
-                )
-            }
-        }
+        // ADA, DOCK VE RAIL 7 Kas 2026'da kalktı (Kovan kabuğu). Adanın
+        // gösterdiği durum ve bağlam yüzdesi sohbet üst barının alt satırında;
+        // dock'un hedefleri ana ekranda.
 
         // ÇEKMECEDEKİ "YENİ OTURUM" — iki düzeltme birden.
         //
@@ -1370,7 +1098,7 @@ internal fun Ui3Root(
         // anda açık olamadığı için sıra fark etmiyordu; artık ediyor.
         // (zIndex ile çözülmedi: sheet'leri yükseltmek AppAlertHost'u onların
         // altında bırakırdı ve hata kutuları sheet arkasında kaybolurdu.)
-        if (!oturumPaneliVar) {
+        run {
             GlassYanPanel(
                 hazeState = hazeState,
                 acik = oturumlarAcik,
@@ -1499,7 +1227,7 @@ internal fun Ui3Root(
                 SpotlightEylem("merkez", "Merkez", "Bento panosu", Icons.Outlined.GridView) {
                     navController.kokeGit(Ui3Area.Merkez.rota)
                 },
-                SpotlightEylem("kullanim", "Kalan kullanım", "Limitler ve RunPod", Icons.Outlined.DataUsage) {
+                SpotlightEylem("kullanim", "Kalan kullanım", "Sağlayıcı limitleri", Icons.Outlined.DataUsage) {
                     acikSheet = Ui3Sheet.KULLANIM
                 },
                 SpotlightEylem("ayarlar", "Ayarlar", "Bağlantı, sağlayıcılar, MCP", Icons.Outlined.Settings) {
@@ -1512,7 +1240,6 @@ internal fun Ui3Root(
             // edilebilir yapmak için yapılan uzun çıkış animasyonu (GlassSheet)
             // tam da bu yüzden ters tepiyordu.
             SheetIcerigi(
-                seritTam = seritTam,
                 kimlik = acikSheet ?: sonSheetKimligi,
                 uiState = uiState,
                 actions = actions,
@@ -1542,47 +1269,6 @@ internal fun Ui3Root(
             )
         }
 
-        // OTURUM PANELİNİN KALICI HÂLİ — geniş ekran (tablet), sohbetteyken.
-        // Açılıp kapanmıyor, perde yok, jest yok: iki panelli yerleşimin sol
-        // yarısı o, kapatma geri bildirimi de yok çünkü kapanmıyor.
-        //
-        // DAR ekranın çekmecesi burada DEĞİL, sheet'lerden ÖNCE (yukarıda) —
-        // gerekçesi orada. Kalıcı panel bilerek burada kaldı: sheet'lerden
-        // sonra çizildiği için perdenin ÜSTÜNDE, yani tablette bir seçici
-        // açılınca sol sütun kararmıyor. Bugünkü davranış bu, korundu.
-        if (oturumPaneliVar) {
-            GlassSurface(
-                hazeState = hazeState,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(
-                        start = UI3_RAIL_ALAN,
-                        top = Ui3Tokens.s8,
-                        bottom = Ui3Tokens.s8,
-                        end = UI3_RAIL_ARA,
-                    )
-                    .width(UI3_OTURUM_PANEL_G)
-                    .fillMaxHeight()
-                    .testTag("oturum_panel"),
-                shape = RoundedCornerShape(Ui3Tokens.r26),
-            ) {
-                Column(Modifier.fillMaxWidth().padding(bottom = Ui3Tokens.s8)) {
-                    OturumCekmecesi(
-                        uiState = uiState,
-                        actions = actions,
-                        acik = true,
-                        // Kalıcı panelde "kapat" yok: seçim yapınca panel
-                        // yerinde kalır, yalnız sağdaki sohbet değişir.
-                        onKapat = {},
-                        onYeniOturum = yeniOturum,
-                        onOturumMenusu = oturumMenusuAc,
-                    )
-                }
-            }
-        }
-
         val uyariBaglami = LocalContext.current
         // Uyarı/hata kutuları: ui3'te parametre `@Suppress("UNUSED_PARAMETER")`
         // ile duruyordu, yani motorun ürettiği her hata sessizce yutuluyordu.
@@ -1591,8 +1277,8 @@ internal fun Ui3Root(
         // EYLEMİ DE BAĞLI (18.08.2026, ui2 kökü taraması): `onAction`
         // varsayılanı boş lambda ve ui3 onu HİÇ geçmiyordu — kutunun tuşu
         // çiziliyor, basınca hiçbir şey olmuyordu. İki üreteni var: kaydedilen
-        // dosyanın "Aç" tuşu (`AppAlertAction.OpenFile`) ve RunPod uyarısının
-        // konsol bağlantısı (`OpenUrl`). Sessizce ölü bir tuş, hata mesajının
+        // dosyanın "Aç" tuşu (`AppAlertAction.OpenFile`) ve bağlantı açan
+        // uyarılar (`OpenUrl`). Sessizce ölü bir tuş, hata mesajının
         // kendisinden beter: kullanıcı bastığını sanıp bekliyor.
         AppAlertHost(
             state = alertHostState,
@@ -1666,7 +1352,6 @@ private fun acikSheetAc(
 ) {
     when (kimlik) {
         Ui3Sheet.MODEL -> backendId?.let { actions.loadBackendInfo(it) }
-        Ui3Sheet.AJAN -> backendId?.let { actions.loadBackendAgents(it) }
         Ui3Sheet.EFFORT -> backendId?.let { actions.loadBackendEfforts(it) }
         Ui3Sheet.IZIN -> backendId?.let { actions.loadBackendPermissionModes(it) }
         Ui3Sheet.SKILL -> backendId?.let { actions.loadBackendSkills(it) }
@@ -1675,19 +1360,8 @@ private fun acikSheetAc(
         // dakikalar içinde değişiyor ve bayat bir liste incelemenin kendisini
         // yanıltır.
         Ui3Sheet.DEGISIKLIKLER -> backendId?.let { actions.loadBackendDiff(it) }
-        // Geri sarma noktaları da açılışta çekiliyor, aynı gerekçeyle: koşu
-        // sürerken liste her turda uzuyor, bayat bir liste yanlış noktaya
-        // geri sardırır.
-        Ui3Sheet.GERI_SAR -> backendId?.let { actions.loadBackendCheckpoints(it) }
-        // Kurallar da açılışta çekiliyor (talimat + izin birlikte; görünüm
-        // iki bölümü aynı anda gösteriyor, ikisi de aç-çek).
-        Ui3Sheet.KURALLAR -> {
-            actions.loadOpencode2Instructions()
-            actions.loadOpencode2SavedPermissions()
-        }
         // KULLANIM BURADA YOK, BİLEREK: yüklemesini ekranın kendisi yapıyor
-        // ([Ui3Kullanim]). Burada dururken Spotlight yolu bu kapıdan geçmediği
-        // için RunPod durumu hiç sorulmuyordu; gerekçenin tamamı orada.
+        // ([Ui3Kullanim]): Spotlight yolu bu kapıdan geçmiyor.
         "ara" -> {
             // Arama sheet'te değil, sohbetin üstünde açılır: sheet'i kapat.
             actions.openChatSearch()
@@ -1798,9 +1472,6 @@ private fun ColumnScope.SheetIcerigi(
     // birlikte geçiyor çünkü kapanış animasyonu sırasında kimlik hâlâ duruyor
     // ama dosya listesi boşalmış olabilir.
     bekleyenPaylasim: PendingShare?,
-    // ⋯ menüsü, composer şeridinde GİZLENENLERİ satır olarak gösteriyor —
-    // yani şeridin ne gösterdiğini bilmesi gerek (bkz. UI3_SERIT_TAM_ESIK).
-    seritTam: Boolean,
 ) {
     if (kimlik == null) return
     val oturum = backendId?.let { uiState.backendSession(it) }
@@ -1833,14 +1504,14 @@ private fun ColumnScope.SheetIcerigi(
 
         Ui3Sheet.MENU -> {
             if (backendId == null) {
-                SheetBasligi("TUR AYARLARI", "Önce bir oturum aç")
+                SheetBasligi("Tur ayarları", "Önce bir oturum aç")
             } else {
                 Ui3TurAyarlariMenusu(
                     uiState = uiState,
                     backendId = backendId,
-                    // Şerit geniş olduğunda Yenile/Kullanım orada zaten
-                    // duruyor; menüde ikinci kez göstermek kopya olurdu.
-                    calisiyor = uiState.running && !seritTam,
+                    modelEtiketi = oturum?.let {
+                        shortModelLabel(it.model.ifBlank { it.defaultModel })
+                    }.orEmpty(),
                     yenileniyor = uiState.conversationRefreshing,
                     // Yenile şeritteki tuşla aynı eylem; menü kapanır ki
                     // yenilenen sohbet görünsün.
@@ -1859,7 +1530,6 @@ private fun ColumnScope.SheetIcerigi(
                         uiState.running &&
                         ui3MetinGonderilebilir(uiState) &&
                         // Bu satır KUYRUK yolu (tur bitince işle) — steer değil.
-                        // OpenCode'da yalnız bu var, o yüzden ayrı sorulur.
                         uiState.midTurnQueueSupported() &&
                         uiState.attachments.isEmpty()
                     ) ({
@@ -1882,36 +1552,8 @@ private fun ColumnScope.SheetIcerigi(
 
         Ui3Sheet.MODEL -> if (backendId != null) {
             val ham = uiState.backendModelOptions(backendId)
-            // RunPod hapının yeri BURASI (25.08.2026, kullanıcı: eski yeri
-            // "eğreti"ydi). Pod'u açma isteği RunPod'i SEÇERKEN doğuyor; hap
-            // da o satırın altında duruyor. Yalnız opencode'da: pod o
-            // backend'in modelini barındırıyor.
-            val runpodVar = backendId == "opencode2-app"
-            if (runpodVar) {
-                val runpod = uiState.opencode.runpod
-                val rpMesgul = runpod.operationActive ||
-                    runpod.phase == "starting" ||
-                    runpod.phase == "stopping"
-                // DURUM SHEET'İN KENDİ İŞİ, açan kapının değil — Ui3Kullanim'da
-                // öğrenilen dersin aynısı: `acikSheetAc` tek yol değil, oradan
-                // geçmeyen bir açılış eklenince hap bayat durumla çizilirdi.
-                LaunchedEffect(Unit) { actions.refreshRunPodStatus(showErrors = false) }
-                // Geçiş sürerken tazele: köprü tarafındaki iş sekiz dakika
-                // sürebiliyor ve uygulama runpod'i aksi halde kendiliğinden
-                // yoklamıyor — hap "başlıyor"da takılı kalırdı. Geçiş bitince
-                // anahtar değişir, döngü iptal olur (ui2/ui3'teki döngünün aynısı).
-                LaunchedEffect(rpMesgul) {
-                    if (rpMesgul) {
-                        while (true) {
-                            kotlinx.coroutines.delay(3000)
-                            actions.refreshRunPodStatus(showErrors = false)
-                        }
-                    }
-                }
-            }
-            val runpodKonsolu = LocalUriHandler.current
             Ui3Selector(
-                baslik = "MODEL SEÇ",
+                baslik = "Model seç",
                 secenekler = ham.map { SelectorOption(it.id, it.label, it.detail.ifBlank { null }) },
                 seciliDeger = oturum?.model,
                 yukleniyor = ham.isEmpty(),
@@ -1919,59 +1561,18 @@ private fun ColumnScope.SheetIcerigi(
                 pinKapsam = "backend-model:$backendId",
                 bicim = Ui3SecenekBicimi.Model,
                 onSec = { actions.setBackendModel(backendId, it); onKapat() },
-                satirAlti = if (!runpodVar) null else ({ modelId ->
-                    // Hap SEÇMİYOR, yalnız pod'u sürüyor: pod açılması dakikalar
-                    // alıyor ve modeli hazır olmadan seçmek turu kapalı bir
-                    // sunucuya gönderirdi. Satıra dokunmak seçer, hap açar.
-                    if (!isRunPodModel(modelId)) null else ({
-                        Ui3RunPodTusu(
-                            durum = uiState.opencode.runpod,
-                            onTikla = {
-                                when (runPodPillAction(uiState.opencode.runpod)) {
-                                    "stop" -> actions.stopRunPod()
-                                    "connect" -> actions.startRunPod()
-                                    // Pod kapalıyken API'den AÇMIYORUZ: GPU dolu /
-                                    // migrate kararı kullanıcıda. Konsola çıkar, elle
-                                    // açıp dönünce hap "bağlan"a döner (ui2'deki kural).
-                                    else -> runCatching {
-                                        runpodKonsolu.openUri("https://console.runpod.io/pods")
-                                    }
-                                }
-                            },
-                        )
-                    })
-                }),
             )
         }
 
         Ui3Sheet.IZIN -> if (backendId != null) {
             val ham = uiState.backendPermissionModeOptions(backendId)
             Ui3Selector(
-                baslik = "İZİN MODU",
+                baslik = "İzin modu",
                 secenekler = ham.map { SelectorOption(it.id, it.label, it.detail.ifBlank { null }) },
                 seciliDeger = oturum?.permissionMode,
                 yukleniyor = ham.isEmpty(),
                 onGeri = geriMenuye,
                 onSec = { actions.setBackendPermissionMode(backendId, it); onKapat() },
-            )
-        }
-
-        Ui3Sheet.AJAN -> if (backendId != null) {
-            val ham = uiState.backendAgentOptions(backendId)
-            Ui3Selector(
-                baslik = "AJAN SEÇ",
-                altBaslik = "Turu hangi ajan koşacak; kendi modeli olan ajan seçilince model de değişir",
-                secenekler = ham.map { SelectorOption(it.id, it.label, it.detail.ifBlank { null }) },
-                // v1/v2 ayri durum ailesi: sabit `opencode` v2 sekmesinde
-                // yanlis secimi isaretlerdi.
-                seciliDeger = uiState.opencodeFamily(backendId).agent,
-                // "otomatik" tek başına dolu liste değil: gerçek ajanlar gelene
-                // kadar yükleniyor göster.
-                yukleniyor = ham.size <= 1,
-                detayMaksSatir = 3,
-                pinKapsam = "backend-agent:$backendId",
-                onGeri = geriMenuye,
-                onSec = { actions.setBackendAgent(backendId, it); onKapat() },
             )
         }
 
@@ -1985,7 +1586,7 @@ private fun ColumnScope.SheetIcerigi(
                 .map { SelectorOption(it.id, it.label, it.detail.ifBlank { null }) }
             if (ui3CabaMerdiveniUygun(basamaklar.size)) {
                 Ui3CabaMerdiveni(
-                    baslik = "ÇABA",
+                    baslik = "Çaba",
                     altBaslik = null,
                     varsayilan = varsayilan,
                     basamaklar = basamaklar,
@@ -1996,7 +1597,7 @@ private fun ColumnScope.SheetIcerigi(
             } else {
                 // Olcek sayilmayacak kadar az kademe (ya da hic): eski liste.
                 Ui3Selector(
-                    baslik = "ÇABA SEÇ",
+                    baslik = "Çaba seç",
                     secenekler = ham.map { SelectorOption(it.id, it.label, it.detail.ifBlank { null }) },
                     seciliDeger = oturum?.effort,
                     yukleniyor = ham.isEmpty(),
@@ -2011,10 +1612,8 @@ private fun ColumnScope.SheetIcerigi(
         // yoldan gelirse (Spotlight, geri hedefi) sheet'in boş kalmaması için
         // aynı koşulu tekrar sınıyor.
         Ui3Sheet.DEGISIKLIKLER -> if (backendId != null && uiState.backendDiffSupported(backendId)) {
-            // Kutu backend'e göre seçiliyor (`backendDiff`), doğrudan
-            // `uiState.opencode.diff` OKUNMUYOR: bu ekran iki backend'de
-            // ortak ve sabit kutu, codex sekmesinde satırı görünür ama sheet'i
-            // sonsuza dek boş bırakırdı.
+            // Kutu backend'e göre seçiliyor (`backendDiff`): sabit bir kutu,
+            // başka sekmede satırı görünür ama sheet'i boş bırakırdı.
             Ui3Degisiklikler(
                 diff = uiState.backendDiff(backendId),
                 yukleniyor = uiState.backendDiffLoading(backendId),
@@ -2022,96 +1621,22 @@ private fun ColumnScope.SheetIcerigi(
             )
         }
 
-        // OTURUM KURALLARI (yalnız v2) — talimat + izin tek sheet'te. Menüdeki
-        // satırla aynı koşul burada da: kimlik başka yoldan gelirse (Spotlight,
-        // geri hedefi) sheet boş kalmasın; v1'de uç yok.
-        Ui3Sheet.KURALLAR -> if (backendId == com.agent.bridge.Backend.OPENCODE2_APP.id) {
-            Ui3Kurallar(
-                instructions = uiState.opencode.instructions,
-                instructionsLoading = uiState.opencode.instructionsLoading,
-                savedPermissions = uiState.opencode.savedPermissions,
-                savedPermissionsLoading = uiState.opencode.savedPermissionsLoading,
-                onTalimatEkle = { anahtar, deger -> actions.putOpencode2Instruction(anahtar, deger) },
-                onTalimatSil = { actions.deleteOpencode2Instruction(it) },
-                onIzinSil = { actions.deleteOpencode2SavedPermission(it) },
-                onGeri = geriMenuye,
-            )
-        }
-
-        // GERİ SAR — kimlikli bir noktaya dönüş. Menüdeki satırla AYNI koşul
-        // burada da sınanıyor: kimlik başka bir yoldan gelirse (Spotlight, geri
-        // hedefi) sheet boş kalmasın. Sheet onaydan sonra kapanıyor; şerit ve
-        // "Geri Al" sohbetin üstünde yaşamaya devam ediyor.
-        Ui3Sheet.GERI_SAR -> if (backendId != null && uiState.backendRevertSupported(backendId)) {
-            Ui3GeriSar(
-                // Sabit v1 kutusu OKUNMUYOR: opencode2 sekmesinde satir
-                // gorunur, liste sonsuza dek bos kalirdi (diff'te ogrenilen
-                // kural, bkz. Ui3MenuYonlendirmeTest).
-                noktalar = uiState.opencodeFamily(backendId).checkpoints,
-                yukleniyor = uiState.opencodeFamily(backendId).checkpointsLoading,
-                calisiyor = uiState.running,
-                onGeriSar = { actions.revertBackendToMessage(backendId, it); onKapat() },
-                onGeri = geriMenuye,
-            )
-        }
-
-        // PAYLAŞ — oturumu herkese açık bir linkte yayınlama. Menüdeki satırla
-        // AYNI koşul burada da sınanıyor: kimlik başka bir yoldan gelirse
-        // (Spotlight, geri hedefi) sheet boş kalmasın. `acikSheetAc`'ta yükleme
-        // dalı YOK, bilerek — paylaşım durumu snapshot'la (META_KEYS `share`)
-        // zaten akıyor, ayrı bir istek bayat bir ikinci kaynak yaratırdı.
-        Ui3Sheet.OTURUM_PAYLAS -> if (backendId != null && uiState.backendShareSupported(backendId)) {
-            Ui3OturumPaylas(
-                link = uiState.opencode.share,
-                onPaylas = { onLink -> actions.shareBackendSession(backendId, onLink) },
-                onKaldir = { actions.unshareBackendSession(backendId); onKapat() },
-                onGeri = geriMenuye,
-            )
-        }
-
-        // AGENTS.md — onaydan sonra sheet KAPANIYOR: başlayan şey normal bir tur
-        // ve kullanıcı onu sohbette görmeli, açık bir onay ekranının arkasında
-        // değil.
-        Ui3Sheet.AGENTS_INIT -> if (backendId != null && uiState.backendAgentsInitSupported(backendId)) {
-            Ui3AgentsInit(
-                calisiyor = uiState.running,
-                onBaslat = { actions.initBackendAgentsFile(backendId); onKapat() },
-                onGeri = geriMenuye,
-            )
-        }
-
-        // ALT AJAN — kart yığınından açılan salt-okunur konuşma. Menüde satırı
-        // YOK (hangi ajan olduğu ancak kartta seçilebiliyor), ama koşul yine de
-        // sınanıyor: kimlik başka bir yoldan gelirse sheet boş kalmasın.
-        // "Geri" MENÜYE değil KAPATMAYA gidiyor — bu sheet menüden açılmadı,
-        // kullanıcıyı hiç girmediği bir menüye bırakmak yön kaybettirirdi.
-        Ui3Sheet.ALT_AJAN -> if (backendId != null && uiState.backendSubagentsSupported(backendId)) {
-            Ui3AltAjanSohbeti(
-                transcript = uiState.opencode.subagentTranscript,
-                yukleniyor = uiState.opencode.subagentTranscriptLoading,
-                onGeri = onKapat,
-            )
-        }
-
         // BAĞLAM AYRINTISI — adaya dokununca (yalnız geniş yerleşimde) açılıyor.
         // Menüde satırı YOK, o yüzden "Geri" menüye değil KAPATMAYA gidiyor:
-        // kullanıcı hiç girmediği bir menüye bırakılmamalı (ALT_AJAN'daki
-        // kararın aynısı). Yüzde adayla AYNI fonksiyondan geliyor — iki
+        // kullanıcı hiç girmediği bir menüye bırakılmamalı. Yüzde adayla AYNI fonksiyondan geliyor — iki
         // gösterge farklı sayı söylemesin.
         Ui3Sheet.BAGLAM -> if (!BuildConfig.IS_LITE) Ui3BaglamAyrintisi(
             yuzde = adaBaglamYuzdesi(
-                opencodeAktif = uiState.opencodeAktif,
-                contextPct = uiState.opencode.contextPct,
                 contextTokens = uiState.contextTokens,
                 contextWindow = uiState.contextWindow,
             ),
             tokenlar = uiState.contextTokens,
             pencere = uiState.contextWindow,
             calisiyor = uiState.running,
-            // Sıkıştırma ucu yalnız opencode'da var; başka backend'de tuşu
-            // göstermek çalışmayan bir düğme sunmak olurdu.
-            sikistirilabilir = uiState.opencodeAktif,
-            onSikistir = { actions.opencodeAppCompact(); onKapat() },
+            // Sıkıştırma tuşu köprüde bir uca bağlı değil; Codex/OMP'de
+            // sıkıştırma composer'daki /compact ile yapılıyor.
+            sikistirilabilir = false,
+            onSikistir = onKapat,
             onGeri = onKapat,
         )
 
@@ -2123,7 +1648,7 @@ private fun ColumnScope.SheetIcerigi(
                 if (backendId == "cowork") uiState.coworkProvider else backendId
             )
             Ui3SkillListesi(
-                baslik = "KURULU SKILL'LER",
+                baslik = "Kurulu skill'ler",
                 altBaslik = "$saglayici · ${skiller.size} skill",
                 skiller = skiller.map {
                     SelectorOption(it.id, it.label, it.detail.ifBlank { null }, gruplar[it.id])
@@ -2134,7 +1659,7 @@ private fun ColumnScope.SheetIcerigi(
         }
 
         Ui3Sheet.SAGLAYICI -> Ui3Selector(
-            baslik = "COWORK SAĞLAYICISI",
+            baslik = "Cowork sağlayıcısı",
             altBaslik = "Çalışma alanında hangi ajanla konuşulacağını seçer",
             secenekler = COWORK_PROVIDER_OPTIONS.map { SelectorOption(it.id, it.label) },
             seciliDeger = normalizeCoworkProvider(uiState.coworkProvider),
@@ -2174,7 +1699,7 @@ private fun ColumnScope.SheetIcerigi(
         // alta iki geniş şerit olunca sheet boş ve resmî duruyordu. İkisi
         // birbirinin alternatifi olduğu için yan yana kart doğru biçim.
         Ui3Sheet.EK_KAYNAK -> Ui3IkiliSecim(
-            baslik = "DOSYA NEREDEN?",
+            baslik = "Dosya nereden?",
             altBaslik = "Telefondaki dosya köprüye yüklenir, bilgisayardaki yalnız yol olarak eklenir",
             sol = SelectorOption("telefon", "Telefondan", "Galeri veya dosya yöneticisi"),
             solIkon = Icons.Outlined.Smartphone,
@@ -2204,7 +1729,7 @@ private fun ColumnScope.SekmeMenusu(
     val sekmeler = uiState.visibleTabs
     val indeks = sekmeler.indexOfFirst { it.id == sekmeId }
     if (sekmeId == null || indeks < 0) {
-        SheetBasligi("SEKME İŞLEMLERİ", "Sekme bulunamadı")
+        SheetBasligi("Sekme işlemleri", "Sekme bulunamadı")
         return
     }
     val secenekler = buildList {
@@ -2214,7 +1739,7 @@ private fun ColumnScope.SekmeMenusu(
         if (indeks < sekmeler.size - 1) add(SelectorOption("move_right", "Sağa taşı"))
     }
     Ui3Selector(
-        baslik = "SEKME İŞLEMLERİ",
+        baslik = "Sekme işlemleri",
         secenekler = secenekler,
         onSec = { eylem ->
             onKapat()
@@ -2339,7 +1864,7 @@ private fun ColumnScope.OturumMenusu(
         add(SelectorOption("delete", "Sil"))
     }
     Ui3Selector(
-        baslik = "OTURUM İŞLEMLERİ",
+        baslik = "Oturum işlemleri",
         altBaslik = oturum.title.ifBlank { oturum.id.take(8) },
         secenekler = secenekler,
         onSec = { secim ->
@@ -2387,7 +1912,7 @@ private fun ColumnScope.OturumAdi(
     val odak = remember { FocusRequester() }
     LaunchedEffect(oturum.id) { odak.requestFocus() }
 
-    SheetBasligi("YENİDEN ADLANDIR", oturum.id.take(8))
+    SheetBasligi("Yeniden adlandır", oturum.id.take(8))
     Column(
         Modifier.fillMaxWidth().padding(horizontal = Ui3Tokens.s20),
         verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s12),

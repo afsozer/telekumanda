@@ -98,7 +98,7 @@ export async function apiPost<T>(
 
 /**
  * Kimlik doğrulamalı DELETE. Gövde taşınabilir — köprünün router.mjs'i
- * DELETE'te de body() okuyor (opencode2 talimat silme: {sessionId, key}).
+ * DELETE'te de body() okuyor.
  * fetch'in delete() yöntemi gövdeyi destekliyor; tarayıcılar gönderiyor,
  * sunucu tarafında da okunuyor (ölçüldü 26.09.2026).
  */

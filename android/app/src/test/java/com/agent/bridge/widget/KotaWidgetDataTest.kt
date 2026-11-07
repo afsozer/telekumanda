@@ -24,7 +24,8 @@ class KotaWidgetDataTest {
           {"name":"Codex","source":"codex","buckets":[{"id":"codex-primary","label":"Son 5 saat","remainingFraction":1}]},
           {"name":"Nano-GPT","source":"nanogpt","description":"Resmi Nano-GPT API bakiyesi.",
            "buckets":[{"id":"nanogpt-balance","label":"Kalan bakiye","value":"$3.74","remainingFraction":0.3736,
-             "metered":true,"creditUsd":3.74,"todaySpendUsd":0.0469,"todayRequests":39}]}
+             "metered":true,"creditUsd":3.74,"todaySpendUsd":0.0469,"todayRequests":39,
+             "windowSpendUsd":10.7664,"windowRequests":885,"windowDays":3,"dailySpendUsd":[2.7301,0,0.0469]}]}
         ],"note":"","updatedAt":"2026-10-05T10:18:16.000Z"}
     """.trimIndent()
 
@@ -43,6 +44,10 @@ class KotaWidgetDataTest {
         assertEquals(3.74, nano.usd, 0.0001)
         assertEquals(0.0469, nano.todaySpendUsd!!, 0.00001)
         assertEquals(39, nano.todayRequests)
+        assertEquals(10.7664, nano.windowSpendUsd!!, 0.00001)
+        assertEquals(885, nano.windowRequests)
+        assertEquals(listOf(2.7301, 0.0, 0.0469), nano.dailySpendUsd)
+        assertEquals("3 gün · $10,77 · 885 istek", KotaWidgetData.nanoWindowLine(nano))
         assertEquals(Instant.parse("2026-10-05T10:18:16Z"), s.measuredAt)
     }
 
@@ -56,10 +61,11 @@ class KotaWidgetDataTest {
         val nano = s.nano!!
         assertNull(nano.todaySpendUsd)
         assertNull(nano.todayRequests)
+        assertNull(nano.dailySpendUsd)
         assertEquals(received, s.measuredAt)
         assertTrue(KotaWidgetData.nanoOverflow(nano))
         assertEquals(KotaTone.OVERFLOW, KotaWidgetData.nanoTone(nano))
-        assertEquals("10 $ ölçeğin üstünde", KotaWidgetData.nanoBottomLine(nano))
+        assertEquals("10 $ ölçeğin üstünde", KotaWidgetData.nanoScaleLine(nano))
     }
 
     @Test
@@ -87,9 +93,12 @@ class KotaWidgetDataTest {
     fun `labels and money are formatted like the Mac card`() {
         assertEquals("$3,74", KotaWidgetData.usdLabel(3.736))
         assertEquals("$124", KotaWidgetData.usdLabel(123.6))
-        assertEquals("bugün $0,05 · 39 istek", KotaWidgetData.nanoBottomLine(KotaNano(3.74, 0.0469, 39)))
-        assertEquals("Fable", KotaWidgetData.compactLabel("7 gün (Fable)"))
-        assertEquals("Fable", KotaWidgetData.compactLabel("7 gün · Fable"))
+        assertEquals("2,22", KotaWidgetData.usdNumber(2.221))
+        assertEquals("bugün · 39 istek", KotaWidgetData.nanoTodayCaption(KotaNano(3.74, 0.0469, 39)))
+        assertEquals("10 $ ölçeğinde %37", KotaWidgetData.nanoScaleLine(KotaNano(3.74, null, null)))
+        assertEquals("son 30 gün", KotaWidgetData.nanoWindowLine(KotaNano(3.74, null, null)))
+        assertEquals("Mythos", KotaWidgetData.compactLabel("7 gün (Mythos)"))
+        assertEquals("Mythos", KotaWidgetData.compactLabel("7 gün · Mythos"))
         assertEquals("7 gün", KotaWidgetData.compactLabel("Son 7 gün"))
     }
 
@@ -100,6 +109,20 @@ class KotaWidgetDataTest {
         assertEquals("17:59", KotaWidgetData.resetLabel(Instant.parse("2026-10-05T14:59:59Z"), now, zone))
         assertEquals("Cum 08:00", KotaWidgetData.resetLabel(Instant.parse("2026-10-09T05:00:00Z"), now, zone))
         assertEquals("yenilendi", KotaWidgetData.resetLabel(Instant.parse("2026-10-05T10:00:00Z"), now, zone))
+    }
+
+    @Test
+    fun `time left marker follows the window length from the label`() {
+        val now = Instant.parse("2026-10-17T20:00:00Z")
+        assertEquals(18_000L, KotaWidgetData.windowSeconds("Son 5 saat"))
+        assertEquals(604_800L, KotaWidgetData.windowSeconds("7 gün (Mythos)"))
+        assertNull(KotaWidgetData.windowSeconds("Kredi"))
+        // 50 dk kaldı: 5 saatin %16,7'si.
+        val fiveHour = KotaBucket("claude-5h", "Son 5 saat", 64.0, Instant.parse("2026-10-17T20:50:00Z"))
+        assertEquals(16.67, KotaWidgetData.timeLeftPercent(fiveHour, now)!!, 0.01)
+        // Geçmiş yenilenme 0'da, süresiz kova çizgisiz.
+        assertEquals(0.0, KotaWidgetData.timeLeftPercent(fiveHour, Instant.parse("2026-10-17T21:00:00Z"))!!, 0.0)
+        assertNull(KotaWidgetData.timeLeftPercent(KotaBucket("x", "Son 7 gün", 50.0, null), now))
     }
 
     @Test

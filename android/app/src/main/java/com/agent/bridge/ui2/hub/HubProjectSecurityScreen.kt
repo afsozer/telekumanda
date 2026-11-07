@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.agent.bridge.RemoteUiState
 import com.agent.bridge.RemoteViewModel
+import com.agent.bridge.coworkProviderLabel
 import com.agent.bridge.ui2.components.ConfirmDialog
 import com.agent.bridge.ui2.components.EmptyState
 import com.agent.bridge.ui2.components.LoadingSkeleton
@@ -74,7 +75,7 @@ fun HubProjectSecurityScreen(
     }
     var confirmFullAccess by remember(project.id) { mutableStateOf(false) }
 
-    val mcpProviders = detail.sessions.map { it.backend }.filter { it == "codex-app" || it == "opencode2-app" }.distinct()
+    val mcpProviders = detail.sessions.map { it.backend }.filter { it == "codex-app" }.distinct()
     var mcpProviderIndex by remember(project.id, detail.mcpProfile.provider, mcpProviders) {
         mutableStateOf(mcpProviders.indexOf(detail.mcpProfile.provider).coerceAtLeast(0))
     }
@@ -157,12 +158,12 @@ fun HubProjectSecurityScreen(
                         color = Ui2.colors.danger,
                     )
                     SegmentedTabs(
-                        options = mcpProviders.map { if (it == "codex-app") "Codex" else "OpenCode" },
+                        options = mcpProviders.map { coworkProviderLabel(it) },
                         selectedIndex = mcpProviderIndex,
                         onSelect = { mcpProviderIndex = it },
                     )
                     Text(
-                        "Yalnız bu projede CANLI oturumu olan ve proje profili destekleyen sağlayıcılar (Codex/OpenCode) listelenir. Claude ve Antigravity MCP'si globaldir: Ayarlar > MCP sunucuları.",
+                        "Yalnız bu projede CANLI oturumu olan ve proje profili destekleyen sağlayıcı (Codex) listelenir. Claude ve Antigravity MCP'si globaldir: Ayarlar > MCP sunucuları.",
                         style = MaterialTheme.typography.labelSmall,
                         color = Ui2.colors.ink3,
                     )
@@ -220,7 +221,7 @@ fun HubProjectSecurityScreen(
     if (confirmMcpApply) {
         ConfirmDialog(
             title = "Global MCP ayarı değişsin mi?",
-            text = "Bu proje profili ${if (mcpProvider == "codex-app") "Codex" else "OpenCode"} global config'ini değiştirir ve diğer projeleri de etkileyebilir.",
+            text = "Bu proje profili ${coworkProviderLabel(mcpProvider)} global config'ini değiştirir ve diğer projeleri de etkileyebilir.",
             confirmLabel = "Global ayarı uygula",
             destructive = false,
             onConfirm = {

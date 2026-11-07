@@ -68,7 +68,7 @@ class AgyDelegate(
         // `lastAgySessionId` ARTIK otomatik bağlanma kaynağı DEĞİL. Eskiden burada
         // o okunuyordu ve "Yeni oturum"da Antigravity çipine dokunmak — daha Başlat'a
         // basmadan — en son agy oturumunu açıyordu (kullanıcı bildirdi 25.08.2026).
-        // Diğer dört backend bu kurala zaten geçmişti (claude/codex/opencode/omp).
+        // Diğer üç backend bu kurala zaten geçmişti (claude/codex/omp).
         val pendingState = state()
         val prior = pendingState.pendingBindSessionId
             .takeIf { pendingState.pendingBindBackend == "agy" }.orEmpty()
@@ -198,7 +198,7 @@ class AgyDelegate(
         agyPollJob?.cancel()
         agyPollJob = scope.launch {
             while (isActive && state().backend == "agy") {
-                delay(2_500)
+                if (!SohbetYoklamasi.siradakiTur { state().wsConnected }) continue
                 val sid = state().agySessionId
                 if (sid.isBlank()) continue
                 runCatching { client.agyConversation(state().settings, sid) }

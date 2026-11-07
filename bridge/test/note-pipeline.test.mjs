@@ -125,9 +125,9 @@ describe('paylasimdan not boru hatti', () => {
     const send = async (extras, opts) => { sent.push({ extras, opts }); return [{ serial: PHONE, ok: true }]; };
     const extract = modeliKur(
       shareDir,
-      '{"tur":"bilgi","baslik":"Yazılım lisans sözleşmesi","tarih_saat":"2026-07-22T00:00:00+03:00",'
+      '{"tur":"bilgi","baslik":"AKINSOFT Wolvox sözleşmesi","tarih_saat":"2026-07-22T00:00:00+03:00",'
         + '"alinti":"Sözleşme Tarihi: 22.07.2026","aciklama":"fiyat teklifi",'
-        + '"metin":"Toplam Tutarı: 1.000,00 TL","etiketler":["sözleşme"]}',
+        + '"metin":"Toplam Tutarı: 4.492,80 TL","etiketler":["sözleşme"]}',
     );
     const reminders = createReminders({
       notesDir, send, targets: [PHONE],

@@ -17,7 +17,6 @@ internal fun offlineConversationKey(state: RemoteUiState): OfflineConversationKe
         "agy" -> state.agySessionId
         "claude-app" -> state.claudeAppSessionId
         "codex-app" -> state.codexAppSessionId
-        "opencode2-app" -> state.opencode.sessionId
         "omp" -> state.ompSessionId
         else -> ""
     }

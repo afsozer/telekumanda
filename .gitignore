@@ -34,7 +34,6 @@ capsule-test/notif*.txt
 # Node / Bridge
 node_modules/
 bridge/pi-tmp/
-bridge/opencode-tmp/
 bridge/agy-tmp/
 bridge/chatgpt-planner-tmp/
 bridge/claude-tmp/
@@ -77,11 +76,6 @@ bridge/config.json
 # Elle alınan yedekler (config.json.yedek-…) da aynı sırları taşıyor.
 # `config.example.json` bu desene takılmaz, izlenmeye devam eder.
 bridge/config.json.*
-
-# Makineye ozel model kataloglari: hangi checkpoint/GGUF'lar indirili, dosya
-# adlari, yollari ve aciklamalari. Kod degil YAPILANDIRMA — repoya girmez.
-# Sablonu: bridge/image-models.example.json
-bridge/image-models.json
 
 # Seçici sabitlemeleri (yıldızlar): cihazlar arası sync köprüde saklanır;
 # kişiseldir ama sır değildir. Kod değil durum — repoya girmez.
@@ -128,3 +122,12 @@ bridge/data/
 AGENTS.md
 CLAUDE.md
 
+# Kok dizinde birakilan tek seferlik deney/olcum betikleri (baska projelerin
+# isi, makineye ozel yollar). Diskte durabilir, repoya girmez.
+/*.py
+/*.ps1
+/*.pid
+/*.patch
+/*.bak-*
+/mesaj.txt
+/split/

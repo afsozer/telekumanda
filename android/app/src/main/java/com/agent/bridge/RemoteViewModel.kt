@@ -90,7 +90,8 @@ private const val IMAGE_CACHE_BYTES = 96 * 1024 * 1024
 // önbelleğini sessizce doldurur.
 internal const val MAX_PDF_BYTES: Long = 300L * 1024 * 1024
 
-// Video da diske iniyor; sınır gezginden açılan çekim dosyaları için var.
+// Video da diske iniyor. Yerel LTX çıktıları birkaç yüz KB; sınır gezginden
+// açılan çekim dosyaları için var.
 internal const val MAX_VIDEO_BYTES: Long = 300L * 1024 * 1024
 
 // Tablo PDF/videodan farklı: diske iniyor AMA sonra tümüyle ayrıştırılıyor, yani
@@ -343,16 +344,13 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     // çağrı yeri var; tipini değiştirmek yerine yanına ikinci bir kanal kondu.
     private val _alerts = MutableSharedFlow<AppAlert>()
     val alerts: SharedFlow<AppAlert> = _alerts.asSharedFlow()
-    private val _approvalNavigationNonce = MutableStateFlow(0L)
-    val approvalNavigationNonce: StateFlow<Long> = _approvalNavigationNonce.asStateFlow()
-
-    // Dışarıdan .md açılınca görüntüleyiciye geç (onay navigasyonuyla aynı desen).
+    // Dışarıdan .md açılınca görüntüleyiciye geç.
     private val _fileViewerNavigationNonce = MutableStateFlow(0L)
     val fileViewerNavigationNonce: StateFlow<Long> = _fileViewerNavigationNonce.asStateFlow()
 
     fun requestOpenFileViewer() = _fileViewerNavigationNonce.update { it + 1 }
 
-    // Hatırlatıcı bildiriminden not açma (onay/dosya navigasyonuyla aynı desen).
+    // Hatırlatma bildiriminden not açma (dosya navigasyonuyla aynı desen).
     private val _noteNavigationNonce = MutableStateFlow(0L)
     val noteNavigationNonce: StateFlow<Long> = _noteNavigationNonce.asStateFlow()
 
@@ -437,15 +435,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         emit = { msg -> _messages.emit(msg) },
         reportError = { prefix, error -> reportError(prefix, error) },
         awaitForeground = { AppForeground.isForeground.first { it } },
-        onRunPodCapacityError = { message ->
-            _alerts.emit(
-                AppAlert(
-                    text = message,
-                    action = AppAlertAction.OpenUrl("https://console.runpod.io/pods"),
-                    actionLabel = "RunPod'u aç",
-                ),
-            )
-        },
     )
     private val updateDelegate = UpdateDelegate(
         client = client,
@@ -468,8 +457,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         enterAgyMode = { enterAgyMode() },
         enterClaudeAppMode = { enterClaudeAppMode() },
         enterCodexAppMode = { enterCodexAppMode() },
-        enterOpencodeAppMode = { enterOpencodeAppMode() },
-        enterOpencode2AppMode = { enterOpencode2AppMode() },
         enterOmpMode = { enterOmpMode() },
         enterCoworkMode = { enterCoworkMode() },
         onTabsChanged = {
@@ -511,8 +498,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         refreshSession = { refreshSession() },
         applyConversation = { conversation -> applyConversation(conversation) },
         refreshAll = { refreshAll() },
-        refreshRunPodStatus = { showErrors -> maintenanceDelegate.refreshRunPodStatus(showErrors) },
-        syncRunPodStatus = { maintenanceDelegate.syncRunPodStatusSilently() },
         syncActiveTab = { backend, provider, sid, title -> tabsDelegate.syncActiveTab(backend, provider, sid, title) },
     )
     private val claudeAppDelegate: ClaudeAppDelegate = ClaudeAppDelegate(
@@ -545,13 +530,9 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         thoughtDetails = _thoughtDetails,
         openSocket = { provider, sid -> openCoworkSocket(provider, sid) },
         startCodexAppPolling = { providerLifecycleDelegate.startCodexPolling() },
-        startOpencodeAppPolling = { providerLifecycleDelegate.startOpencodePolling() },
-        startOpencode2Polling = { providerLifecycleDelegate.startOpencodePolling(Backend.OPENCODE2_APP.id) },
         startOmpPolling = { providerLifecycleDelegate.startOmpPolling() },
         startClaudeAppPolling = { claudeAppDelegate.startClaudeAppPolling() },
         loadCodexAppInfo = { loadCodexAppInfo() },
-        loadOpencodeAppInfo = { loadOpencodeAppInfo() },
-        loadOpencode2Info = { opencode2ActionsDelegate.loadInfo() },
         loadOmpInfo = { loadOmpInfo() },
         loadClaudeAppInfo = { loadClaudeAppInfo() },
         refreshConversation = { showErrors -> refreshConversation(showErrors) },
@@ -653,32 +634,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         loadDiskSessions = { providerLifecycleDelegate.loadCodexDiskSessions() },
         onSessionRenamed = { id, title -> tabsDelegate.renameSessionTitle("codex-app", "", id, title) },
     )
-    // OpenCode (v2). v1 delegesi (opencodeAppActionsDelegate) 30.09.2026'da
-    // SOKULDU: v1 backend'i koprude yok. Sinif ayni kaldi, backendId tek.
-    private val opencode2ActionsDelegate: OpencodeAppActionsDelegate = OpencodeAppActionsDelegate(
-        client = client,
-        scope = viewModelScope,
-        state = { _uiState.value },
-        update = { mutator -> _uiState.update(mutator) },
-        emit = { msg -> _messages.emit(msg) },
-        reportError = { prefix, error -> reportError(prefix, error) },
-        clearThoughts = { _thoughtDetails.value = emptyMap() },
-        openSocket = { sessionId -> streamManager.open("opencode2-app", sessionId, _uiState.value.settings) },
-        startPolling = { providerLifecycleDelegate.startOpencodePolling() },
-        refreshConversation = { showErrors -> refreshConversation(showErrors) },
-        syncActiveTab = { sessionId, cwd, model ->
-            tabsDelegate.syncActiveTab("opencode2-app", "", sessionId, generateTabTitle("opencode2-app", "", cwd, model))
-        },
-        onSessionRenamed = { id, title -> tabsDelegate.renameSessionTitle("opencode2-app", "", id, title) },
-        backendId = Backend.OPENCODE2_APP.id,
-    )
-    // OpenCode delegesi. Oturum uzerinde calisan butun aksiyonlar (model, onay,
-    // ajan, durdur) bundan gecer. DIKKAT: `val x: Sinif` bildirimi olarak kalmali —
-    // DelegateReachabilityTest aliciyi bu bildirimden taniyor, fonksiyon donusunu
-    // goremiyor (v1/v2 yan yana dururken bu bir property idi, artik dogrudan).
-    private val ocDelegate: OpencodeAppActionsDelegate
-        get() = opencode2ActionsDelegate
-
     private val ompActionsDelegate: OmpActionsDelegate = OmpActionsDelegate(
         client = client,
         scope = viewModelScope,
@@ -722,7 +677,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             .takeIf { id -> id.isNotBlank() && _uiState.value.visibleTabs.any { it.id == id } }
             ?.let { tabsDelegate.activateTab(it, notifyIfDead = false) }
             ?: viewModelScope.launch { tabsDelegate.refreshTabStatuses() }
-        syncNotificationService()
         viewModelScope.launch {
             streamManager.isConnected.collect { connected ->
                 _uiState.update { it.copy(wsConnected = connected) }
@@ -859,7 +813,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             viewModelScope.launch { tabsDelegate.refreshTabStatuses() }
             refreshAll()
         }
-        syncNotificationService()
     }
 
     fun startDevicePairing() = viewModelScope.launch {
@@ -904,7 +857,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             "agy" -> exitAgyMode()
             "claude-app", "cowork" -> exitClaudeAppMode()
             "codex-app" -> exitCodexAppMode()
-            "opencode2-app" -> exitOpencode2AppMode()
             "omp" -> exitOmpMode()
             // null (zaten landing'de) — no-op.
         }
@@ -927,7 +879,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             "agy" -> enterAgyMode()
             "claude-app" -> enterClaudeAppMode()
             "codex-app" -> enterCodexAppMode()
-            "opencode2-app" -> enterOpencode2AppMode()
             "omp" -> enterOmpMode()
             "cowork" -> enterCoworkMode()
         }
@@ -992,7 +943,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun saveSettings() {
         settingsViewModel.saveSettings(_uiState.value)
         refreshAll()
-        syncNotificationService()
     }
 
     /**
@@ -1030,40 +980,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-
-    fun refreshBatteryOptimizationStatus() {
-        val context = getApplication<Application>().applicationContext
-        val ignored = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            true
-        } else {
-            context.getSystemService(PowerManager::class.java)
-                ?.isIgnoringBatteryOptimizations(context.packageName) == true
-        }
-        _uiState.update { it.copy(device = it.device.copy(batteryOptimizationIgnored = ignored)) }
-    }
-
-    fun requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-        val context = getApplication<Application>().applicationContext
-        val packageUri = Uri.parse("package:${context.packageName}")
-        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(direct) }
-            .onFailure {
-                context.startActivity(
-                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
-    }
-
-    fun openBatteryOptimizationSettings() {
-        val context = getApplication<Application>().applicationContext
-        context.startActivity(
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
-    }
 
     /**
      * Telefonda kurulu BAŞKA bir uygulamayı açar (Merkez'deki "Belgelik" tuşu).
@@ -1161,10 +1077,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 id = resumeId, cwd = operation.cwd, title = operation.summary,
                 lastText = operation.summary, turns = 0, mtime = 0L,
             ))
-            "opencode2-app" -> resumeOpencode2AppDiskSession(AppDiskSession(
-                id = resumeId, cwd = operation.cwd, title = operation.summary,
-                lastText = operation.summary, turns = 0, mtime = 0L,
-            ))
             "omp" -> resumeOmpDiskSession(AppDiskSession(
                 id = resumeId, cwd = operation.cwd, title = operation.summary,
                 lastText = operation.summary, turns = 0, mtime = 0L,
@@ -1191,24 +1103,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             needsAttention = false,
             updatedAt = event.at,
             diskId = event.diskId,
-        ))
-    }
-
-    /** Bildirimden gelen onayı doğrudan ilgili sohbet oturumunda açar. */
-    fun openApprovalSession(backend: String, sessionId: String) {
-        if (backend.isBlank() || sessionId.isBlank()) return
-        _approvalNavigationNonce.update { it + 1 }
-        openOperation(OperationItem(
-            id = "approval:$backend:$sessionId",
-            backend = backend,
-            backendLabel = BACKEND_LABELS[backend] ?: backend,
-            sessionId = sessionId,
-            cwd = "",
-            model = "",
-            summary = "Bildirimden açılan onay",
-            status = "waiting",
-            needsAttention = true,
-            updatedAt = "",
         ))
     }
 
@@ -1313,7 +1207,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         val previousSessionId = when (request.provider) {
             "claude-app" -> _uiState.value.claude.sessionId
             "codex-app" -> _uiState.value.codex.sessionId
-            "opencode2-app" -> _uiState.value.opencode.sessionId
             "omp" -> _uiState.value.omp.sessionId
             "agy" -> _uiState.value.agy.sessionId
             else -> ""
@@ -1330,9 +1223,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 codex = st.codex.copy(
                     model = if (request.provider == "codex-app") request.model.ifBlank { st.codex.model } else st.codex.model,
                     effort = if (request.provider == "codex-app") request.effort.ifBlank { st.codex.effort } else st.codex.effort
-                ),
-                opencode = st.opencode.copy(
-                    model = if (request.provider == "opencode2-app") request.model.ifBlank { st.opencode.model } else st.opencode.model
                 ),
                 omp = st.omp.copy(
                     model = if (request.provider == "omp") request.model.ifBlank { st.omp.model } else st.omp.model,
@@ -1386,9 +1276,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 "codex-app" -> {
                     startCodexAppSession(request.projectPath, request.model)
                 }
-                "opencode2-app" -> {
-                    startOpencodeAppSession(request.projectPath, request.model)
-                }
                 "omp" -> {
                     startOmpSession(request.projectPath, request.model)
                 }
@@ -1406,7 +1293,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             val newSessionId = when (request.provider) {
                 "claude-app" -> _uiState.value.claude.sessionId
                 "codex-app" -> _uiState.value.codex.sessionId
-                "opencode2-app" -> _uiState.value.opencode.sessionId
                 "omp" -> _uiState.value.omp.sessionId
                     "agy" -> _uiState.value.agy.sessionId
                 else -> ""
@@ -1543,6 +1429,15 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun phoneRootPath(): String = PhoneStorage.agentBridgeRoot()
     fun phoneExternalRoot(): String = PhoneStorage.externalRoot()
     fun phoneStoragePermitted(): Boolean = PhoneStorage.hasPermission()
+
+    fun phonePicturesHiddenFromGallery(): Boolean = PhoneStorage.picturesHiddenFromGallery()
+
+    /** Dönüş: yeni durum (başarısızsa eski durum döner, anahtar geri sıçrar). */
+    fun setPhonePicturesHiddenFromGallery(hidden: Boolean): Boolean {
+        val ok = PhoneStorage.setPicturesHiddenFromGallery(getApplication(), hidden)
+        if (!ok) notifyUser("Galeri ayarı değiştirilemedi (dosya erişimi kapalı olabilir)")
+        return PhoneStorage.picturesHiddenFromGallery()
+    }
 
     /**
      * Çalışma alanının telefondaki klasörü. TEMBEL: klasör ancak kullanıcı
@@ -1787,7 +1682,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         when (hit.backend) {
             Backend.CLAUDE_APP.id -> resumeClaudeAppDiskSession(ClaudeDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
             Backend.CODEX_APP.id -> resumeCodexAppDiskSession(CodexDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
-            Backend.OPENCODE2_APP.id -> resumeOpencodeAppDiskSession(AppDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
             Backend.OMP.id -> resumeOmpDiskSession(AppDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
             Backend.AGY.id -> resumeAgyDiskSession(AgyDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
         }
@@ -1799,7 +1693,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         val sid = when (provider) {
             Backend.CLAUDE_APP.id -> s.claude.sessionId
             Backend.CODEX_APP.id -> s.codex.sessionId
-            Backend.OPENCODE2_APP.id -> s.opencode.sessionId
             Backend.OMP.id -> s.omp.sessionId
             Backend.AGY.id -> s.agy.sessionId
             else -> ""
@@ -1869,10 +1762,36 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         tabsDelegate.closeTab(pending.tabId)
     }
 
-    // Uygulama öne gelince (ON_START): yarı-açık kalmış WS'yi anında tazele ve
-    // konuşmayı bir kez HTTP'den çek. Arka planda donan süreç dönüşte ping/backoff
-    // beklemeden taze veriye kavuşur; oturum açık değilse ikisi de no-op.
+    // Cihaz-yerel hatırlatma listesini köprüden çekip alarmlara çevirir
+    // (Hatirlaticilar.kt). Öne her gelişte bir istek; peş peşe açılışlarda
+    // dakikada bir. zorla: hatırlatıcı az önce bu cihazdan değiştirildi.
+    private var sonHatirlaticiSenkronu = 0L
+    private fun hatirlaticilariSenkronla(zorla: Boolean = false) {
+        if (BuildConfig.IS_LITE) return
+        val simdi = System.currentTimeMillis()
+        if (!zorla && simdi - sonHatirlaticiSenkronu < 60_000L) return
+        sonHatirlaticiSenkronu = simdi
+        val context = getApplication<Application>().applicationContext
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { client.hatirlaticilar(_uiState.value.settings) }
+                .onSuccess { Hatirlaticilar.uygula(context, it) }
+                // Köprüye ulaşılamadı: kurulu alarmlar olduğu gibi kalır.
+                .onFailure { sonHatirlaticiSenkronu = 0L }
+        }
+    }
+
+    // Uygulama arka plana geçince (ON_STOP): akış soketini kapat, oturum ve
+    // since hafızası kalır. Sohbet yoklaması ayrıca `SohbetYoklamasi` kapısında
+    // uyur; ikisi birlikte arka planda sıfır sohbet trafiği demek.
+    fun onAppBackground() {
+        streamManager.suspendForBackground()
+    }
+
+    // Uygulama öne gelince (ON_START): arka planda kapatılan (ya da yarı-açık
+    // kalmış) WS'yi since ile anında aç ve konuşmayı bir kez HTTP'den çek;
+    // oturum açık değilse ikisi de no-op.
     fun onAppForeground() {
+        hatirlaticilariSenkronla()
         streamManager.nudge()
         refreshConversation(showErrors = false)
         if (!BuildConfig.IS_LITE) maintenanceDelegate.warmOpenTabsNow()
@@ -2214,8 +2133,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Kaydedilen görsellerin PC'deki hedefi: <ev dizini>/Pictures/AgentBridge —
-     * telefondaki /sdcard/AgentBridge/Pictures'ın karşılığı.
+     * Kaydedilen görsellerin PC'deki hedefi: <ev dizini>/Pictures/Telekumanda —
+     * telefondaki /sdcard/Telekumanda/Pictures'ın karşılığı.
      *
      * Yol KODA GÖMÜLÜ DEĞİL. Köprüye kök vermeden /dirs sorulduğunda dönen
      * `base`, köprünün çalıştığı kullanıcının ev dizinidir; kullanıcı adını
@@ -2227,7 +2146,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             .getOrNull()?.takeIf { it.ok }?.base?.trimEnd('\\', '/')
             ?.takeIf { it.isNotBlank() } ?: return null
         val sep = if (home.contains('\\')) "\\" else "/"
-        return listOf(home, "Pictures", "AgentBridge").joinToString(sep)
+        return listOf(home, "Pictures", PhoneFiles.ROOT_NAME).joinToString(sep)
     }
 
     private var openedFilePath: String = ""
@@ -2345,7 +2264,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     // DOCX, kaynak .md'nin PC'deki klasörüne yazılır (aynı adla, çakışmada köprü
     // " (1)" ekler). PC'ye yazılamazsa (klasör yok / bağlantı hatası) telefondaki
-    // İndirilenler/AgentBridge'e düşülür ki dışa aktarım kaybolmasın.
+    // İndirilenler/Telekumanda'ya düşülür ki dışa aktarım kaybolmasın.
     fun exportOpenedMarkdownAsDocx(content: String): Job = viewModelScope.launch {
         val opened = _openedFile.value ?: return@launch
         val sourceName = opened.name.substringAfterLast('/').substringAfterLast('\\')
@@ -2379,7 +2298,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         runCatching { downloadRepo.exportBytes(outputName, DOCX_MIME, bytes) }
             .onSuccess {
                 val reason = uploaded?.error?.ifBlank { null } ?: "kaynak klasör belirlenemedi"
-                _messages.emit("PC'ye yazılamadı ($reason); DOCX telefona aktarıldı: İndirilenler/AgentBridge/${it.name}")
+                _messages.emit("PC'ye yazılamadı ($reason); DOCX telefona aktarıldı: İndirilenler/Telekumanda/${it.name}")
             }
             .onFailure { _messages.emit("DOCX dışa aktarılamadı: ${it.message ?: "bilinmeyen hata"}") }
     }
@@ -2813,8 +2732,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Hatırlatıcı kur/kaldır (docs/ekran-goruntusu-hatirlatici-plani.md, E5.2).
-    // atIso null → kaldır. Zamanlayıcı bridge tarafında; burada yalnız notun
-    // frontmatter'ı güncellenip liste tazeleniyor.
+    // atIso null → kaldır. Notun frontmatter'ı köprüde güncellenir, sonra bu
+    // cihazın yerel alarm listesi hemen tazelenir (Hatirlaticilar.kt).
     fun setCoworkNoteReminder(note: CoworkNote, atIso: String?): Job = viewModelScope.launch {
         if (note.id.isBlank()) return@launch
         val scopePath = _coworkNotesState.value.projectPath
@@ -2826,6 +2745,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 if (atIso.isNullOrBlank()) "Hatırlatıcı kaldırıldı: ${note.title}"
                 else "Hatırlatıcı kuruldu: ${note.title}",
             )
+            hatirlaticilariSenkronla(zorla = true)
             loadCoworkNotes(scopePath.takeIf { it.isNotBlank() })
         }.onFailure { error ->
             _coworkNotesState.update {
@@ -2971,7 +2891,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Hatırlatıcı bildiriminden gelen not kimliğini açar. Liste elde yoksa
+     * Hatırlatma bildiriminden gelen not kimliğini açar. Liste elde yoksa
      * (uygulama soğuk açıldıysa) önce çekilir — bildirime dokunmak her koşulda
      * notu getirmeli.
      */
@@ -3049,7 +2969,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         val job = when (provider) {
             "claude-app" -> startClaudeAppSession(cwd, model)
             "codex-app" -> startCodexAppSession(cwd, model)
-            "opencode2-app" -> startOpencode2AppSession(cwd, model)
             "omp" -> startOmpSession(cwd, model)
             else -> null
         }
@@ -4099,12 +4018,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         val result = when {
             state.backend == "claude-app" && state.claudeAppSessionId.isNotBlank() -> runCatching { client.claudeAppThought(state.settings, state.claudeAppSessionId, index) }
             state.backend == "cowork" && state.coworkProvider == "codex-app" && state.codexAppSessionId.isNotBlank() -> runCatching { client.codexAppThought(state.settings, state.codexAppSessionId, index) }
-            state.backend == "cowork" && state.coworkProvider == "opencode2-app" && state.opencodeAppSessionId.isNotBlank() -> runCatching { client.opencodeAppThought(state.settings, state.opencodeAppSessionId, index) }
-            state.backend == "cowork" && state.coworkProvider == "opencode2-app" && state.opencode.sessionId.isNotBlank() -> runCatching { client.opencodeAppThought(state.settings, state.opencode.sessionId, index, "opencode2-app") }
             state.backend == "cowork" && state.coworkProvider == "claude-app" && state.claudeAppSessionId.isNotBlank() -> runCatching { client.claudeAppThought(state.settings, state.claudeAppSessionId, index) }
             state.backend == "codex-app" && state.codexAppSessionId.isNotBlank() -> runCatching { client.codexAppThought(state.settings, state.codexAppSessionId, index) }
-            state.backend == "opencode2-app" && state.opencodeAppSessionId.isNotBlank() -> runCatching { client.opencodeAppThought(state.settings, state.opencodeAppSessionId, index) }
-            state.backend == "opencode2-app" && state.opencode.sessionId.isNotBlank() -> runCatching { client.opencodeAppThought(state.settings, state.opencode.sessionId, index, "opencode2-app") }
             state.backend == "omp" && state.ompSessionId.isNotBlank() -> runCatching { client.ompThought(state.settings, state.ompSessionId, index) }
             state.backend == "agy" && state.agySessionId.isNotBlank() -> runCatching { client.agyThought(state.settings, state.agySessionId, index) }
             else -> Result.success("")
@@ -4193,7 +4108,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
      */
     fun forgetDeletedSessions(sessionIds: Set<String>) {
         if (sessionIds.isEmpty()) return
-        KapsulDenetleyici.silinenOturumlariKaldir(getApplication<Application>(), sessionIds)
         tabsDelegate.removeSessionTabs(sessionIds)
         conversationMemory.remove(sessionIds)
         viewModelScope.launch { runCatching { offlineConversationCache.delete(sessionIds) } }
@@ -4209,7 +4123,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 when (backend) {
                     "claude-app" -> loadClaudeAppDiskSessions()
                     "codex-app" -> loadCodexAppDiskSessions()
-                    "opencode2-app" -> loadOpencode2AppDiskSessions()
                     "omp" -> loadOmpDiskSessions()
                     "agy" -> loadAgyDiskSessions()
                 }
@@ -4276,7 +4189,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun handleClaudeAppCleared(json: JSONObject) = claudeAppDelegate.handleClaudeAppCleared(json)
 
     // Yolo (otomatik onay) toggle'ı — tüm provider'lar için (madde 6). Aktif cowork
-    // oturumu varsa modu hemen uygular (best effort; codex/opencode tur sürerken reddeder,
+    // oturumu varsa modu hemen uygular (best effort; codex/omp tur sürerken reddeder,
     // o durumda bir sonraki oturum başlangıcında zaten toggle'dan uygulanır).
     fun setCoworkYoloMode(enabled: Boolean) = coworkDelegate.setCoworkYoloMode(enabled)
     fun handoffCoworkTo(provider: String) = coworkDelegate.handoffCoworkTo(provider)
@@ -4326,32 +4239,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun resumeCodexAppDiskSession(session: CodexDiskSession) = providerLifecycleDelegate.resumeCodex(session)
     fun exitCodexAppMode() = providerLifecycleDelegate.exitCodex()
 
-    // --- OpenCode App backend ---
-    fun enterOpencodeAppMode() = providerLifecycleDelegate.enterOpencode()
-    fun enterOpencode2AppMode() = providerLifecycleDelegate.enterOpencode(Backend.OPENCODE2_APP.id)
-    fun exitOpencode2AppMode() = providerLifecycleDelegate.exitOpencode(Backend.OPENCODE2_APP.id)
-    fun loadOpencodeAppModels() = providerLifecycleDelegate.loadOpencodeAppModels()
-
-    fun cancelOpencodeAppSetup() = ocDelegate.cancelSetup()
-    // Bu uc sarmalayici v1 adlariyla KALDI (TabsDelegate ve arayuz onlari cagiriyor),
-    // ama tek delegeye bakiyorlar; Opencode2* adlari es anlamli.
-    fun startOpencodeAppSession(cwd: String, model: String) = opencode2ActionsDelegate.startSession(cwd, model)
-    fun setOpencodeAppModel(id: String) = ocDelegate.setModel(id)
-    fun loadOpencodeAppDiskSessions() = opencode2ActionsDelegate.loadDiskSessions()
-    fun resumeOpencodeAppDiskSession(session: AppDiskSession) = opencode2ActionsDelegate.resumeDiskSession(session)
-    fun startOpencode2AppSession(cwd: String, model: String) = opencode2ActionsDelegate.startSession(cwd, model)
-    fun loadOpencode2AppDiskSessions() = opencode2ActionsDelegate.loadDiskSessions()
-    fun resumeOpencode2AppDiskSession(session: AppDiskSession) = opencode2ActionsDelegate.resumeDiskSession(session)
-    // Oturum kuralları (yalnız v2): talimatlar + kayıtlı izin kuralları.
-    fun loadOpencode2Instructions() = opencode2ActionsDelegate.loadInstructions()
-    fun putOpencode2Instruction(key: String, value: String) = opencode2ActionsDelegate.putInstruction(key, value)
-    fun deleteOpencode2Instruction(key: String) = opencode2ActionsDelegate.deleteInstruction(key)
-    fun loadOpencode2SavedPermissions() = opencode2ActionsDelegate.loadSavedPermissions()
-    fun deleteOpencode2SavedPermission(id: String) = opencode2ActionsDelegate.deleteSavedPermission(id)
-    fun loadOpencode2AppModels() = providerLifecycleDelegate.loadOpencodeAppModels(Backend.OPENCODE2_APP.id)
-
-    fun exitOpencodeAppMode() = providerLifecycleDelegate.exitOpencode()
-
     // --- OMP native RPC backend ---
     fun enterOmpMode() = providerLifecycleDelegate.enterOmp()
     fun exitOmpMode() = providerLifecycleDelegate.exitOmp()
@@ -4368,28 +4255,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(input = "") }
         return ompActionsDelegate.sendDuringTurn(text, interrupt)
     }
-    // Tur sürerken gönderim — OpenCode'da YALNIZ kuyruk var (bkz. delege).
-    fun opencodeAppSendDuringTurn(interrupt: Boolean): Job {
-        val text = _uiState.value.input.trim()
-        if (text.isBlank()) return viewModelScope.launch { }
-        _uiState.update { it.copy(input = "") }
-        return ocDelegate.sendDuringTurn(text, interrupt)
-    }
-    // Tur sürerken gönderim — BACKEND'E GÖRE dağıtır.
-    //
-    // 24.08.2026'ya kadar dört çağrı yeri de doğrudan `ompSendDuringTurn`
-    // çağırıyordu, yani yetenek OMP'ye gömülüydü. OpenCode 25.08.2026'da eklendi.
-    //
-    // COWORK: sağlayıcı çözülmeden dağıtılırsa cowork+OpenCode oturumu `else`
-    // dalından OMP'ye giderdi ve boş oturum kimliğiyle sessizce hiçbir şey
-    // yapmazdı — midTurnSendBackend sağlayıcıyı açar.
-    fun backendSendDuringTurn(interrupt: Boolean): Job =
-        when (midTurnSendBackend(_uiState.value.backend, _uiState.value.coworkProvider)) {
-            // v2 de burada: `opencodeAppSendDuringTurn` ocDelegate uzerinden
-            // aktif aileye gidiyor. Dal olmadan v2 `else`den OMP'ye dusuyordu.
-            "opencode2-app" -> opencodeAppSendDuringTurn(interrupt)
-            else -> ompSendDuringTurn(interrupt)
-        }
+    // Tur sürerken gönderim. Ortak tur-içi composer'ı kullanan tek sağlayıcı OMP.
+    fun backendSendDuringTurn(interrupt: Boolean): Job = ompSendDuringTurn(interrupt)
     fun ompPin(id: String) = ompActionsDelegate.pin(id)
     fun ompUnpin(id: String) = ompActionsDelegate.unpin(id)
     fun ompRename(id: String, title: String) = ompActionsDelegate.rename(id, title)
@@ -4402,49 +4269,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun loadOmpPermissionModes() = ompActionsDelegate.loadPermissionModes()
     fun loadOmpInfo() = ompActionsDelegate.loadInfo()
     fun setOmpEffort(effort: String) = ompActionsDelegate.setEffort(effort)
-
-    fun opencodeAppApprove(allow: Boolean) = ocDelegate.approve(allow)
-    fun opencodeAppAnswerQuestions(answers: List<ApprovalAnswer>) = ocDelegate.answerQuestions(answers)
-    fun loadOpencodeAppInfo() = ocDelegate.loadInfo()
-    // Görev panosundaki "Sıkıştır" — doluluk çubuğu eşiği geçince beliriyor.
-    fun opencodeAppCompact() = ocDelegate.compact()
-    // "Değişiklikler" görünümü açılınca çekilir; yoklamaya binmez.
-    fun loadOpencodeAppDiff() = ocDelegate.loadDiff()
-    // Checkpoint geri sarma. Liste açılınca çekilir (diff ile aynı kural);
-    // revertTo YIKICI olduğu için yalnız onay diyaloğundan sonra çağrılmalı.
-    fun loadOpencodeAppCheckpoints() = ocDelegate.loadCheckpoints()
-    // Alt-ajan kartına dokununca; yoklamaya binmez.
-    fun loadOpencodeAppSubagentTranscript(childId: String) =
-        ocDelegate.loadSubagentTranscript(childId)
-    fun opencodeAppRevertTo(messageID: String) = ocDelegate.revertTo(messageID)
-    fun opencodeAppUnrevert() = ocDelegate.unrevert()
-    // Oturum paylaşımı — İNTERNETE yayın yapar, yalnız onay diyaloğundan sonra
-    // çağrılmalı. [onLink] paylaşım sayfasını (share intent) açan geri çağrı:
-    // link snapshot'la da geliyor ama tuşun ölü görünmemesi için anında lazım.
-    fun opencodeAppShare(onLink: (String) -> Unit = {}) = ocDelegate.share(onLink)
-    fun opencodeAppUnshare() = ocDelegate.unshare()
-    // Özel komutlar: liste "/" yazılınca çekilir (kuruluma ait, oturumla
-    // sıfırlanmaz); çalıştırma bir TUR başlatır.
-    fun loadOpencodeAppCommands() = ocDelegate.loadCommands()
-    fun opencodeAppRunCommand(command: String, arguments: String) =
-        ocDelegate.runCommand(command, arguments)
-    // AGENTS.md init — bir tur koşar, yalnız onay diyaloğundan sonra.
-    fun opencodeAppInitAgents() = ocDelegate.initAgents()
-    fun setOpencodeAppPermissionMode(mode: String) = ocDelegate.setPermissionMode(mode)
-    // Akil yurutme eforu ("variant"). Oturum durumunda tutulur, her prompt'la
-    // birlikte gonderilir; ayri bir kopru cagrisi YOK — opencode bunu mesaj
-    // govdesinde bekliyor, oturum ayari olarak degil.
-    fun setOpencodeAppVariant(variant: String) = _uiState.update {
-        // AKTIF aileye yaz: v2 sekmesinde v1'in eforunu degistirmek, secimi
-        // hicbir yere gitmeyen bir yazma yapardi (prompt v2 ailesini okuyor).
-        it.withOpencodeFamily(it.backend) { f -> f.copy(variant = variant) }
-    }
-    fun loadOpencodeAppPermissionModes() = ocDelegate.loadPermissionModes()
-    fun loadOpencodeAppAgents() = ocDelegate.loadAgents()
-    fun setOpencodeAppAgent(name: String) = ocDelegate.setAgent(name)
-    fun opencodeAppPin(id: String) = ocDelegate.pin(id)
-    fun opencodeAppUnpin(id: String) = ocDelegate.unpin(id)
-    fun opencodeAppRename(id: String, title: String) = ocDelegate.rename(id, title)
 
     fun returnToMessage(index: Int) = conversationDelegate.returnToMessage(index)
 
@@ -4491,13 +4315,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         loadProcesses()
         loadAllBackendSessionCounts()
     }
-    // Silinmis opencode oturumlarinin kalintilari: durum/tarama ve imha.
-    fun loadPurgeStatus(refresh: Boolean = false) = maintenanceDelegate.loadPurgeStatus(refresh)
-    fun runSessionPurge() = maintenanceDelegate.runPurge()
-    fun refreshRunPodStatus(showErrors: Boolean = true) = maintenanceDelegate.refreshRunPodStatus(showErrors)
-    fun startRunPod() = maintenanceDelegate.startRunPod()
-    fun stopRunPod() = maintenanceDelegate.stopRunPod()
-
     fun setDefaultModel(name: String) = viewModelScope.launch {
         _uiState.update { it.copy(defaultModel = name) }
     }
@@ -4518,9 +4335,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun stop() = viewModelScope.launch {
         val state = _uiState.value
-        // Backend → uç eşlemesi `BridgeClient.turDurdur`'da (shared): kapsül
-        // bildirimindeki "Durdur" tuşu da aynı yardımcıyı çağırıyor, eşleme
-        // iki yerde durursa biri güncellenip öteki unutulur.
+        // Backend → uç eşlemesi `BridgeClient.turDurdur`'da (shared).
         // cowork'ün kendi ucu yok, sağlayıcısına çözülür (eski davranış).
         val hedefBackend =
             if (state.backend == "cowork") normalizeCoworkProvider(state.coworkProvider)
@@ -4529,7 +4344,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             "agy" -> state.agySessionId
             "claude-app" -> state.claudeAppSessionId
             "codex-app" -> state.codexAppSessionId
-            "opencode2-app" -> state.opencode.sessionId
             "omp" -> state.ompSessionId
             else -> ""
         }
@@ -4560,21 +4374,12 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         streamManager.open("codex-app", sessionId, _uiState.value.settings)
     }
 
-    // Bildirimlerin tek kanalı bu servisin long-poll'u; tam sürümde hep açık.
-    // Lite arka plan bildirimi paketlemez (servis manifestten çıkarılıyor).
-    private fun syncNotificationService() {
-        if (BuildConfig.IS_LITE) return
-        val context = getApplication<Application>().applicationContext
-        val intent = Intent(context, BridgeMonitorService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent) else context.startService(intent)
-    }
-
     private suspend fun reportError(prefix: String, throwable: Throwable) {
         _messages.emit("$prefix: ${throwable.message ?: "unknown error"}")
     }
 
     private fun handleStreamEnd() {
-        // claude-app snapshot'ı outputs taşır; codex/opencode taşımaz → tur bitince API'den tazele.
+        // claude-app snapshot'ı outputs taşır; codex/omp taşımaz → tur bitince API'den tazele.
         val shouldRefreshOutputs = _uiState.value.backend == "cowork" &&
             normalizeCoworkProvider(_uiState.value.coworkProvider) != "claude-app"
         _uiState.update { it.copy(running = false) }
@@ -4615,7 +4420,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         val provider = normalizeCoworkProvider(st.coworkProvider)
         val sessionId = when (provider) {
             "codex-app" -> st.codexAppSessionId
-            "opencode2-app" -> st.opencodeAppSessionId
             else -> st.claudeAppSessionId
         }
         if (projectPath.isBlank() || sessionId.isBlank()) return

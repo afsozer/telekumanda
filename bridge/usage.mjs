@@ -47,36 +47,55 @@ function configuredNanoGptKey() {
   }
 }
 
-// Nano-GPT'nin kullanım ucu: verilen UTC gün aralığındaki harcama ve istek
-// sayısı. Uç ANAHTAR BAŞINA sayıyor (bakiye ise hesabın tamamı); bu PC'deki
-// anahtar Mac KotaWidget'ınkiyle aynı (05.10.2026, özetiyle karşılaştırıldı),
-// yani rakam Mac kartıyla tutar. Gün kutuları UTC: TSİ 03:00'tan önce "bugün"
-// hâlâ dünün kutusudur. Bakiyeden bağımsız: düşerse null, kart bakiyeyi yine
-// gösterir.
-export async function fetchNanoGptToday({
+// Nano-GPT'nin kullanım ucu, son 30 UTC günü günlük dökümle (aralık
+// verilmeyince uç bu pencereyi bugün dahil döndürüyor). Uç ANAHTAR BAŞINA
+// sayıyor (bakiye ise hesabın tamamı); bu PC'deki anahtar Mac KotaWidget'ınkiyle
+// aynı (05.10.2026, özetiyle karşılaştırıldı), yani rakam Mac kartıyla tutar.
+// Gün kutuları UTC: TSİ 03:00'tan önce "bugün" hala dünün kutusudur.
+// `group_by=day` tek başına: varsayılan "day,model" gün×model dökümünü de
+// ekleyip yanıtı 40 KB'ye çıkarıyor, yalnız "day" 7 KB (17.10.2026, ölçüldü).
+// Bakiyeden bağımsız: düşerse null, kart bakiyeyi yine gösterir.
+export async function fetchNanoGptDaily({
   apiKey = configuredNanoGptKey(),
   fetchImpl = globalThis.fetch,
   now = new Date(),
 } = {}) {
   const key = String(apiKey || '').trim();
   if (!key || typeof fetchImpl !== 'function') return null;
-  const day = now.toISOString().slice(0, 10);
   try {
-    const response = await fetchImpl(
-      `https://nano-gpt.com/api/v1/usage?group_by=model&from=${day}&to=${day}`,
-      {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(5_000),
-      },
-    );
+    const response = await fetchImpl('https://nano-gpt.com/api/v1/usage?group_by=day', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!response?.ok) return null;
-    const totals = (await response.json())?.totals;
+    const body = await response.json();
     // netCostUsd indirim düşülmüş tutar; yoksa brüt costUsd.
-    const spend = Number(totals?.netCostUsd ?? totals?.costUsd);
-    const requests = Number(totals?.requests);
+    const cost = row => Number(row?.netCostUsd ?? row?.costUsd);
+    const spend = cost(body?.totals);
+    const requests = Number(body?.totals?.requests);
     if (!Number.isFinite(spend) || !Number.isFinite(requests)) return null;
-    return { spendUsd: spend, requests: Math.round(requests) };
+    // Uç harcama olmayan günü hiç döndürmüyor: aralığın her günü 0'la doluyor.
+    const byDate = new Map();
+    for (const row of Array.isArray(body?.byDay) ? body.byDay : []) {
+      if (typeof row?.date !== 'string') continue;
+      byDate.set(row.date, { spendUsd: Number.isFinite(cost(row)) ? cost(row) : 0, requests: Math.round(Number(row.requests) || 0) });
+    }
+    const days = [];
+    const from = Date.parse(`${body?.from}T00:00:00Z`);
+    const to = Date.parse(`${body?.to}T00:00:00Z`);
+    // Bozuk aralıkta döngü uzamasın: pencere 30 gün, pay bırakıldı.
+    for (let t = from; Number.isFinite(t) && t <= to && days.length < 62; t += 86_400_000) {
+      const date = new Date(t).toISOString().slice(0, 10);
+      days.push({ date, ...(byDate.get(date) || { spendUsd: 0, requests: 0 }) });
+    }
+    const todayKey = now.toISOString().slice(0, 10);
+    const today = days.find(d => d.date === todayKey) || { spendUsd: 0, requests: 0 };
+    return {
+      today: { spendUsd: today.spendUsd, requests: today.requests },
+      window: { spendUsd: spend, requests: Math.round(requests), days: days.length || 30 },
+      daily: days.map(d => Number(d.spendUsd.toFixed(4))),
+    };
   } catch {
     return null;
   }
@@ -85,7 +104,9 @@ export async function fetchNanoGptToday({
 // Nano-GPT'nin resmi bakiye ucu. Kota yüzdesi değil ön ödemeli USD bakiyesi;
 // çubuk creditBucketFields ölçeğiyle (10 $ = dolu) çizilir. Bugünün harcaması
 // aynı kovaya ek alan olarak biner (todaySpendUsd/todayRequests); Android
-// widget'ı "bugün $x · n istek" satırını oradan çizer.
+// widget'ı "bugün $x · n istek" satırını oradan çizer. 30 günlük toplam
+// (window*) ve günlük dizi (dailySpendUsd, eskiden yeniye, son eleman bugün)
+// widget'ın harcama grafiğini besliyor.
 export async function fetchNanoGptUsage({
   apiKey = configuredNanoGptKey(),
   fetchImpl = globalThis.fetch,
@@ -94,14 +115,15 @@ export async function fetchNanoGptUsage({
   const key = String(apiKey || '').trim();
   if (!key || typeof fetchImpl !== 'function') return null;
   try {
-    const [response, today] = await Promise.all([
+    const [response, usage] = await Promise.all([
       fetchImpl('https://nano-gpt.com/api/check-balance', {
         method: 'POST',
         headers: { 'x-api-key': key, Accept: 'application/json' },
         signal: AbortSignal.timeout(5_000),
       }),
-      fetchNanoGptToday({ apiKey: key, fetchImpl, now }),
+      fetchNanoGptDaily({ apiKey: key, fetchImpl, now }),
     ]);
+    const today = usage?.today;
     if (!response?.ok) return null;
     const body = await response.json();
     const usd = Number(body?.usd_balance);
@@ -124,9 +146,13 @@ export async function fetchNanoGptUsage({
         ...creditBucketFields(usd),
         // Kullanım ucu düştüyse alanlar HİÇ yok: istemci "0 $" ile "bilinmiyor"u
         // ayırabilsin.
-        ...(today ? {
+        ...(usage ? {
           todaySpendUsd: Number(today.spendUsd.toFixed(4)),
           todayRequests: today.requests,
+          windowSpendUsd: Number(usage.window.spendUsd.toFixed(4)),
+          windowRequests: usage.window.requests,
+          windowDays: usage.window.days,
+          dailySpendUsd: usage.daily,
         } : {}),
       }],
     };
@@ -228,75 +254,6 @@ export async function fetchDeepSeekUsage({
           ? creditBucketFields(total)
           : { remainingFraction: body?.is_available ? 1 : 0, metered: false }),
       }],
-    };
-  } catch {
-    return null;
-  }
-}
-
-// OpenCode Go'nun resmi kullanim ucu. Zen'den (token basina odeme) FARKLI:
-// burada bakiye yok, duz abonelikte uc pencerelik kota var. Zen tarafinin
-// bakiye/kredi ucu YOK — 16.08.2026'da /zen/v1 altinda usage, credits,
-// account, balance, me denendi, hepsi 404; tamamlama yanitinda da kota
-// basligi donmuyor. Yani Zen harcamasi bu karta giremez, aramaya gerek yok.
-// Anahtar yalniz PC ortam degiskeninden okunur, /usage yanitina TASINMAZ.
-const OPENCODE_GO_WINDOWS = [
-  { key: 'rolling', id: 'opencode-go-5h', label: '5 saat' },
-  { key: 'weekly', id: 'opencode-go-week', label: 'Haftalık' },
-  { key: 'monthly', id: 'opencode-go-month', label: 'Aylık' },
-];
-export async function fetchOpenCodeGoUsage({
-  apiKey = process.env.OPENCODE_API_KEY || '',
-  fetchImpl = globalThis.fetch,
-} = {}) {
-  const key = String(apiKey || '').trim();
-  if (!key || typeof fetchImpl !== 'function') return null;
-  try {
-    const response = await fetchImpl('https://opencode.ai/zen/go/v1/usage', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response?.ok) return null;
-    const body = await response.json();
-    const usage = body?.usage;
-    if (!usage || typeof usage !== 'object') return null;
-    const buckets = [];
-    for (const w of OPENCODE_GO_WINDOWS) {
-      const item = usage[w.key];
-      const percent = Number(item?.percent);
-      // Pencere yoksa ya da yuzde sayi degilse o satiri hic basma: "%100 kaldı"
-      // yazip kotanin dolu oldugunu ima etmek yanlis guven verir.
-      if (!item || !Number.isFinite(percent)) continue;
-      const remaining = Math.max(0, Math.min(100, 100 - percent));
-      const status = String(item.status || '');
-      buckets.push({
-        id: w.id,
-        label: w.label,
-        window: '',
-        value: `%${Math.round(remaining)} kaldı`,
-        remainingFraction: remaining / 100,
-        // description bos: istemci resetTime'i zaten "Yenilenme: ..." satiri
-        // olarak basiyor (bkz. claude/codex kartlari). Yalniz beklenmedik bir
-        // durum kodu gelirse yaz — sessizce yutulmasin.
-        description: status && status !== 'ok' ? `Durum: ${status}` : '',
-        resetTime: item.resetsAt ? new Date(item.resetsAt).toISOString() : '',
-        // Bar CIZILSIN. OpenRouter/DeepSeek kartlarinda metered:false, cunku
-        // onlar on odemeli bakiye — "kalanin toplama orani" diye bir sey yok.
-        // Burada kota var ve yuzde zaten olculu; Claude/Codex kartlariyla ayni
-        // tur. Istemci metered:false gorunce cubugu HIC cizmiyor
-        // (HubUsageScreen.UsageBucketRow), ilk surumde yanlislikla oyleydi.
-        // (Bakiye kartlari 17.09.2026'dan beri creditBucketFields ile
-        // metered:true; 10 $ = dolu cubuk.)
-        metered: true,
-      });
-    }
-    if (!buckets.length) return null;
-    return {
-      name: 'OpenCode Go',
-      source: 'opencode-go',
-      description: 'Resmi OpenCode Go abonelik kotası.',
-      buckets,
     };
   } catch {
     return null;
@@ -692,6 +649,10 @@ function planLabel(profile, credsSubscription) {
   return credsSubscription;
 }
 
+// Model kapsamlı haftalığın görünen adı (kullanıcı tercihi, 17.10.2026):
+// "7 gün (Fable)" yerine "7 gün (Mythos)". Mac KotaWidget'ı da aynı adı yazıyor.
+const CLAUDE_SCOPE_DISPLAY_NAMES = { Fable: 'Mythos' };
+
 function pctBucket(id, label, util, resetsAt) {
   if (util == null) return null;
   const remaining = Math.max(0, Math.min(100, 100 - util));
@@ -761,9 +722,11 @@ async function claudeUsage(force = false) {
     // eski seven_day_opus/seven_day_sonnet alanları null döndüğünden buradan okunmalı.
     for (const l of util.limits || []) {
       if (l.kind !== 'weekly_scoped' || l.percent == null) continue;
-      const model = l.scope?.model?.display_name || 'model';
+      const raw = l.scope?.model?.display_name || 'model';
+      // Görünen ad kullanıcı tercihi; kimlik ucun verdiği addan kalıyor.
+      const model = CLAUDE_SCOPE_DISPLAY_NAMES[raw] || raw;
       buckets.push(pctBucket(
-        `claude-week-${model.toLowerCase().replace(/\s+/g, '-')}`,
+        `claude-week-${raw.toLowerCase().replace(/\s+/g, '-')}`,
         `7 gün (${model})`, l.percent, l.resets_at,
       ));
     }
@@ -962,7 +925,6 @@ export function arrangeUsageGroups({
   openRouter,
   nanoGpt,
   deepSeek,
-  openCodeGo,
 } = {}) {
   // İstenen sabit sıra: Claude → Codex → bakiye kartları.
   const groups = [];
@@ -972,7 +934,6 @@ export function arrangeUsageGroups({
   if (openRouter) groups.push(openRouter);
   if (nanoGpt) groups.push(nanoGpt);
   if (deepSeek) groups.push(deepSeek);
-  if (openCodeGo) groups.push(openCodeGo);
   if (agy && agy.groups.length) {
     groups.push(...agy.groups.map(g => ({ ...g, source: 'antigravity', stale: agy.stale })));
   }
@@ -980,19 +941,18 @@ export function arrangeUsageGroups({
 }
 
 async function refreshExternalUsageGroups(force = false) {
-  const [codex, claude, agy, openRouter, nanoGpt, deepSeek, openCodeGo] = await Promise.all([
+  const [codex, claude, agy, openRouter, nanoGpt, deepSeek] = await Promise.all([
     codexUsage(force),
     claudeUsage(force),
     fetchAgyUsage(),
     fetchOpenRouterUsage(),
     fetchNanoGptUsage(),
     fetchDeepSeekUsage(),
-    fetchOpenCodeGoUsage(),
   ]);
   // Claude kartı en üstte; sonra diğerleri. `source` Android/Web tarafinda kart
   // siralama ve ayirt etme icin kanonik kimliktir, etiketten tahmin edilmemeli.
   const groups = arrangeUsageGroups({
-    codex, claude, agy, openRouter, nanoGpt, deepSeek, openCodeGo,
+    codex, claude, agy, openRouter, nanoGpt, deepSeek,
   });
   usageGroupsCache = { at: Date.now(), groups };
   try { fs.writeFileSync(USAGE_GROUPS_CACHE_FILE, JSON.stringify(usageGroupsCache)); } catch {}

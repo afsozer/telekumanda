@@ -27,9 +27,10 @@ class CoworkLeaseMessageTest {
 
     @Test
     fun bilinmeyenSaglayiciClaudeSayilmaz_normalizasyonaBirakilir() {
-        // normalizeCoworkProvider bilinmeyeni claude-app'e indiriyor; metin yine
-        // de bir isim veriyor, "HTTP 409" demiyor.
-        val msg = coworkLeaseBusyMessage("opencode2-app", "")
-        assertTrue(msg, msg.startsWith("OpenCode "))
+        // normalizeCoworkProvider bilinmeyeni (ör. 24.10.2026'da sökülen
+        // tanınmayan sağlayıcı) claude-app'e indiriyor; metin yine de bir isim
+        // veriyor, "HTTP 409" demiyor.
+        val msg = coworkLeaseBusyMessage("taninmayan-saglayici", "")
+        assertTrue(msg, msg.startsWith("Claude "))
     }
 }

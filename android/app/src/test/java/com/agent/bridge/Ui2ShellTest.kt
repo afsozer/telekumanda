@@ -14,7 +14,7 @@ class Ui2ShellTest {
     fun providerMonogramKnownBackends() {
         assertEquals("C", providerMonogram("claude-app"))
         assertEquals("X", providerMonogram("codex-app"))
-        assertEquals("O", providerMonogram("opencode2-app"))
+        assertEquals("P", providerMonogram("omp"))
         assertEquals("A", providerMonogram("agy"))
         assertEquals("W", providerMonogram("cowork"))
     }
@@ -28,8 +28,8 @@ class Ui2ShellTest {
     fun activeTabScrollIndexTracksActiveTabIdentity() {
         val tabs = listOf(
             SessionTabUi("one", "codex-app", "Bir"),
-            SessionTabUi("two", "opencode2-app", "Iki"),
-            SessionTabUi("three", "opencode2-app", "Uc"),
+            SessionTabUi("two", "agy", "Iki"),
+            SessionTabUi("three", "agy", "Uc"),
         )
 
         assertEquals(1, activeTabScrollIndex(tabs, "two"))

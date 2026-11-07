@@ -7,17 +7,18 @@ import org.junit.Test
 /**
  * Backend siralama listelerinin bekcisi.
  *
- * 30.09.2026: v1 sokulurken "opencode-app" -> "opencode2-app" toplu donusumu
- * `defaultOrder` ve `visible_backends` gocunde AYNI kimligi iki kez birakti.
- * Kotlin bunu hata saymiyor; telefonda "Yeni oturum" ekraninda IKI tane
- * "OpenCode" cipi cizildi (kullanici bildirdi, ekran goruntusu).
- * Bu testler tekrar eden kimligi ve katalog disi kimligi yakalar.
+ * 30.09.2026: toplu kimlik donusumu `defaultOrder` ve `visible_backends`
+ * gocunde AYNI kimligi iki kez birakti. Kotlin bunu hata saymiyor; telefonda
+ * "Yeni oturum" ekraninda ayni backend'in IKI cipi cizildi (kullanici
+ * bildirdi, ekran goruntusu). Bu testler tekrar eden kimligi ve katalog disi
+ * kimligi yakalar.
  */
 class BackendOrderTest {
+    // 24.10.2026: Codex lite'tan çıktı, tam sürümde kalıyor.
     @Test
-    fun liteYalnizUcSaglayiciSunarNormalOpencodeKorunur() {
-        assertEquals(listOf("claude-app", "codex-app", "agy"), BACKEND_LITE_ORDER)
-        assertTrue("opencode2-app" in BACKEND_DEFAULT_ORDER)
+    fun liteYalnizClaudeVeAntigravitySunar() {
+        assertEquals(listOf("claude-app", "agy"), BACKEND_LITE_ORDER)
+        assertTrue("codex-app" in BACKEND_DEFAULT_ORDER)
     }
 
     @Test
@@ -41,22 +42,14 @@ class BackendOrderTest {
         }
     }
 
-    // v1 sokuldu: kimlik hicbir listede kalmamali, yoksa olu bir cip cizilir.
+    // Sökülmüş bir backend kimliği hiçbir listede kalmamalı, yoksa ölü bir çip
+    // çizilir: kimlik ne sırada, ne etiketlerde, ne enum'da, ne UI kataloğunda.
     @Test
-    fun v1KimligiHicbirListedeYok() {
-        assertTrue("opencode-app" !in BACKEND_DEFAULT_ORDER)
-        assertTrue("opencode-app" !in BACKEND_LITE_ORDER)
-        assertTrue("opencode-app" !in BACKEND_LABELS.keys)
-        assertTrue("opencode-app" !in BACKEND_SHORT_LABELS.keys)
-        assertTrue(Backend.from("opencode-app") == null)
-    }
-
-    // Arayuz katalogu (ikonlu cip listesi) da tek OpenCode girisi gostermeli.
-    @Test
-    fun uiKatalogundaTekOpencode() {
-        val opencodeGirisleri = BACKEND_CATALOG.filter { it.id.startsWith("opencode") }
-        assertEquals("UI katalogunda birden fazla OpenCode girisi var", 1, opencodeGirisleri.size)
-        assertEquals("opencode2-app", opencodeGirisleri.single().id)
-        assertEquals("OpenCode", opencodeGirisleri.single().label)
+    fun herListeKimligiAyniKumedenGelir() {
+        val katalog = BACKEND_CATALOG.map { it.id }.toSet()
+        assertEquals(katalog, Backend.entries.map { it.id }.toSet())
+        assertEquals(katalog, BACKEND_DEFAULT_ORDER.toSet())
+        assertEquals(katalog, BACKEND_LABELS.keys.toSet())
+        assertEquals(katalog, BACKEND_SHORT_LABELS.keys.toSet())
     }
 }

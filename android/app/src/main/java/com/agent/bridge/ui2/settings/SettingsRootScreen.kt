@@ -39,7 +39,6 @@ fun SettingsRootScreen(
     uiState: RemoteUiState,
     onOpenConnection: () -> Unit,
     onOpenProviders: () -> Unit,
-    onOpenNotifications: () -> Unit,
     onOpenMcp: () -> Unit,
     onOpenUpdate: () -> Unit,
     onOpenAdvanced: () -> Unit,
@@ -87,7 +86,7 @@ fun SettingsRootScreen(
                 }, {
                 SettingsLinkRow(
                     title = "MCP sunucuları",
-                    detail = "Claude, Codex, OpenCode, OMP ve Antigravity",
+                    detail = "Claude, Codex, OMP ve Antigravity",
                     icon = Icons.Outlined.DeveloperMode,
                     onClick = onOpenMcp,
                 )
@@ -99,13 +98,6 @@ fun SettingsRootScreen(
             SurfaceCard {
                 AdaptiveCells(listOf(
                 {
-                SettingsLinkRow(
-                    title = "Bildirimler",
-                    detail = if (summary.notificationsEnabled) "Onay ve tur bildirimleri açık" else "Kapalı",
-                    icon = Icons.Outlined.Notifications,
-                    onClick = onOpenNotifications,
-                )
-                }, {
                 SettingsLinkRow(
                     title = "Güncelleme",
                     detail = "OTA sürümünü kontrol et ve yükle",

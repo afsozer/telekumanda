@@ -145,10 +145,10 @@ internal fun Ui3KlasorSecici(
         }
 
         if (sonKlasorler.isNotEmpty()) {
-            CipSeridi("SON KULLANILAN", sonKlasorler.take(12), konum, onGit)
+            CipSeridi("Son kullanılan", sonKlasorler.take(12), konum, onGit)
         }
         if (favoriler.isNotEmpty()) {
-            CipSeridi("FAVORİ", favoriler, konum, onGit)
+            CipSeridi("Favori", favoriler, konum, onGit)
         }
     }
 }

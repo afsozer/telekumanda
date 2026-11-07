@@ -152,8 +152,8 @@ describe('cowork: workspace ad sanitizasyonu (createWorkspace)', () => {
   });
 
   it('Türkçe harfler korunur (\\w ASCII-only regresyonu)', () => {
-    // Hata: /[^\w.\- ]+/ ile "ışık çağlar" → "k alar" oluyordu.
-    for (const name of ['ışık çağlar', 'gönül öğüt', 'Şûra Çğİ Üyesi']) {
+    // Hata: /[^\w.\- ]+/ ile "ışıl çağdaş" → "l adas" oluyordu.
+    for (const name of ['ışıl çağdaş', 'göksu öztürk', 'Şûra Çğİ Üyesi']) {
       const r = app.createWorkspace({ name });
       assert.equal(r.ok, true, name + ' oluşmalı');
       assert.equal(r.name, name, 'ad harf kaybetmemeli');
@@ -165,7 +165,7 @@ describe('cowork: workspace ad sanitizasyonu (createWorkspace)', () => {
   it('Türkçe ad path ayraçlarını yine de eler', () => {
     // Ayraçlar silinir; kalan noktalar tek klasör adının parçasıdır (traversal
     // değil). Asıl değişmez: sonuç COWORK_ROOT altında tek seviye kalmalı.
-    const r = app.createWorkspace({ name: 'ışık/../çağlar' });
+    const r = app.createWorkspace({ name: 'ışıl/../çağdaş' });
     assert.equal(r.ok, true);
     assert.equal(/[\\/:]/.test(r.name), false, 'ayraç kalmamalı');
     const rel = path.relative(app.coworkRoot(), r.path);

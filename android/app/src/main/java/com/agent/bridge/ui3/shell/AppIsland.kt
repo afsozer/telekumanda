@@ -129,37 +129,22 @@ private val YEDEK_HAP_Y = 28.dp
 // Ada HER İKİ TEMADA siyah (sistem kapsülünü taklit ediyor), o yüzden üstündeki
 // renkler de paletten GELMEZ — sabittir. Paletten okunduğunda açık temada
 // `ink2` (#6D6A7E) ve `attention` (#B07D1A) siyah hapın üstünde okunmuyordu.
-private val ADA_MUREKKEP = Color(0xFFD6DAE2)
-private val ADA_MUREKKEP2 = Color(0xFF97A0B0)
-private val ADA_CALISIYOR = Color(0xFF74A7DB)
-private val ADA_ONAY = Color(0xFFF0B34E)
-private val ADA_BOSTA = Color(0xFF8792A2)
+private val ADA_MUREKKEP = Color(0xFFECEBE7)
+private val ADA_MUREKKEP2 = Color(0xFF9B978E)
+private val ADA_CALISIYOR = Color(0xFF7DB3A8)
+private val ADA_ONAY = Color(0xFFE0A04F)
+private val ADA_BOSTA = Color(0xFF8A867E)
 
 /**
  * Adanın göstereceği bağlam yüzdesi — ya da HİÇBİR ŞEY.
  *
- * opencode'da TEK KAYNAK köprünün kendi hesabı ([contextPct]). Ada eskiden
- * yüzdeyi kendi bölmesiyle türetiyordu ve canlıda %100 yalanı çıktı: köprü
- * pencere kataloğu soğukken `contextWindow=0, contextPct=null` ("ölçemiyorum")
- * gönderiyor, ama üst-düzey pencere alanında ÖNCEKİ oturumdan kalan küçük bir
- * sayı (yerel modelin 12k'sı) duruyordu; yeni oturumun 44k token'ı ona
- * bölününce oran tavana yapışıyordu. Köprü "bilmiyorum" derken arayüzün kendi
- * başına bir sayı uydurması, panonun ve adanın da farklı şeyler göstermesi
- * demekti — iki gösterge tek kaynağa bağlandı.
- *
- * Diğer backend'lerde köprü `contextPct` göndermiyor; orada bölme tek yol
- * olduğu için duruyor. Pencere bilinmiyorsa (0) yine null: yüzde çizilmez.
+ * Token / pencere bölmesi. Pencere bilinmiyorsa (0) null: yüzde çizilmez.
+ * Yüzde burada, token ve pencereden hesaplanıyor.
  */
 internal fun adaBaglamYuzdesi(
-    opencodeAktif: Boolean,
-    contextPct: Int?,
     contextTokens: Int,
     contextWindow: Int,
-): Int? = when {
-    opencodeAktif -> contextPct?.coerceIn(0, 100)
-    contextWindow > 0 -> (contextTokens * 100 / contextWindow).coerceIn(0, 100)
-    else -> null
-}
+): Int? = if (contextWindow > 0) (contextTokens * 100 / contextWindow).coerceIn(0, 100) else null
 
 /**
  * Uygulama içi ada — turun canlı durumunun TEK yeri.
@@ -177,11 +162,10 @@ internal fun adaBaglamYuzdesi(
  * `setRequestPromotedOngoing(true)` çağrısı vardı; eksik olan cihaz değil,
  * testti. Yeniden ölçüldüğünde (`capsule-test/live/SONUC.md`) `ProgressStyle`
  * ve `BigTextStyle` promoted-ongoing bildirimleri Magic Capsule'u açtı.
- * Sistem kapsülü 16.09.2026'dan beri Live Updates yoluyla AYRICA var
- * (`KapsulDenetleyici`, `docs/kapsul-live-updates-plani.md`) — ada onun yerine
- * geçmiyor, ikisi bir arada. Çakışma yok: Honor, bildirimi atan uygulama
- * öndeyken kapsülü kendisi gizliyor (`SONUC2.md` §4), yani bu ada ekranda
- * iken kapsül zaten çizilmiyor. MediaSession yolu ise ÇALIŞIYOR olmasına
+ * Sistem kapsülü 16.09.2026–21.10.2026 arasında Live Updates yoluyla AYRICA
+ * vardı (`docs/kapsul-live-updates-plani.md`); bildirim servisiyle birlikte
+ * kaldırıldı (arka plan veri/pil tüketimi). Uygulama içi tek gösterge artık bu
+ * ada. MediaSession yolu ise ÇALIŞIYOR olmasına
  * rağmen vazgeçildi (medya yuvasını devralıyordu); ayrıntı:
  * `docs/ui3-liquid-glass-plani.md`, Faz 8.
  *

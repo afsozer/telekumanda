@@ -1,10 +1,10 @@
 // Agent Skills envanteri — TEK okuyucu.
 //
-// Uc backend de (claude-app / codex-app / opencode-app) ayni disk formatini
-// kullanir: <dizin>/<ad>/SKILL.md, YAML frontmatter'inda `name` ve
-// `description`. Once her backend kendi listesini ayri ayri cikariyordu ve
-// yalniz KLASOR ADINI donuyordu; cowork'teki Skill pill'i kisa aciklamayi da
-// gosterdigi icin ayristirma buraya toplandi.
+// Iki backend de (claude-app / codex-app) ayni disk formatini kullanir:
+// <dizin>/<ad>/SKILL.md, YAML frontmatter'inda `name` ve `description`. Once
+// her backend kendi listesini ayri ayri cikariyordu ve yalniz KLASOR ADINI
+// donuyordu; cowork'teki Skill pill'i kisa aciklamayi da gosterdigi icin
+// ayristirma buraya toplandi.
 
 import fs from 'node:fs';
 import path from 'node:path';

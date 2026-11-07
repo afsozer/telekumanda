@@ -33,8 +33,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
             singleSession = true,
         )
@@ -65,8 +63,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
             singleSession = true,
         )
@@ -102,8 +98,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -135,8 +129,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
         newDelegate.restoreTabs()
@@ -172,8 +164,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -219,8 +209,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -253,8 +241,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -320,8 +306,6 @@ class TabsDelegateTest {
                 uiState = uiState.copy(backend = "codex-app", codexAppSessionId = uiState.lastCodexAppSessionId)
             },
 
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -376,8 +360,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -444,8 +426,6 @@ class TabsDelegateTest {
                 uiState = uiState.copy(backend = "codex-app", codexAppSessionId = uiState.lastCodexAppSessionId)
             },
 
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -474,7 +454,7 @@ class TabsDelegateTest {
         val tabA = AppTab("id-a", "codex-app", "", "sess-A")
         val tabB = AppTab("id-b", "claude-app", "", "sess-B")
         val tabC = AppTab("id-c", "claude-app", "", "sess-C")
-        val tabD = AppTab("id-d", "opencode2-app", "", "sess-D")
+        val tabD = AppTab("id-d", "omp", "", "sess-D")
         val tabLanding = AppTab("id-l", "codex-app", "", "")
 
         val tabs = listOf(tabA, tabB, tabC, tabD, tabLanding)
@@ -488,7 +468,7 @@ class TabsDelegateTest {
         val liveByBackend = mapOf(
             "codex-app" to liveSessionsCodex,
             "claude-app" to liveSessionsClaude,
-            "opencode2-app" to null
+            "omp" to null
         )
 
         val prevStatuses = mapOf(
@@ -667,8 +647,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -696,8 +674,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -717,8 +693,8 @@ class TabsDelegateTest {
 
         // Çakışmayan sekmelerin silinmediğini kontrol et
         delegate.newTab()
-        // Sekme C: opencode-app backend'inde aynı sess-X id'sine bağlan (çakışma olmamalı çünkü backend farklı)
-        delegate.syncActiveTab("opencode2-app", "", "sess-X", "C")
+        // Sekme C: omp backend'inde aynı sess-X id'sine bağlan (çakışma olmamalı çünkü backend farklı)
+        delegate.syncActiveTab("omp", "", "sess-X", "C")
         
         assertEquals(2, uiState.openTabs.size)
     }
@@ -742,8 +718,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -782,8 +756,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -820,8 +792,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -846,8 +816,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -884,8 +852,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -898,7 +864,7 @@ class TabsDelegateTest {
         val tabBId = uiState.activeTabId
         
         delegate.newTab()
-        delegate.syncActiveTab("opencode2-app", "", "sess-C", "Tab C")
+        delegate.syncActiveTab("omp", "", "sess-C", "Tab C")
         val tabCId = uiState.activeTabId
 
         assertEquals(3, uiState.openTabs.size)
@@ -928,8 +894,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {}
         )
 
@@ -962,7 +926,7 @@ class TabsDelegateTest {
         val fakePrefs = FakeKeyValueStore()
         val rootTab = AppTab("tab-root", "codex-app", sessionId = "session-root", title = "Root", bridgeProfileId = "default")
         val childTab = AppTab("tab-child", "claude-app", sessionId = "session-child", title = "Child", bridgeProfileId = "default")
-        val otherTab = AppTab("tab-other", "opencode2-app", sessionId = "session-other", title = "Other", bridgeProfileId = "default")
+        val otherTab = AppTab("tab-other", "omp", sessionId = "session-other", title = "Other", bridgeProfileId = "default")
         var uiState = RemoteUiState(
             openTabs = listOf(rootTab, childTab, otherTab),
             activeTabId = childTab.id,
@@ -984,8 +948,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -1008,8 +970,8 @@ class TabsDelegateTest {
     @Test
     fun removeSessionTabsClosesOnlyMatchingSessionAndIgnoresCwd() {
         val fakePrefs = FakeKeyValueStore()
-        val silinen = AppTab("tab-1", "opencode2-app", sessionId = "ses-silinen", title = "Silinen", bridgeProfileId = "default")
-        val komsu = AppTab("tab-2", "opencode2-app", sessionId = "ses-komsu", title = "Komşu", bridgeProfileId = "default")
+        val silinen = AppTab("tab-1", "omp", sessionId = "ses-silinen", title = "Silinen", bridgeProfileId = "default")
+        val komsu = AppTab("tab-2", "omp", sessionId = "ses-komsu", title = "Komşu", bridgeProfileId = "default")
         var uiState = RemoteUiState(
             openTabs = listOf(silinen, komsu),
             activeTabId = komsu.id,
@@ -1029,8 +991,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -1045,7 +1005,7 @@ class TabsDelegateTest {
     @Test
     fun removeSessionTabsWithEmptySetIsNoOp() {
         val fakePrefs = FakeKeyValueStore()
-        val tab = AppTab("tab-1", "opencode2-app", sessionId = "ses-1", title = "Tek", bridgeProfileId = "default")
+        val tab = AppTab("tab-1", "omp", sessionId = "ses-1", title = "Tek", bridgeProfileId = "default")
         var uiState = RemoteUiState(openTabs = listOf(tab), activeTabId = tab.id)
         val delegate = TabsDelegate(
             prefs = fakePrefs,
@@ -1058,8 +1018,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -1157,12 +1115,10 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
-        delegate.syncActiveTab("cowork", "opencode2-app", "cw-1", "Alan 1")
+        delegate.syncActiveTab("cowork", "omp", "cw-1", "Alan 1")
         val cowork1 = uiState.activeTabId
         delegate.newTab()
         val bosSekme = uiState.activeTabId
@@ -1173,7 +1129,7 @@ class TabsDelegateTest {
         assertEquals("cw-1", uiState.pendingBindSessionId)
         // Saglayici da sekmeden gelir; enterCoworkMode hangi listeye bakacagini
         // buradan ogreniyor.
-        assertEquals("opencode2-app", uiState.lastCoworkProvider)
+        assertEquals("omp", uiState.lastCoworkProvider)
 
         // BOS sekmeye gecis hedef YAZMAZ: yeni-oturum ekrani acik kalmali.
         // (Hedefi enterCoworkMode tuketiyor; burada delege sahte oldugu icin
@@ -1203,8 +1159,6 @@ class TabsDelegateTest {
             enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
-            enterOpencodeAppMode = {},
-            enterOpencode2AppMode = {},
             enterCoworkMode = {},
         )
 
@@ -1224,57 +1178,5 @@ class TabsDelegateTest {
         delegate.activateTab(bosSekme, notifyIfDead = false)
         assertEquals("", uiState.pendingBindBackend)
         assertEquals("", uiState.pendingBindSessionId)
-    }
-
-    /**
-     * OPENCODE SEKMESINE DONUNCE OTURUM YUKLENIYOR MU.
-     *
-     * 26.09.2026, kullanici bildirdi: "opencode2 sekmesinden cikip geri
-     * geldigimde oturum yuklenmiyor". Sebep `activateTab`'in iki `when`
-     * blogunda da opencode2 dalinin HIC olmamasiydi — pendingBind yazilmiyor
-     * ve enter* cagrilmiyordu, yani `goToLanding()` sonrasi ekran landing'de
-     * kaliyordu. Iki ayagi da burada siniyoruz.
-     * 30.09.2026: v1 sokuldu, tek durum ailesi kaldi — "v1 kutusu kirlenmesin"
-     * iddiasi artik anlamsiz, yerine oturumun AILEYE yazildigi kilitlenir.
-     */
-    @Test
-    fun opencode2SekmesineDonunceOturumBaglanir() = runBlocking {
-        val fakePrefs = FakeKeyValueStore()
-        var uiState = RemoteUiState(backend = "opencode2-app")
-        var enterV2Sayaci = 0
-        var enterV1Sayaci = 0
-        val delegate = TabsDelegate(
-            prefs = fakePrefs,
-            scope = CoroutineScope(Dispatchers.Unconfined),
-            state = { uiState },
-            update = { updater -> uiState = updater(uiState) },
-            emit = {},
-            client = FakeBridgeClient(),
-            goToLanding = { uiState = uiState.copy(backend = null) },
-            enterAgyMode = {},
-            enterClaudeAppMode = {},
-            enterCodexAppMode = {},
-            enterOpencodeAppMode = { enterV1Sayaci++ },
-            enterOpencode2AppMode = {
-                enterV2Sayaci++
-                uiState = uiState.copy(backend = "opencode2-app")
-            },
-            enterCoworkMode = {},
-        )
-
-        delegate.syncActiveTab("opencode2-app", "", "v2-oturum", "OpenCode")
-        val v2Sekmesi = uiState.activeTabId
-        delegate.newTab()
-
-        delegate.activateTab(v2Sekmesi, notifyIfDead = false)
-
-        assertEquals("opencode2-app", uiState.pendingBindBackend)
-        assertEquals("v2-oturum", uiState.pendingBindSessionId)
-        // Oturum OpenCode ailesine yazilir.
-        assertEquals("v2-oturum", uiState.opencode.lastSessionId)
-        assertEquals(1, enterV2Sayaci)
-        // v1 girisi artik yok: eski enter kancasi hic cagrilmamali.
-        assertEquals(0, enterV1Sayaci)
-        assertEquals("opencode2-app", uiState.backend)
     }
 }

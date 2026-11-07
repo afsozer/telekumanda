@@ -33,6 +33,10 @@ fun SegmentedTabs(
     // Çipler satıra sığmayacaksa (backend süzgeci gibi değişken sayıda çip)
     // yatay kaydırma açılır; varsayılan kapalı, mevcut çağıranlar aynı kalsın.
     scrollable: Boolean = false,
+    // Kapalıyken tıklama düşer ve yazı soluklaşır. Bir işlem sürerken üretim
+    // parametresi değiştirilmesin diye var (görsel üretiminde "yüksek kalite"
+    // anahtarıyla aynı kural); varsayılan açık, mevcut çağıranlar aynı kalır.
+    enabled: Boolean = true,
 ) {
     val rowModifier = if (scrollable) modifier.horizontalScroll(rememberScrollState()) else modifier
     Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(Ui2Tokens.s8)) {
@@ -41,7 +45,7 @@ fun SegmentedTabs(
             val chipModifier = Modifier
                 .background(if (on) Ui2.colors.surface2 else Ui2.colors.surface, Ui2Tokens.pill)
                 .border(1.dp, if (on) Ui2.colors.lineStrong else Ui2.colors.line, Ui2Tokens.pill)
-                .clickable { onSelect(index) }
+                .clickable(enabled = enabled) { onSelect(index) }
                 .let { base -> if (itemHeight != null) base.height(itemHeight) else base }
                 .padding(horizontal = horizontalPadding, vertical = if (itemHeight == null) 5.dp else 0.dp)
             Box(
@@ -51,7 +55,11 @@ fun SegmentedTabs(
                 Text(
                     label,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (on) Ui2.colors.ink else Ui2.colors.ink2,
+                    color = when {
+                        !enabled -> Ui2.colors.ink3
+                        on -> Ui2.colors.ink
+                        else -> Ui2.colors.ink2
+                    },
                 )
             }
         }

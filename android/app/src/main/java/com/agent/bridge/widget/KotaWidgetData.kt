@@ -14,10 +14,12 @@ import kotlin.math.roundToInt
 // ayıklanır — Claude Code limitleri ve Nano-GPT bakiyesi. Saf Kotlin (android.*
 // yok), JVM birim testinde doğrudan sınanır.
 //
-// Tasarım dili Mac'teki KotaWidget küçük kartlarının birebir karşılığı
+// Tasarım dili Mac'teki KotaWidget kartlarının karşılığı
 // (~/Developer/KotaWidget, Sources/Widget/KotaWidgets.swift ve
 // NanoGPTWidget.swift): HER YER "kalan"ı gösterir, halka ve barlar kalan kadar
-// dolar; eşikler kalan %25 altı turuncu, %10 altı kırmızı.
+// dolar; eşikler kalan %25 altı turuncu, %10 altı kırmızı. 17.10.2026'dan beri
+// geniş kartın dili de burada: bardaki ve halkadaki ince çizgi pencerenin kalan
+// SÜRESİ, Nano-GPT'de 30 günlük harcama grafiği.
 
 /** Bir Claude limit penceresi. `remaining` 0..100 (kalan yüzde). */
 data class KotaBucket(
@@ -41,6 +43,12 @@ data class KotaNano(
     /** Köprünün kullanım ucu düştüyse null: "0 $" ile "bilinmiyor" ayrı kalsın. */
     val todaySpendUsd: Double?,
     val todayRequests: Int?,
+    /** Son 30 UTC gününün toplamı; eski köprüde null. */
+    val windowSpendUsd: Double? = null,
+    val windowRequests: Int? = null,
+    val windowDays: Int? = null,
+    /** Pencerenin her günü eskiden yeniye, son eleman bugün; eski köprüde null. */
+    val dailySpendUsd: List<Double>? = null,
 )
 
 data class KotaSnapshot(
@@ -115,9 +123,18 @@ object KotaWidgetData {
                 b.has("creditUsd") && !b.isNull("creditUsd") -> b.optDouble("creditUsd")
                 else -> b.optString("value").removePrefix("$").toDoubleOrNull()
             }?.takeIf { it.isFinite() } ?: return null
-            val spend = if (b.has("todaySpendUsd")) b.optDouble("todaySpendUsd").takeIf { it.isFinite() } else null
-            val requests = if (b.has("todayRequests")) b.optInt("todayRequests") else null
-            return KotaNano(usd, spend, requests)
+            fun double(key: String) = if (b.has(key)) b.optDouble(key).takeIf { it.isFinite() } else null
+            fun int(key: String) = if (b.has(key)) b.optInt(key) else null
+            val daily = b.optJSONArray("dailySpendUsd")?.let { array ->
+                List(array.length()) { array.optDouble(it, 0.0).takeIf { v -> v.isFinite() } ?: 0.0 }
+            }?.takeIf { it.isNotEmpty() }
+            return KotaNano(
+                usd, double("todaySpendUsd"), int("todayRequests"),
+                windowSpendUsd = double("windowSpendUsd"),
+                windowRequests = int("windowRequests"),
+                windowDays = int("windowDays"),
+                dailySpendUsd = daily,
+            )
         }
         return null
     }
@@ -154,24 +171,50 @@ object KotaWidgetData {
     }
 
     /** Türkçe ondalık ayracıyla dolar: "$1,24"; 100 $ üstünde kuruş yok. */
-    fun usdLabel(value: Double): String {
+    fun usdLabel(value: Double): String = "$" + usdNumber(value)
+
+    /** İşaretsiz tutar ("1,24"): halkada "$" ayrı, küçük puntoyla duruyor. */
+    fun usdNumber(value: Double): String {
         val digits = if (abs(value) >= 100) 0 else 2
-        return "$" + String.format(Locale.US, "%.${digits}f", value).replace('.', ',')
+        return String.format(Locale.US, "%.${digits}f", value).replace('.', ',')
     }
 
-    /** Küçük kartın alt satırı: bugünün harcaması, yoksa ölçek cümlesi. */
-    fun nanoBottomLine(nano: KotaNano): String {
-        val spend = nano.todaySpendUsd
-        return when {
-            spend != null && nano.todayRequests != null ->
-                "bugün ${usdLabel(spend)} · ${nano.todayRequests} istek"
-            spend != null -> "bugün ${usdLabel(spend)}"
-            nanoOverflow(nano) -> "10 $ ölçeğin üstünde"
-            else -> "10 $ ölçeğinde %${nanoFill(nano).roundToInt()}"
-        }
+    /** Halkanın sağındaki küçük satır: "bugün · 5 istek". */
+    fun nanoTodayCaption(nano: KotaNano): String =
+        nano.todayRequests?.let { "bugün · $it istek" } ?: "bugün"
+
+    /** Grafiğin altı: "30 gün · $10,77 · 885 istek". */
+    fun nanoWindowLine(nano: KotaNano): String {
+        val days = nano.windowDays ?: nano.dailySpendUsd?.size ?: 30
+        val spend = nano.windowSpendUsd ?: return "son $days gün"
+        return listOfNotNull("$days gün", usdLabel(spend), nano.windowRequests?.let { "$it istek" })
+            .joinToString(" · ")
     }
 
-    /** Bar sütunu dar: "7 gün (Fable)" → "Fable", "Son 7 gün" → "7 gün". */
+    /** Grafik ya da bugünün harcaması yokken ölçeğin cümlesi. */
+    fun nanoScaleLine(nano: KotaNano): String =
+        if (nanoOverflow(nano)) "10 $ ölçeğin üstünde" else "10 $ ölçeğinde %${nanoFill(nano).roundToInt()}"
+
+    /** Pencerenin uzunluğu etiketten: "Son 5 saat", "7 gün (Mythos)". Süresizse null. */
+    fun windowSeconds(label: String): Long? {
+        val match = Regex("(\\d+)\\s*(saat|gün)").find(label) ?: return null
+        val n = match.groupValues[1].toLong()
+        return if (match.groupValues[2] == "saat") n * 3_600 else n * 86_400
+    }
+
+    /**
+     * Pencerenin kalan SÜRESİ, kalan kotayla aynı ölçekte (0..100). Kota bu
+     * çizginin önündeyse harcama zamandan yavaş, gerideyse bu hızla yenilenmeden
+     * biter. Bitmap 15 dakikada bir çiziliyor: 5 saatlik pencerede çizgi en
+     * fazla %5 geride kalabilir.
+     */
+    fun timeLeftPercent(bucket: KotaBucket, now: Instant): Double? {
+        val reset = bucket.resetAt ?: return null
+        val window = windowSeconds(bucket.label) ?: return null
+        return (Duration.between(now, reset).seconds.toDouble() / window * 100).coerceIn(0.0, 100.0)
+    }
+
+    /** Bar sütunu dar: "7 gün (Mythos)" → "Mythos", "Son 7 gün" → "7 gün". */
     fun compactLabel(label: String): String {
         Regex("\\(([^)]+)\\)\\s*$").find(label)?.let { return it.groupValues[1] }
         val dot = label.substringAfterLast(" · ", "")

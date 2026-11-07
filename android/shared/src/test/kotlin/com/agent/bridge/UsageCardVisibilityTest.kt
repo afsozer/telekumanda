@@ -49,32 +49,24 @@ class UsageCardVisibilityTest {
     }
 
     @Test
-    fun runpodAppearsInTogglesOnlyWhenEnabled() {
-        assertFalse(usageCardToggles(groups, runpodEnabled = false, hidden = emptySet()).any { it.key == RUNPOD_USAGE_CARD_KEY })
-        val rows = usageCardToggles(groups, runpodEnabled = true, hidden = emptySet())
-        assertEquals(RUNPOD_USAGE_CARD_KEY, rows.last().key)
-        assertEquals("RunPod", rows.last().label)
-    }
-
-    @Test
     fun hiddenCountIgnoresCardsTheBridgeNoLongerSends() {
         // Anahtarı silinmiş bir sağlayıcı köprüden artık gelmiyor; onun eski
         // gizleme kaydı "1 kart gizli" rozetini tetiklememeli.
         val hidden = setOf("artikyok:Kaldırılmış Sağlayıcı")
-        assertEquals(0, hiddenUsageCardCount(groups, runpodEnabled = false, hidden = hidden))
+        assertEquals(0, hiddenUsageCardCount(groups, hidden = hidden))
         assertEquals(groups.size, visibleUsageGroups(groups, hidden).size)
     }
 
     @Test
-    fun hiddenCountTracksLiveCardsIncludingRunpod() {
-        val hidden = setOf("deepseek:DeepSeek", RUNPOD_USAGE_CARD_KEY)
-        assertEquals(2, hiddenUsageCardCount(groups, runpodEnabled = true, hidden = hidden))
-        assertEquals(1, hiddenUsageCardCount(groups, runpodEnabled = false, hidden = hidden))
+    fun hiddenCountTracksLiveCards() {
+        // RunPod kartı 24.10.2026'da söküldü; eski gizleme kaydı sayılmaz.
+        val hidden = setOf("deepseek:DeepSeek", "runpod")
+        assertEquals(1, hiddenUsageCardCount(groups, hidden = hidden))
     }
 
     @Test
     fun togglesLabelUnnamedCardsWithoutCrashing() {
-        val rows = usageCardToggles(listOf(group("", "")), runpodEnabled = false, hidden = emptySet())
+        val rows = usageCardToggles(listOf(group("", "")), hidden = emptySet())
         assertEquals("Adsız kart", rows.single().label)
     }
 }

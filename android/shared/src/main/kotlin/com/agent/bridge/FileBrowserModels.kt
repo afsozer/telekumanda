@@ -19,6 +19,23 @@ fun browserParentPath(path: String): String? {
 }
 
 /**
+ * Üretilmiş bir görselin/videonun dosya adındaki seed. Köprü çıktıyı
+ * `local-<model>-<kip>-<zamandamgası>-<seed>.<uzantı>` olarak adlandırıyor;
+ * seed son sayı grubudur.
+ *
+ * Neden ada bakıyoruz: seed dosya adında ZATEN duruyor, yani telefona indirilen
+ * ya da PC'de duran her eski görsel için de çalışır — yeniden üretim gerekmez.
+ * (Yeni üretimlerde ayrıca PNG'nin içine de yazılıyor, ad değişse bile kalsın.)
+ *
+ * Desen dar tutuldu: `local-` öneki ve 13 haneli zaman damgası şart. Aksi halde
+ * adı sayıyla biten herhangi bir dosyanın son rakamları seed sanılırdı.
+ */
+private val GENERATED_NAME = Regex("^local-.+-(\\d{12,14})-(\\d+)\\.[A-Za-z0-9]+$")
+
+fun seedFromGeneratedName(name: String): String? =
+    GENERATED_NAME.find(name.trim())?.groupValues?.get(2)
+
+/**
  * Yol bu klasörün kendisi ya da altında mı? Ayraç ve büyük/küçük harf duyarsız
  * (Windows). "Son klasör" hafızası da bu soruyla çalışıyor: kayıt yalnız kökün
  * altında gezinilirken tutulur (loadBrowserDir) ve okunurken doğrulanır

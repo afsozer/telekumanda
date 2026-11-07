@@ -5,11 +5,12 @@ import java.util.UUID
 
 // Backend siralamasinin TEK KAYNAGI. Dosya duzeyinde, cunku hem persist edilmis
 // tercihlerin suzgeci hem de yeni kurulumun varsayilani bu liste ve testle
-// kilitleniyor (30.09.2026: v1 sokulurken "opencode-app" -> "opencode2-app"
-// donusumu listeyi MUKERRER hale getirdi ve telefonda IKI "OpenCode" cipi
-// cizildi; derleyici bunu goremez, test gorur).
+// kilitleniyor (30.09.2026: toplu kimlik donusumu listeyi MUKERRER hale
+// getirdi ve telefonda ayni backend'in IKI cipi cizildi; derleyici bunu
+// goremez, test gorur). Kayitli tercihte bu listede olmayan bir kimlik varsa
+// asagidaki suzgec onu eler.
 internal val BACKEND_DEFAULT_ORDER = listOf(
-    "claude-app", "agy", "codex-app", "opencode2-app", "omp", "cowork",
+    "claude-app", "agy", "codex-app", "omp", "cowork",
 )
 internal val BACKEND_LITE_ORDER = LITE_BACKEND_ORDER
 
@@ -48,7 +49,7 @@ class SettingsViewModel(
         val seedEmbedded = liteEdition && embeddedToken.isNotBlank() &&
             (savedProfile.token.isBlank() || savedProfile.baseUrl == DEFAULT_URL)
         val activeProfile = if (seedEmbedded) {
-            savedProfile.copy(name = "Lite köprü", baseUrl = defaultUrl, token = embeddedToken)
+            savedProfile.copy(name = "Köprü", baseUrl = defaultUrl, token = embeddedToken)
         } else savedProfile
         val configuredProfiles = profiles.map { profile ->
             if (profile.id == activeProfile.id) activeProfile else profile
@@ -73,7 +74,7 @@ class SettingsViewModel(
         val visibleSet = persistedVisible?.toSet()
             // Sonradan eklenen backend'ler mevcut kurulumlarda da gorunsun diye
             // zorla eklenir; aksi halde eski visible_backends seti onlari gizler.
-            ?.let { it + "opencode2-app" + "omp" + "cowork" }
+            ?.let { it + "omp" + "cowork" }
             ?.filter { it in defaultOrder }
             ?.toSet()
             ?: defaultOrder.toSet()

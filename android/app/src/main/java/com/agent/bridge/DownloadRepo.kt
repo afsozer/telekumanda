@@ -19,7 +19,7 @@ import java.io.OutputStream
 
 /**
  * Downloads a workspace file from the bridge and persists it to the shared Downloads
- * directory ("Download/AgentBridge"), recording the result in a SharedPreferences-backed
+ * directory ([DOWNLOAD_REL_ROOT]), recording the result in a SharedPreferences-backed
  * history. Streams the response body straight to the destination so whole-file buffering
  * is avoided (large files stay cheap on memory).
  *
@@ -45,7 +45,7 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
                 mimeType = mimeType,
                 downloadedAt = System.currentTimeMillis(),
                 localUri = uri.toString(),
-                relativePath = "Download/AgentBridge/",
+                relativePath = DOWNLOAD_REL_ROOT,
             ).also(::addHistory)
         } catch (e: Exception) {
             runCatching { deleteUri(uri) }
@@ -68,7 +68,7 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
     ): DownloadRecord = withContext(Dispatchers.IO) {
         onProgress(0f)
         val response = client.downloadFile(settings, sourcePath, onProgress)
-        val hedefRel = if (subDir.isBlank()) "Download/AgentBridge/" else "Download/AgentBridge/$subDir/"
+        val hedefRel = if (subDir.isBlank()) DOWNLOAD_REL_ROOT else "$DOWNLOAD_REL_ROOT$subDir/"
         response.use {
             val body = it.body ?: throw IOException("Boş yanıt gövdesi")
             val mimeType = body.contentType()?.toString() ?: "application/octet-stream"
@@ -109,7 +109,7 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
     }
 
     /**
-     * [sourcePath]'teki zip'i geçici dosyaya indirir ve Download/AgentBridge/<folderName>/
+     * [sourcePath]'teki zip'i geçici dosyaya indirir ve Download/Telekumanda/<folderName>/
      * altına açar; geçmişe tek bir klasör kaydı düşer. Compress-Archive girdileri '\' ayraçlı
      * olabilir — girdi adları normalize edilir. Zip-slip ('..') girdileri atlanır.
      */
@@ -145,7 +145,7 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
             val unique = if (history().any { it.folder && it.name == folderName }) {
                 folderName + "-" + java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())
             } else folderName
-            val relDir = "Download/AgentBridge/$unique/"
+            val relDir = "$DOWNLOAD_REL_ROOT$unique/"
             var totalBytes = 0L
             java.util.zip.ZipFile(tmp).use { zf ->
                 val entries = zf.entries().toList().filter { !it.isDirectory }
@@ -188,14 +188,14 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
         }
     }
 
-    /** Open an output stream to Downloads/AgentBridge/<displayName>. Returns (uri, stream). */
+    /** Open an output stream to Downloads/Telekumanda/<displayName>. Returns (uri, stream). */
     private fun openOutput(displayName: String, mimeType: String): Pair<Uri, OutputStream> =
-        openOutputAt("Download/AgentBridge/", displayName, mimeType)
+        openOutputAt(DOWNLOAD_REL_ROOT, displayName, mimeType)
 
     /**
-     * [relativePath] "Download/AgentBridge/" veya alt klasörü ("Download/AgentBridge/dava-x/").
+     * [relativePath] "Download/Telekumanda/" veya alt klasörü ("Download/Telekumanda/dava-x/").
      *
-     * Tüm dosyalara erişim VARSA yeni düzene (/sdcard/AgentBridge/...) doğrudan
+     * Tüm dosyalara erişim VARSA yeni düzene (/sdcard/Telekumanda/...) doğrudan
      * dosya olarak yazarız — MediaStore RELATIVE_PATH standart koleksiyonların
      * dışına yazamadığı için başka yolu yok. İzin yoksa eski MediaStore yoluna
      * düşeriz, böylece kullanıcı izni vermeden de indirme çalışmaya devam eder.
@@ -226,20 +226,28 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
     }
 
     /**
-     * Eski "Download/AgentBridge/alt/" göreli yolunu yeni köke çevirir:
-     * "Download/AgentBridge/dava-x/" -> "/sdcard/AgentBridge/dava-x".
+     * "Download/Telekumanda/alt/" göreli yolunu telefon köküne çevirir:
+     * "Download/Telekumanda/dava-x/" -> "/sdcard/Telekumanda/dava-x".
      * Çağıranlar hâlâ göreli yol dili konuşuyor; çeviri tek yerde kalsın diye
      * burada yapılıyor.
+     *
+     * Eski ad da soyuluyor: indirilenler GEÇMİŞİ "Download/Telekumanda/..."
+     * yazan kayıtlar içeriyor ve klasör açıldığında o değer buraya geri geliyor.
+     * Yalnız yeni öneki soysaydık eski kayıtlar "/sdcard/Telekumanda/Download/
+     * AgentBridge/dava-x" gibi var olmayan bir yola çözülürdü.
      */
     private fun phoneDirFor(relativePath: String): String {
-        val alt = relativePath.removePrefix("Download/AgentBridge").trim('/')
+        val alt = relativePath
+            .removePrefix(DOWNLOAD_REL_ROOT.trimEnd('/'))
+            .removePrefix("Download/${PhoneFiles.LEGACY_ROOT_NAME}")
+            .trim('/')
         return if (alt.isBlank()) PhoneStorage.agentBridgeRoot()
         else PhoneFiles.join(PhoneStorage.agentBridgeRoot(), alt)
     }
 
     /**
      * Doğrudan yazılan dosyayı MediaStore'a bildirir. Bu olmadan görsel Galeri'de
-     * görünmez — /sdcard/AgentBridge standart koleksiyon olmadığı için tarayıcı
+     * görünmez — /sdcard/Telekumanda standart koleksiyon olmadığı için tarayıcı
      * kendiliğinden uğramıyor. MediaStore yoluyla yazılanlarda gerek yok.
      */
     private fun scanIfLocal(uri: Uri) {
@@ -408,5 +416,13 @@ class AndroidDownloadRepo(private val context: Context) : DownloadRepo {
     companion object {
         private const val KEY_HISTORY = "history"
         private const val MAX_HISTORY = 100
+
+        /**
+         * Çağıranların konuştuğu göreli yol lehçesinin kökü. İzin VARSA
+         * [phoneDirFor] bunu `/sdcard/<kök>`e çevirir; izin yoksa MediaStore
+         * `RELATIVE_PATH`i olarak birebir diske düşer, yani kullanıcı bunu
+         * İndirilenler altında klasör adı olarak görür.
+         */
+        private val DOWNLOAD_REL_ROOT = "Download/${PhoneFiles.ROOT_NAME}/"
     }
 }

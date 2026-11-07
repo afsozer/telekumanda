@@ -112,7 +112,7 @@ enum class GroupKind { TOOL, THOUGHT }
  *   değildir çünkü akışta yalnız tek kapalı grup yer kaplar.
  * - `thoughtIndex` taşıyan, boş olmayan ve `🧠` olmayan satırlar Araç'tır.
  *   Bu kural sağlayıcıya özgü araç adlarını da kapsar; salt önek listesine
- *   dayanmak OpenCode MCP ve Codex dinamik araçlarını görünmez bırakıyordu.
+ *   dayanmak sunucu MCP ve Codex dinamik araçlarını görünmez bırakıyordu.
  * - Kısa, indexsiz thought satırları ("süreç kapandı", "Conversation compacted")
  *   faaliyet değildir ve tekil durum şeridi olarak kalır. Uzun indexsiz eski
  *   reasoning satırları Düşünce grubuna girer.

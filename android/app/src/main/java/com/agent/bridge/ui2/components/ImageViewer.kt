@@ -212,8 +212,8 @@ private fun ColumnScopeActions(
                     else -> ImageCompactIconAction(Icons.Outlined.Save, "PC'de sakla") { save() }
                 }
             }
-            // Silme HER görselde var (ek olsun, gezginden açılmış olsun) —
-            // beğenilmeyeni görüntülerken atabilmek istenen davranış.
+            // Silme HER görselde var (ek olsun, üretilmiş olsun, gezginden açılmış
+            // olsun) — beğenilmeyeni görüntülerken atabilmek istenen davranış.
             // İki dokunuşlu: ilki soruyu sorar, ikincisi siler. Silince komşuya
             // geçilir, görüntüleyici AÇIK KALIR; ancak gidilecek görsel kalmadıysa
             // kapanır. Onay durumu `remember(state.path)` ile tutulduğu için komşuya

@@ -1,5 +1,8 @@
 package com.agent.bridge
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -12,7 +15,7 @@ import java.net.URLEncoder
 
 // Backend oturum yaşam döngüsü API'si — BridgeClient'tan ayrılan extension fonksiyonları
 // (madde 12.3). bridge/routes/backend.mjs (pfx + '/*' parametrik) ile eşleşir: agy,
-// claude-app, cowork, codex, codex-app, opencode-app. Çağıran kod değişmez;
+// claude-app, cowork, codex, codex-app, omp. Çağıran kod değişmez;
 // fonksiyonlar aynı imzayı korur, artık BridgeClient receiver'lı extension.
 // parseCoworkSessions/parseCoworkStartResult/parseCoworkOutputs/diskSessionsFrom bu
 // dosyada top-level private (yalnızca backend/cowork kullanır). Davranış değişikliği yok.
@@ -635,13 +638,13 @@ suspend fun BridgeClient.claudeAppOpenOnPc(settings: BridgeSettings, id: String)
     }
 
     // Oturumu ilgili backend'in app listesinden ve diskten tamamen sil. backend =
-    // "claude-app" | "codex-app" | "opencode2-app" | "agy". Desteklemeyen backend'de
+    // "claude-app" | "codex-app" | "omp" | "agy". Desteklemeyen backend'de
     // bridge 400 döner → IOException.
 /**
  * Oturumu diskten siler. Dönen değer kapatılacak sekmelerin id'leridir.
  *
  * Silme isteği DİSK id'siyle gidiyor (çekmece onu listeliyor) ama açık sekme
- * köprünün kendi oturum id'sine bağlı olabiliyor — opencode'da bu bir UUID.
+ * köprünün kendi oturum id'sine bağlı olabiliyor (ör. omp'de bir UUID).
  * İkisi birden dönmezse sekme açık kalıyor ve sohbeti köprü belleğinden
  * yüklemeye devam ediyor.
  */
@@ -892,22 +895,6 @@ suspend fun BridgeClient.codexAppInfo(settings: BridgeSettings): CodexAppInfo {
         )
     }
 
-    // OpenCode App info (cowork skill barı: serveAlive + skills)
-suspend fun BridgeClient.opencodeAppInfo(
-    settings: BridgeSettings,
-    backend: String = "opencode2-app",
-): OpencodeAppInfo {
-        val json = getJson(settings, "/$backend/info")
-        return OpencodeAppInfo(
-            serveAlive = json.optBoolean("serveAlive"),
-            skills = buildList {
-                val arr = json.optJSONArray("skills")
-                if (arr != null) for (i in 0 until arr.length()) arr.optString(i).takeIf { it.isNotBlank() }?.let { add(it) }
-            },
-            skillDetails = parseSkillInfoArray(json.optJSONArray("skillDetails")),
-        )
-    }
-
     // Feature 1: Thread fork
 suspend fun BridgeClient.codexAppFork(settings: BridgeSettings, sessionId: String, cwd: String = ""): CodexForkResult {
         val body = JSONObject().put("sessionId", sessionId)
@@ -1089,32 +1076,10 @@ suspend fun BridgeClient.codexGoalClear(settings: BridgeSettings, sessionId: Str
         return json.optBoolean("cleared", true)
     }
 
-    // --- OpenCode App backend ---
-suspend fun BridgeClient.opencodeAppModels(settings: BridgeSettings, backend: String = "opencode2-app"): List<BackendModel> {
-        val json = getJson(settings, "/$backend/models")
-        val array = json.optJSONArray("models")
-        return buildList {
-            if (array != null) {
-                for (i in 0 until array.length()) {
-                    val item = array.optJSONObject(i) ?: continue
-                    add(BackendModel(
-                        item.optString("label"),
-                        item.optString("id"),
-                        item.optJSONArray("variants")?.let { arr ->
-                            (0 until arr.length()).mapNotNull { arr.optString(it).ifBlank { null } }
-                        } ?: emptyList(),
-                        item.optString("defaultVariant"),
-                        item.optString("detail"),
-                    ))
-                }
-            }
-        }
-    }
-
     // OMP native RPC info (skill komutları + runtime MCP envanteri).
-    suspend fun BridgeClient.ompInfo(settings: BridgeSettings): OpencodeAppInfo {
+    suspend fun BridgeClient.ompInfo(settings: BridgeSettings): OmpAppInfo {
         val json = getJson(settings, "/omp/info")
-        return OpencodeAppInfo(
+        return OmpAppInfo(
             serveAlive = json.optBoolean("serveAlive"),
             skills = buildList {
                 val arr = json.optJSONArray("skills")
@@ -1124,159 +1089,14 @@ suspend fun BridgeClient.opencodeAppModels(settings: BridgeSettings, backend: St
         )
     }
 
-private fun parseRunPodStatus(json: JSONObject): RunPodStatus = RunPodStatus(
-    ok = json.optBoolean("ok", true),
-    enabled = json.optBoolean("enabled", false),
-    phase = json.optString("phase", "unknown"),
-    ready = json.optBoolean("ready", false),
-    action = json.optString("action"),
-    step = json.optString("step"),
-    message = json.optString("message"),
-    podStatus = json.optString("podStatus"),
-    tunnel = json.optBoolean("tunnel", false),
-    tunnelPid = if (json.isNull("tunnelPid")) null else json.optInt("tunnelPid"),
-    operationActive = json.optBoolean("operationActive", false),
-    billingAvailable = json.optBoolean("billingAvailable", false),
-    clientBalance = if (json.isNull("clientBalance")) null else json.optDouble("clientBalance"),
-    currentSpendPerHr = if (json.isNull("currentSpendPerHr")) null else json.optDouble("currentSpendPerHr"),
-    spendLimit = if (json.isNull("spendLimit")) null else json.optDouble("spendLimit"),
-)
-
-suspend fun BridgeClient.opencodeRunPodStatus(settings: BridgeSettings): RunPodStatus =
-    parseRunPodStatus(getJson(settings, "/opencode2-app/runpod/status"))
-
-suspend fun BridgeClient.opencodeRunPodStart(settings: BridgeSettings): RunPodStatus =
-    parseRunPodStatus(postJson(settings, "/opencode2-app/runpod/start", JSONObject()))
-
-suspend fun BridgeClient.opencodeRunPodStop(settings: BridgeSettings): RunPodStatus =
-    parseRunPodStatus(postJson(settings, "/opencode2-app/runpod/stop", JSONObject()))
-
-private fun parseSessionPurgeStatus(json: JSONObject): SessionPurgeStatus {
-    // `report` taramanin son ozeti, `result` son imhanin sonucu. Sayimlar
-    // report'tan, temizlik yargisi result'tan okunur.
-    val report = json.optJSONObject("report")
-    val result = json.optJSONObject("result")
-    return SessionPurgeStatus(
-        ok = json.optBoolean("ok", true),
-        enabled = json.optBoolean("enabled", false),
-        running = json.optBoolean("running", false),
-        message = json.optString("message"),
-        deadActive = report?.optInt("oluCanli", 0) ?: 0,
-        deadArchived = report?.optInt("oluArtik", 0) ?: 0,
-        clean = if (result == null || result.isNull("temiz")) null else result.optBoolean("temiz"),
-        lastRunAt = result?.optString("zaman").orEmpty(),
-        lines = buildList {
-            val arr = json.optJSONArray("lines")
-            if (arr != null) for (i in 0 until arr.length()) {
-                arr.optString(i).takeIf { it.isNotBlank() }?.let { add(it) }
-            }
-        },
-    )
-}
-
-/** Tarama 300 MB okuyor: koprude 60 sn onbellekli, [refresh] TTL'i atlar. */
-suspend fun BridgeClient.opencodePurgeStatus(settings: BridgeSettings, refresh: Boolean = false): SessionPurgeStatus =
-    parseSessionPurgeStatus(getJson(settings, "/opencode2-app/purge/status" + if (refresh) "?refresh=1" else ""))
-
-/**
- * Imhayi baslatir (202 + yoklama). Kopru betigi `-SurecleriDurdur
- * -ServisiBaslat` ile kosuyor: acik opencode oturumlari duser, 4096 servisi
- * is bitince geri kalkar. Geri donusu olmayan `-EskiDb`/`-Snapshot`
- * bayraklari telefondan GONDERILMIYOR, onlar masaustunde kalir.
- */
-suspend fun BridgeClient.opencodePurgeRun(settings: BridgeSettings): SessionPurgeStatus =
-    parseSessionPurgeStatus(postJson(settings, "/opencode2-app/purge/run", JSONObject()))
-
-suspend fun BridgeClient.opencodeAppNew(settings: BridgeSettings, cwd: String, model: String, permissionMode: String = "", backend: String = "opencode2-app"): String {
-        val body = JSONObject().put("cwd", cwd).put("model", model)
-        if (permissionMode.isNotBlank()) body.put("permissionMode", permissionMode)
-        val json = postJson(settings, "/$backend/new", body)
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "OpenCode App session failed"))
-        return json.optString("sessionId")
-    }
-
-suspend fun BridgeClient.opencodeAppPrompt(
-    settings: BridgeSettings,
-    sessionId: String,
-    text: String,
-    model: String?,
-    permissionMode: String = "",
-    // Akil yurutme eforu. BOSSA HIC GONDERILMEZ — alanin varligi bile modelin
-    // kendi varsayilanini eziyor, "varsayilan" ancak alani atlayarak ifade edilir.
-    variant: String = "",
-    // Secili opencode ajani (or. "atlas"). BOSSA GONDERILMEZ: setAgent tek basina
-    // desync olabildigi icin (oturum yokken pick sunucuya gitmez, kopru yeniden
-    // dogunca s.agent sifirlanir) ajani HER turda govdede tasiyoruz; boylece
-    // secici otoriter olur. Bos = otomatik, o durumda alani atlayip sunucunun
-    // kalici s.agent'ina dokunmuyoruz.
-    agent: String = "",
-    // Hangi backend'in ucu kullanilacak: "opencode2-app" (v1) veya "opencode2-app" (v2).
-    // Iki backend AYNI kopru sozlesmesini konusuyor, yalniz yol oneki degisiyor.
-    backend: String = "opencode2-app",
-) {
-        val body = JSONObject()
-            .put("sessionId", sessionId)
-            .put("text", text)
-            .put("requestId", java.util.UUID.randomUUID().toString())
-        if (!model.isNullOrBlank()) body.put("model", model)
-        if (permissionMode.isNotBlank()) body.put("permissionMode", permissionMode)
-        if (variant.isNotBlank()) body.put("variant", variant)
-        if (agent.isNotBlank()) body.put("agent", agent)
-        val json = postJson(settings, "/$backend/prompt", body)
-        if (!json.optBoolean("ok", true)) throw IOException(json.optString("error", "OpenCode App prompt failed"))
-    }
-
-suspend fun BridgeClient.opencodeAppConversation(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app"): ConversationResult {
-        val session = URLEncoder.encode(sessionId, "UTF-8")
-        val json = getJson(settings, "/$backend/conversation?sessionId=$session")
-        return ConversationResult(
-            text = json.optString("text"),
-            messages = parseMessages(json),
-            running = json.optBoolean("running"),
-            awaitingApproval = json.optBoolean("awaitingApproval"),
-            approval = parseApproval(json.optJSONObject("approval")),
-            awaitingFirstOutput = json.optBoolean("awaitingFirstOutput"),
-            choices = parseStringArray(json.optJSONArray("choices")),
-            contextTokens = json.optInt("contextTokens"),
-            contextWindow = json.optInt("contextWindow"),
-            permissionMode = json.optString("permissionMode"),
-            availableModels = parseBackendModels(json.optJSONArray("availableModels")),
-            permissionModes = parsePermissionModes(json.optJSONArray("permissionModes")),
-            commands = parseSlashCommands(json.optJSONArray("commands")),
-            // Soket kapaliyken bu alanlarin TEK kaynagi poll yolu; soket
-            // tarafindaki okumanin (SessionStreamManager) birebir esi.
-            // "bir tasimaya yazildi, otekine unutuldu" bu depoda tekrarlayan hata.
-            todos = parseTodoArray(json.optJSONArray("todos")),
-            contextPctPresent = json.has("contextPct"),
-            contextPct = parseContextPct(json),
-            revertedPresent = json.has("reverted"),
-            reverted = parseRevertState(json),
-            subagents = parseSubagentArray(json.optJSONArray("subagents")),
-            resolvedAgent = if (json.has("resolvedAgent")) json.optString("resolvedAgent") else null,
-        )
-    }
-
-suspend fun BridgeClient.opencodeAppThought(settings: BridgeSettings, sessionId: String, index: Int, backend: String = "opencode2-app"): String {
-        val session = URLEncoder.encode(sessionId, "UTF-8")
-        val json = getJson(settings, "/$backend/thought?sessionId=$session&i=$index")
-        return json.optString("text")
-    }
-
-suspend fun BridgeClient.opencodeAppStop(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app") {
-        postJson(settings, "/$backend/stop", JSONObject().put("sessionId", sessionId))
-    }
-
 /**
  * Oturumun dosya değişiklikleri ("Değişiklikler" görünümü).
  *
- * TEK İSTEMCİ, İKİ BACKEND: `/opencode-app/diff` ve `/codex-app/diff` AYNI
- * şemayı döndürüyor, çünkü dönüşümü ikisinde de köprü yapıyor. [base] o yüzden
- * parametre — ikinci bir ayrıştırıcı yazmak, iki backend'in aynı ekranda
- * farklı davranması demekti.
+ * Bugün yalnız `/codex-app/diff`. [base] yine parametre: şema backend'den
+ * bağımsız, köprü dönüştürüyor.
  *
- * YOKLAMAYA BİNMEZ: kullanıcı görünümü açınca çağrılır. Köprüdeki kaynaklar
- * ayrı (opencode'da serve'ün tur başına diff'i, codex'te akan fileChange
- * item'ları); ölçüm notları iki modülün sessionDiff başlıklarında.
+ * YOKLAMAYA BİNMEZ: kullanıcı görünümü açınca çağrılır. Köprüdeki kaynak akan
+ * fileChange item'ları; ölçüm notları codex-app.mjs sessionDiff başlığında.
  */
 suspend fun BridgeClient.backendSessionDiff(settings: BridgeSettings, base: String, sessionId: String): BackendSessionDiff {
         val session = URLEncoder.encode(sessionId, "UTF-8")
@@ -1304,376 +1124,9 @@ suspend fun BridgeClient.backendSessionDiff(settings: BridgeSettings, base: Stri
             deletions = json.optInt("deletions"),
             turns = json.optInt("turns"),
             truncated = json.optBoolean("truncated", false),
-            // opencode-app bu alanı hiç göndermiyor (kaynağı serve'ün donmuş tur
-            // diff'i, geçmiş kaybı yok) — yokluğu false demek, doğru varsayılan.
+            // Alanı göndermeyen köprü = geçmiş kaybı yok; yokluğu false demek.
             historyGap = json.optBoolean("historyGap", false),
         )
-    }
-
-// Alt-ajan transkripti: kart yığınındaki bir karta dokununca açılan salt-okunur
-// görünüm. AYRI UÇ: /conversation köprünün kendi uuid'siyle çalışır, çocuk oturum
-// `sessions` listesine hiç girmez. Yoklamaya binmez, dokunuşta çekilir.
-suspend fun BridgeClient.opencodeAppSubagentConversation(
-    settings: BridgeSettings,
-    sessionId: String,
-    childId: String,
-): OpencodeSubagentTranscript? {
-    val session = URLEncoder.encode(sessionId, "UTF-8")
-    val child = URLEncoder.encode(childId, "UTF-8")
-    val json = getJson(settings, "/opencode2-app/subagent-conversation?session=$session&child=$child")
-    if (!json.optBoolean("ok", true)) return null
-    return parseSubagentTranscript(json)
-}
-
-/**
- * Geri sarılabilecek noktalar — oturumun kullanıcı mesajları (kimlik + kısa metin).
- *
- * Diff ile aynı kuralla YOKLAMAYA BİNMEZ: kullanıcı listeyi açınca çekilir.
- * Kimlikler köprünün kendi satır kimlikleri DEĞİL, opencode'un `msg_...`
- * kimlikleri — geri sarma bunlarla yapılıyor.
- */
-suspend fun BridgeClient.opencodeAppCheckpoints(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app"): List<OpencodeCheckpoint> {
-        val session = URLEncoder.encode(sessionId, "UTF-8")
-        val json = getJson(settings, "/$backend/checkpoints?session=$session")
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Geri sarma noktaları alınamadı"))
-        val array = json.optJSONArray("items")
-        return buildList {
-            for (i in 0 until (array?.length() ?: 0)) {
-                val item = array?.optJSONObject(i) ?: continue
-                val id = item.optString("messageID")
-                if (id.isBlank()) continue
-                add(OpencodeCheckpoint(
-                    messageID = id,
-                    text = item.optString("text", ""),
-                    turn = item.optInt("turn", i + 1),
-                    truncated = item.optBoolean("truncated", false),
-                ))
-            }
-        }
-    }
-
-/**
- * Seçilen noktaya geri sarar. YIKICI: konuşmanın yanı sıra dosyalar da geri
- * sarılabiliyor — çağıran ONAY ALMADAN çağırmamalı.
- *
- * Dönen kayıt dosyaların GERÇEKTEN sarılıp sarılmadığını söylüyor
- * (bkz. [OpencodeRevertState.filesReverted]); köprü bunu serve'ün cevabından
- * ölçüyor, varsaymıyor.
- */
-suspend fun BridgeClient.opencodeAppRevert(settings: BridgeSettings, sessionId: String, messageID: String, backend: String = "opencode2-app"): OpencodeRevertState {
-        val json = postJson(
-            settings,
-            "/$backend/revert",
-            JSONObject().put("sessionId", sessionId).put("messageID", messageID),
-        )
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Geri sarılamadı"))
-        return OpencodeRevertState(
-            messageID = json.optString("messageID", messageID),
-            filesReverted = json.optBoolean("filesReverted", false),
-            files = json.optInt("files", 0),
-        )
-    }
-
-/** Son geri sarmayı iptal eder — mesajlar ve dosyalar geri gelir. */
-suspend fun BridgeClient.opencodeAppUnrevert(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app"): Boolean {
-        val json = postJson(settings, "/$backend/unrevert", JSONObject().put("sessionId", sessionId))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Geri alınamadı"))
-        return true
-    }
-
-/**
- * Oturumu İNTERNETE açık bir linkte yayınlar (opncd.ai) ve linki döndürür.
- *
- * Çağıran ONAY DİYALOĞUNDAN sonra çağırmalı: bu uç dış dünyaya yayın yapıyor,
- * geri alınabilir ama geri alınana kadar herkese açık.
- *
- * Zaten paylaşılmış oturumda köprü serve'e hiç gitmeden mevcut linki döndürür
- * (serve orada 500 veriyor — köprüde ölçüldü), yani "linke tekrar eriş" yolu
- * da budur.
- */
-suspend fun BridgeClient.opencodeAppShare(settings: BridgeSettings, sessionId: String): String {
-        val json = postJson(settings, "/opencode2-app/share", JSONObject().put("sessionId", sessionId))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Paylaşılamadı"))
-        return json.optString("url", "")
-    }
-
-/** Yayını kaldırır. Link ölür (köprüde ölçüldü: sayfa "Not Found" oluyor). */
-suspend fun BridgeClient.opencodeAppUnshare(settings: BridgeSettings, sessionId: String): Boolean {
-        val json = postJson(settings, "/opencode2-app/unshare", JSONObject().put("sessionId", sessionId))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Paylaşım kaldırılamadı"))
-        return true
-    }
-
-/**
- * Serve'ün özel komut kataloğu (komutlar + skill'ler). Oturumdan bağımsız;
- * köprüde 60 sn önbellekli, o yüzden "/" yazıldıkça sorulması ucuz.
- *
- * Boş liste "komut yok" demek ve arayüz o hâlde HİÇBİR ŞEY çizmiyor — köprü
- * serve'e ulaşamadığında da boş dönüyor, yani çalışmayan satır gösterilmiyor.
- */
-suspend fun BridgeClient.opencodeAppCommands(settings: BridgeSettings, backend: String = "opencode2-app"): List<SlashCommand> {
-        val json = getJson(settings, "/$backend/commands")
-        val array = json.optJSONArray("commands") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                val name = item.optString("name")
-                if (name.isBlank()) continue
-                add(SlashCommand(name = name, desc = item.optString("desc"), hint = item.optString("hint")))
-            }
-        }
-    }
-
-/**
- * Özel komutu bir TUR olarak koşturur. Köprü fire-and-forget: ok hemen döner,
- * turun kendisi normal tur gibi snapshot ile akar.
- */
-suspend fun BridgeClient.opencodeAppRunCommand(
-    settings: BridgeSettings,
-    sessionId: String,
-    command: String,
-    arguments: String,
-    backend: String = "opencode2-app",
-): Boolean {
-        val json = postJson(
-            settings,
-            "/$backend/command",
-            JSONObject().put("sessionId", sessionId).put("command", command).put("arguments", arguments),
-        )
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Komut çalıştırılamadı"))
-        return true
-    }
-
-/**
- * AGENTS.md init — projeyi analiz edip dosyayı yazan tur. Komut çalıştırmayla
- * aynı biçim: ok hemen döner, tur snapshot ile akar.
- */
-suspend fun BridgeClient.opencodeAppInitAgents(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app"): Boolean {
-        val json = postJson(settings, "/$backend/init", JSONObject().put("sessionId", sessionId))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "AGENTS.md turu başlatılamadı"))
-        return true
-    }
-
-// Compact: bağlamı AI ile özetle (/compact karşılığı). Köprü fire-and-forget
-// çalışır; ok hemen döner, "özetleniyor/özetlendi" satırları snapshot ile gelir.
-suspend fun BridgeClient.opencodeAppCompact(settings: BridgeSettings, sessionId: String, backend: String = "opencode2-app"): Boolean {
-        val json = postJson(settings, "/$backend/compact", JSONObject().put("sessionId", sessionId))
-        return json.optBoolean("ok", false)
-    }
-
-// Steer (süren tura enjeksiyon): yalnız v2'de var (delivery:"steer") — v1'de
-// bu uç 404 verir, capability kataloğu zaten açmıyor. Gövde follow-up ile
-// aynı biçimde; fark teslim kipi köprüde.
-suspend fun BridgeClient.opencodeAppSteer(settings: BridgeSettings, sessionId: String, text: String, backend: String = "opencode2-app") {
-        val json = postJson(settings, "/$backend/steer", JSONObject().put("sessionId", sessionId).put("text", text))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Yönlendirilemedi"))
-    }
-
-// ── Oturum talimatları + kayıtlı izin kuralları (yalnız v2) ────────────────
-// Talimatlar oturuma bağlı (sessionId), izin kuralları v2 deposu genel.
-// İkisi de "Oturum Kuralları" görünümünden çekiliyor; yoklamaya binmez.
-suspend fun BridgeClient.opencode2Instructions(settings: BridgeSettings, sessionId: String): List<Opencode2Instruction> {
-        val session = URLEncoder.encode(sessionId, "UTF-8")
-        val json = getJson(settings, "/opencode2-app/instructions?session=$session")
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Talimatlar okunamadı"))
-        val array = json.optJSONArray("entries") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                val key = item.optString("key")
-                if (key.isBlank()) continue
-                add(Opencode2Instruction(key = key, value = item.optString("value")))
-            }
-        }
-    }
-
-suspend fun BridgeClient.opencode2PutInstruction(settings: BridgeSettings, sessionId: String, key: String, value: String) {
-        val json = postJson(
-            settings,
-            "/opencode2-app/instructions",
-            JSONObject().put("sessionId", sessionId).put("key", key).put("value", value),
-        )
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Talimat kaydedilemedi"))
-    }
-
-suspend fun BridgeClient.opencode2DeleteInstruction(settings: BridgeSettings, sessionId: String, key: String) {
-        // GÖVDELİ DELETE: köprünün router.mjs'i DELETE'te de body() okuyor
-        // (26.09.2026'da router'a delete desteği eklendi). OkHttp'nin
-        // Request.Builder.delete(gövde) yolu kullanılıyor; POST+bayrak gibi
-        // uydurma bir protokol YOK.
-        val govde = JSONObject().put("sessionId", sessionId).put("key", key).toString()
-            .toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = buildRequest(settings, "/opencode2-app/instructions").delete(govde).build()
-        val json = executeJson(request)
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Talimat silinemedi"))
-    }
-
-suspend fun BridgeClient.opencode2SavedPermissions(settings: BridgeSettings): List<Opencode2SavedPermission> {
-        val json = getJson(settings, "/opencode2-app/permissions/saved")
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "İzin kuralları okunamadı"))
-        val array = json.optJSONArray("rules") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                val id = item.optString("id")
-                if (id.isBlank()) continue
-                add(Opencode2SavedPermission(
-                    id = id,
-                    projectID = item.optString("projectID"),
-                    action = item.optString("action"),
-                    resource = item.optString("resource"),
-                    created = item.optLong("created"),
-                ))
-            }
-        }
-    }
-
-suspend fun BridgeClient.opencode2DeleteSavedPermission(settings: BridgeSettings, id: String) {
-        val json = postJson(settings, "/opencode2-app/permissions/saved/delete", JSONObject().put("id", id))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "İzin kuralı silinemedi"))
-    }
-
-suspend fun BridgeClient.opencodeAppDiskSessions(settings: BridgeSettings, backend: String = "opencode2-app"): List<AppDiskSession> {
-        val json = getJson(settings, "/$backend/disk-sessions")
-        val array = json.optJSONArray("sessions") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                add(AppDiskSession(
-                    id = item.optString("id"),
-                    cwd = item.optString("cwd"),
-                    title = item.optString("title"),
-                    lastText = item.optString("lastText"),
-                    turns = item.optInt("turns"),
-                    // v2 köprüsünün eski yanıtında tarih `updated` adındaydı.
-                    mtime = item.optLong("mtime", item.optLong("updated")),
-                    pinned = item.optBoolean("pinned", false),
-                ))
-            }
-        }
-    }
-
-suspend fun BridgeClient.opencodeAppAdopt(settings: BridgeSettings, id: String, cwd: String, backend: String = "opencode2-app"): String {
-        val json = postJson(settings, "/$backend/adopt", JSONObject().put("id", id).put("cwd", cwd))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "OpenCode App adopt failed"))
-        return json.optString("sessionId")
-    }
-
-suspend fun BridgeClient.opencodeAppApprove(
-    settings: BridgeSettings,
-    sessionId: String,
-    allow: Boolean,
-    answers: List<ApprovalAnswer> = emptyList(),
-    backend: String = "opencode2-app",
-) {
-    val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
-    if (answers.isNotEmpty()) {
-        val arr = org.json.JSONArray()
-        answers.forEach { answer ->
-            arr.put(JSONObject().put("id", answer.questionId).put("optionId", answer.optionId).put("label", answer.label))
-        }
-        body.put("answers", arr)
-    }
-    postJson(settings, "/$backend/approve", body)
-}
-
-suspend fun BridgeClient.opencodeAppPin(settings: BridgeSettings, id: String, backend: String = "opencode2-app") {
-        postJson(settings, "/$backend/pin", JSONObject().put("id", id))
-}
-
-suspend fun BridgeClient.opencodeAppUnpin(settings: BridgeSettings, id: String, backend: String = "opencode2-app") {
-        postJson(settings, "/$backend/unpin", JSONObject().put("id", id))
-}
-
-suspend fun BridgeClient.opencodeAppRename(settings: BridgeSettings, id: String, title: String, backend: String = "opencode2-app") {
-        postJson(settings, "/$backend/rename", JSONObject().put("id", id).put("title", title))
-}
-
-fun BridgeClient.openOpencodeAppStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener, backend: String = "opencode2-app"): WebSocket {
-        val token = URLEncoder.encode(settings.token, "UTF-8")
-        val session = URLEncoder.encode(sessionId, "UTF-8")
-        val wsUrl = normalizeBase(settings.baseUrl)
-            .replaceFirst("https://", "wss://")
-            .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&token=$token"
-        val builder = Request.Builder().url(wsUrl)
-        if (settings.token.isNotBlank()) {
-            builder.header("Authorization", "Bearer ${settings.token}")
-        }
-        val request = builder.build()
-        return client.newWebSocket(request, listener)
-    }
-
-suspend fun BridgeClient.opencodeAppSetModel(settings: BridgeSettings, sessionId: String, model: String, backend: String = "opencode2-app"): String {
-        val json = postJson(settings, "/$backend/model", JSONObject().put("sessionId", sessionId).put("model", model))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Model değiştirilemedi"))
-        return json.optString("model")
-    }
-
-// Tur sürerken gönderim — OpenCode'da YALNIZ kuyruk var. Köprü bunu
-// `POST /session/:id/prompt_async` ile karşılıyor; meşgul oturumda opencode
-// mesajı sıraya alıp tur bitince kendi turu olarak koşuyor. Steer'in (süren tura
-// enjeksiyon) opencode'un bu yüzeyinde karşılığı YOK — o yüzden `opencodeAppSteer`
-// diye bir eş de YOK; yetenek katalogu userInputSteer=false diyor.
-suspend fun BridgeClient.opencodeAppFollowUp(settings: BridgeSettings, sessionId: String, text: String, backend: String = "opencode2-app") {
-    val json = postJson(settings, "/$backend/follow-up", JSONObject().put("sessionId", sessionId).put("text", text))
-    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Sıraya alınamadı"))
-}
-
-suspend fun BridgeClient.opencodeAppSetPermissionMode(settings: BridgeSettings, sessionId: String, mode: String, backend: String = "opencode2-app"): String {
-        val json = postJson(settings, "/$backend/permission-mode", JSONObject().put("sessionId", sessionId).put("permissionMode", mode))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Permission mode failed"))
-        return json.optString("permissionMode", mode)
-    }
-
-suspend fun BridgeClient.opencodeAppPermissionModes(settings: BridgeSettings, backend: String = "opencode2-app"): List<PermissionMode> {
-        val json = getJson(settings, "/$backend/permission-modes")
-        val array = json.optJSONArray("permissionModes") ?: json.optJSONArray("modes") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i)
-                if (item != null) {
-                    add(PermissionMode(
-                        item.optString("id"),
-                        item.optString("name", item.optString("id")),
-                        item.optString("description", ""),
-                    ))
-                } else {
-                    array.optString(i).takeIf { it.isNotBlank() }?.let { add(PermissionMode(it, it)) }
-                }
-            }
-        }
-    }
-
-// Kurulu opencode ajanlari (build/plan + ~/.config/opencode/agent/*.md).
-// mode:"subagent" olanlar kopruda elenir; buraya yalniz ana turu kosabilenler gelir.
-suspend fun BridgeClient.opencodeAppAgents(settings: BridgeSettings, backend: String = "opencode2-app"): List<BackendAgent> {
-        val json = getJson(settings, "/$backend/agents")
-        val array = json.optJSONArray("agents") ?: return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                // Eski v2 köprüsü yalnız id/label döndürüyordu. APK, köprü
-                // yeniden başlatılmadan da bu canlı listeyi gösterebilsin.
-                val name = item.optString("name").ifBlank { item.optString("id") }
-                if (name.isBlank()) continue
-                if (item.optString("mode") == "subagent" || item.optBoolean("hidden", false)) continue
-                add(BackendAgent(
-                    name = name,
-                    description = item.optString("description", ""),
-                    mode = item.optString("mode", ""),
-                    builtIn = item.optBoolean("builtIn", false),
-                    model = item.optString("model", ""),
-                ))
-            }
-        }
-    }
-
-// Bos ad = otomatik (modele gore yalin ajan). Yanit modeli de dondurur: ajan
-// kendi modelini bildiriyorsa kopru oturum modelini de ona ceker.
-suspend fun BridgeClient.opencodeAppSetAgent(settings: BridgeSettings, sessionId: String, agent: String, backend: String = "opencode2-app"): Pair<String, String> {
-        val json = postJson(settings, "/$backend/agent", JSONObject().put("sessionId", sessionId).put("agent", agent))
-        if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Ajan değiştirilemedi"))
-        return json.optString("agent") to json.optString("model")
     }
 
 // --- OMP native RPC backend ---
@@ -1906,9 +1359,9 @@ suspend fun BridgeClient.agyStop(settings: BridgeSettings, sessionId: String) {
 /**
  * "Turu durdur" — backend → uç eşlemesinin TEK yeri.
  *
- * İki çağıranı var ve ikisinin de aynı şeyi yapması şart: sohbet ekranındaki
- * Durdur tuşu (`RemoteViewModel.stop()`) ve kapsül bildirimindeki "Durdur"
- * (`TurDurdurReceiver`). Eşleme kopyalanınca biri güncellenip öteki unutulur.
+ * Çağıran: sohbet ekranındaki Durdur tuşu (`RemoteViewModel.stop()`). Kapsül
+ * bildirimindeki ikinci çağıran 21.10.2026'da bildirimlerle birlikte kalktı;
+ * eşleme yine burada tek yerde kalsın.
  *
  * `cowork` burada YOK: cowork operasyon olayı üretmiyor (server.mjs:253-259),
  * dolayısıyla kapsülde hiç görünmüyor. Çağıran cowork'ü kendi sağlayıcısına
@@ -1923,7 +1376,6 @@ suspend fun BridgeClient.turDurdur(settings: BridgeSettings, backend: String, se
         "agy" -> agyStop(settings, sessionId)
         "claude-app" -> claudeAppInterrupt(settings, sessionId)
         "codex-app" -> codexAppStop(settings, sessionId)
-        "opencode2-app" -> opencodeAppStop(settings, sessionId, "opencode2-app")
         "omp" -> ompStop(settings, sessionId)
         else -> Unit
     }

@@ -14,10 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -108,12 +106,8 @@ private fun ProviderSettingsRow(provider: SettingsProviderItem, total: Int, acti
 @Composable
 fun SettingsAdvancedScreen(uiState: RemoteUiState, actions: RemoteViewModel, onBack: () -> Unit) {
     var killTarget by remember { mutableStateOf<SettingsProviderItem?>(null) }
-    var purgeConfirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         actions.loadAllBackendSessionCounts()
-        // Onbellekli durum: ekran her acilista 300 MB taramaz, kullanici
-        // "Tara" derse tazelenir.
-        actions.loadPurgeStatus()
     }
 
     Column(Modifier.fillMaxSize().background(Ui2.colors.bg)) {
@@ -161,7 +155,6 @@ fun SettingsAdvancedScreen(uiState: RemoteUiState, actions: RemoteViewModel, onB
                     }
                 }
             }
-            SessionPurgeCard(uiState, actions) { purgeConfirm = true }
         }
     }
 
@@ -176,80 +169,5 @@ fun SettingsAdvancedScreen(uiState: RemoteUiState, actions: RemoteViewModel, onB
             },
             onDismiss = { killTarget = null },
         )
-    }
-
-    if (purgeConfirm) {
-        ConfirmDialog(
-            title = "Silinmiş oturum kalıntıları imha edilsin mi?",
-            text = "Masaüstündeki opencode süreçleri durdurulacak (açık oturumlar düşer), " +
-                "veritabanı sıkıştırılacak, loglar boşaltılacak ve 4096 servisi geri kaldırılacak. " +
-                "İşlem birkaç dakika sürebilir ve geri alınamaz.",
-            confirmLabel = "İmha et",
-            onConfirm = {
-                purgeConfirm = false
-                actions.runSessionPurge()
-            },
-            onDismiss = { purgeConfirm = false },
-        )
-    }
-}
-
-/**
- * OpenCode'da oturum silmek icerigi yok etmiyor: SQLite freelist sayfalari ve
- * checkpoint edilmemis -wal cerceveleri mesaj metnini aynen tutuyor
- * (30.09.2026'da silinmis bir oturum birebir geri getirildi). Bu kart o
- * kalintilari sayar ve masaustundeki oturum-imha.ps1'i tetikler.
- *
- * Geri donusu olmayan bayraklar (-EskiDb: 24 Eyl yedegini de siler,
- * -Snapshot) bilerek TELEFONDA YOK; onlar masaustunde elle verilir.
- */
-@Composable
-private fun SessionPurgeCard(uiState: RemoteUiState, actions: RemoteViewModel, onPurge: () -> Unit) {
-    val purge = uiState.opencode.purge
-    SurfaceCard {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.DeleteForever, null, tint = Ui2.colors.ink2)
-            Column(Modifier.weight(1f).padding(horizontal = Ui2Tokens.s12)) {
-                Text("Silinmiş oturum kalıntıları", style = MaterialTheme.typography.titleSmall, color = Ui2.colors.ink)
-                Text(
-                    purge.message.ifBlank { "Durum için tara" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Ui2.colors.ink2,
-                )
-                if (purge.deadArchived > 0) {
-                    // Bu sayi varsayilan imhaya GIRMIYOR; kart bunu ayri
-                    // satirda soyluyor, yoksa "temiz" yaniltici olur.
-                    Text(
-                        "Eski/kopya veritabanlarında ${purge.deadArchived} sohbet duruyor — masaüstünden -EskiDb ile gider",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Ui2.colors.ink3,
-                    )
-                }
-            }
-            when {
-                purge.running -> CircularProgressIndicator(Modifier.size(18.dp), color = Ui2.colors.ink2)
-                purge.deadActive > 0 -> StatusBadge("${purge.deadActive} iz", StatusKind.Attention)
-                purge.clean == true -> StatusBadge("Temiz", StatusKind.Done)
-                else -> Unit
-            }
-        }
-        if (purge.running && purge.lines.isNotEmpty()) {
-            Text(
-                purge.lines.last(),
-                style = MaterialTheme.typography.bodySmall,
-                color = Ui2.colors.ink3,
-                modifier = Modifier.padding(top = Ui2Tokens.s8),
-            )
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { actions.loadPurgeStatus(refresh = true) }, enabled = !purge.running) {
-                Icon(Icons.Default.Refresh, null, tint = Ui2.colors.ink2)
-                Text("Tara", color = Ui2.colors.ink2)
-            }
-            TextButton(onClick = onPurge, enabled = purge.enabled && !purge.running) {
-                Icon(Icons.Outlined.DeleteForever, null, tint = Ui2.colors.danger)
-                Text("İmha et", color = Ui2.colors.danger)
-            }
-        }
     }
 }

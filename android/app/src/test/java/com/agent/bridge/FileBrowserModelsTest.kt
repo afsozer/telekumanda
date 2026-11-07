@@ -108,7 +108,7 @@ class FileBrowserModelsTest {
         assertEquals(ViewerKind.DOCX, viewerKindFor("dilekce.docx"))
         assertEquals(ViewerKind.IMAGE, viewerKindFor("C:\\foto\\tarama.PNG"))
         assertEquals(ViewerKind.PDF, viewerKindFor("tensip.pdf"))
-        assertEquals(ViewerKind.VIDEO, viewerKindFor("durusma-kaydi.MP4"))
+        assertEquals(ViewerKind.VIDEO, viewerKindFor("local-ltx-video-2b-video-1.MP4"))
         assertEquals(ViewerKind.EXTERNAL, viewerKindFor("arsiv.zip"))
     }
 
@@ -168,8 +168,8 @@ class FileBrowserModelsTest {
     // görsel görüntüleyicinin zoom/paylaş akışını kaybetmeleri istenmiyor.
     @Test
     fun animatedImageContainersStayInTheImageViewer() {
-        assertEquals(ViewerKind.IMAGE, viewerKindFor("animasyon.webp"))
-        assertEquals(ViewerKind.IMAGE, viewerKindFor("animasyon.gif"))
+        assertEquals(ViewerKind.IMAGE, viewerKindFor("ltx.webp"))
+        assertEquals(ViewerKind.IMAGE, viewerKindFor("ltx.gif"))
         assertTrue(isVideoFile("klip.webm"))
         assertFalse(isVideoFile("klip.webm.bak"))
         assertFalse(isVideoFile("mp4"))

@@ -19,7 +19,7 @@ object PhoneStorage {
     /** /sdcard (kullanıcıya görünen dış depolama kökü). */
     fun externalRoot(): String = Environment.getExternalStorageDirectory().absolutePath
 
-    /** /sdcard/AgentBridge */
+    /** /sdcard/Telekumanda */
     fun agentBridgeRoot(): String = File(externalRoot(), PhoneFiles.ROOT_NAME).absolutePath
 
     fun coworkRoot(): String = File(agentBridgeRoot(), PhoneFiles.COWORK_DIR).absolutePath
@@ -65,7 +65,7 @@ object PhoneStorage {
 
     /**
      * Doğrudan yazılan dosyayı MediaStore'a bildirir. Bu çağrılmazsa görsel
-     * Galeri'de görünmez ("kaydettim ama yok" hissi) — /sdcard/AgentBridge
+     * Galeri'de görünmez ("kaydettim ama yok" hissi) — /sdcard/Telekumanda
      * standart bir koleksiyon olmadığı için tarayıcı kendiliğinden uğramıyor.
      */
     fun notifyMediaScanner(context: Context, path: String) = notifyMediaScanner(context, listOf(path))
@@ -78,4 +78,22 @@ object PhoneStorage {
             )
         }
     }
+
+    /**
+     * Görsellerin Galeri'de görünüp görünmemesi. Açıkken klasöre `.nomedia`
+     * konur; dosyalar yerinde kalır, yalnız medya indeksinden düşer.
+     *
+     * Tarayıcıyı elle dürtmek ŞART: `.nomedia` yalnız SONRAKİ taramaları
+     * etkiler, hâlihazırda indekslenmiş görseller kendiliğinden kaybolmaz.
+     * Gizlerken klasörü, gösterirken tek tek dosyaları taratıyoruz.
+     */
+    fun setPicturesHiddenFromGallery(context: Context, hidden: Boolean): Boolean {
+        val dir = picturesRoot()
+        if (!PhoneFiles.setMediaHidden(dir, hidden)) return false
+        if (hidden) notifyMediaScanner(context, dir)
+        else notifyMediaScanner(context, PhoneFiles.filePathsIn(dir))
+        return true
+    }
+
+    fun picturesHiddenFromGallery(): Boolean = PhoneFiles.mediaHidden(picturesRoot())
 }

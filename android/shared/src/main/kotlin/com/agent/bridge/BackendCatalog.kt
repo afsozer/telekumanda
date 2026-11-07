@@ -21,8 +21,8 @@ data class BackendCapabilities(
 )
 
 // userInputSteer/userInputQueue TABANA GIRMEZ: hangi ucun kayitli oldugu backend
-// basina degisiyor (claude-app'te ikisi de yok, codex-app'te yalniz steer,
-// opencode-app'te yalniz queue) ve tabana koymak olmayan bir uca buton cizdirirdi.
+// basina degisiyor (claude-app'te ikisi de yok, codex-app'te yalniz steer)
+// ve tabana koymak olmayan bir uca buton cizdirirdi.
 private val APP_AGENT_CAPABILITIES = BackendCapabilities(
     approvals = true,
     userInput = true,
@@ -41,11 +41,6 @@ enum class Backend(
     // "steer kipi" yolunu kullaniyor (CodexAppActionsDelegate), ortak tur-ici
     // composer'i DEGIL — userInputQueue=false onu ortak kipin disinda tutar.
     CODEX_APP("codex-app", capabilities = APP_AGENT_CAPABILITIES.copy(plan = true, userInputSteer = true)),
-    // OpenCode (v2.0.x). v1 girisi (OPENCODE_APP, "opencode2-app") 30.09.2026'da
-    // SOKULDU. v2 sunucusu "delivery" alaniyla hem kuyrugu hem tur-ici
-    // enjeksiyonu tasiyor; kimlik "opencode2-app" KALDI (telefondaki sekme,
-    // pin ve izin kayitlari bu kimlikle saklaniyor), etiket "OpenCode".
-    OPENCODE2_APP("opencode2-app", capabilities = APP_AGENT_CAPABILITIES.copy(userInputSteer = true, userInputQueue = true)),
     OMP("omp", capabilities = APP_AGENT_CAPABILITIES.copy(userInputSteer = true, userInputQueue = true)),
     COWORK(
         "cowork",
@@ -91,7 +86,6 @@ val BACKEND_LABELS: Map<String, String> = mapOf(
     "claude-app" to "Claude App",
     "agy" to "Antigravity CLI",
     "codex-app" to "Codex App",
-    "opencode2-app" to "OpenCode",
     "omp" to "OMP",
     "cowork" to "Cowork",
 )
@@ -102,7 +96,6 @@ val BACKEND_SHORT_LABELS: Map<String, String> = mapOf(
     "claude-app" to "Claude",
     "agy" to "Antigravity",
     "codex-app" to "Codex",
-    "opencode2-app" to "OpenCode",
     "omp" to "OMP",
     "cowork" to "Cowork",
 )
@@ -116,25 +109,22 @@ internal fun mcpTargetFor(backend: String?, coworkProvider: String): String? = w
     "claude-app" -> MCP_TARGET_CLAUDE
     "cowork" -> when (normalizeCoworkProvider(coworkProvider)) {
         "codex-app" -> "codex-app"
-        "opencode2-app" -> "opencode2-app"
         "omp" -> "omp"
         else -> MCP_TARGET_CLAUDE
     }
     "agy" -> MCP_TARGET_ANTIGRAVITY
-    "codex-app", "opencode2-app", "omp" -> backend
+    "codex-app", "omp" -> backend
     else -> null
 }
 internal fun mcpTargetLabel(target: String?): String = when (target) {
     MCP_TARGET_CLAUDE -> "Claude"
     MCP_TARGET_ANTIGRAVITY -> "Antigravity"
     "codex-app" -> "Codex"
-    "opencode2-app" -> "OpenCode"
     "omp" -> "OMP"
     else -> ""
 }
 internal fun mcpEffectNote(target: String): String = when (target) {
     "codex-app" -> "yeni Codex oturumunda etkin olur"
-    "opencode2-app" -> "OpenCode sunucusu yeniden başlayınca etkin olur"
     "omp" -> "yeni OMP oturumunda etkin olur"
     // ACP süreci uzun ömürlü; config değişikliği ancak yeni süreçte okunur.
     else -> "yeni oturumda etkin olur"

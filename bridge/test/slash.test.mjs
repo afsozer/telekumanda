@@ -11,7 +11,7 @@ describe('/slash endpoint command lists', () => {
   });
 
   it('removed CLI backends return empty arrays', () => {
-    for (const backend of ['claude', 'codex', 'opencode']) {
+    for (const backend of ['claude', 'codex']) {
       assert.deepEqual(SLASH[backend] ?? [], []);
     }
   });
@@ -22,7 +22,7 @@ describe('/slash endpoint command lists', () => {
   });
 
   it('every remaining command has name and desc strings', () => {
-    for (const backend of ['agy', 'claude-app', 'codex-app', 'opencode-app']) {
+    for (const backend of ['agy', 'claude-app', 'codex-app']) {
       const cmds = SLASH[backend] ?? [];
       for (const cmd of cmds) {
         assert.equal(typeof cmd.name, 'string');

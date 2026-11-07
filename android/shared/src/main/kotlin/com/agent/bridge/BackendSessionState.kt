@@ -16,7 +16,7 @@ data class BackendSessionState(
     val diskLoading: Boolean = false,
 )
 
-// Aktif cowork saglayicisini claude/codex/opencode uclusune indirger;
+// Aktif cowork saglayicisini claude/codex/omp uclusune indirger;
 // normalizeCoworkProvider zaten mevcut — kullan, yeniden yazma.
 fun RemoteUiState.backendSession(id: String): BackendSessionState = when (id) {
     "agy" -> BackendSessionState(
@@ -48,19 +48,6 @@ fun RemoteUiState.backendSession(id: String): BackendSessionState = when (id) {
         effort = codexAppEffort,
         setupPending = codexAppSetupPending,
         diskLoading = codexAppDiskLoading,
-    )
-    "opencode2-app" -> BackendSessionState(
-        sessionId = opencode.sessionId,
-        lastSessionId = opencode.lastSessionId,
-        cwd = opencode.cwd,
-        model = opencode.model,
-        defaultModel = opencode.defaultModel,
-        // opencode'da efor "variant" adiyla gecer; ortak katman "effort"
-        // dedigi icin burada eslenir.
-        effort = opencode.variant,
-        permissionMode = opencode.permissionMode,
-        setupPending = opencode.setupPending,
-        diskLoading = opencode.diskLoading,
     )
     "omp" -> BackendSessionState(
         sessionId = omp.sessionId,

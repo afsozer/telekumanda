@@ -1,0 +1,13 @@
+{
+  "_comment": ["Test fikstur LLM katalogu; model dosyasi bilerek yok."],
+  "exe": "",
+  "models": [
+    {
+      "alias": "test-9b",
+      "label": "Test 9B",
+      "model": "Z:\\olmayan\\test-9b.gguf",
+      "ctx": "8192",
+      "gpuLayers": "99"
+    }
+  ]
+}

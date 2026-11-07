@@ -35,7 +35,6 @@ describe('normalizeCapabilities', () => {
     expect(caps.efforts).toBe(true)
     expect(caps.interrupt).toBe(true)
     expect(normalizeCapabilities({}, 'codex-app').sessionArchive).toBe(true)
-    expect(normalizeCapabilities({}, 'opencode-app').sessionPin).toBe(true)
     expect(normalizeCapabilities({}, 'agy').sessionDelete).toBe(true)
   })
 
@@ -129,9 +128,6 @@ describe('gömülü yedek tablo', () => {
     // /efforts yalnız claude-app ve codex-app’te kayıtlı (server.mjs extras).
     expect(caps('claude-app').efforts).toBe(true)
     expect(caps('codex-app').efforts).toBe(true)
-    expect(caps('opencode-app').efforts).toBe(false)
-    expect(caps('opencode-app').sessionRename).toBe(true)
-    expect(caps('opencode-app').sessionArchive).toBe(false)
     // /interrupt yalnız claude-app’te.
     expect(caps('claude-app').interrupt).toBe(true)
     expect(caps('codex-app').interrupt).toBe(false)

@@ -32,7 +32,7 @@ describe('fetchSessionDiff', () => {
         turns: 2,
       }),
     )
-    const diff = await fetchSessionDiff('opencode2-app', 'ses-1')
+    const diff = await fetchSessionDiff('codex-app', 'ses-1')
     expect(diff.files).toEqual([
       {
         path: 'a/b.kt',
@@ -43,23 +43,23 @@ describe('fetchSessionDiff', () => {
         truncated: false,
       },
     ])
-    expect(calls[0].url).toBe('/opencode2-app/diff?session=ses-1')
+    expect(calls[0].url).toBe('/codex-app/diff?session=ses-1')
   })
 
   it('yolsuz kayıt elenir, eksik alanlar savunmayla dolar', async () => {
     queue.push(json(200, { ok: true, files: [{ patch: 'p' }, { path: 'x.ts' }] }))
-    const diff = await fetchSessionDiff('opencode-app', 'ses-1')
+    const diff = await fetchSessionDiff('codex-app', 'ses-1')
     expect(diff.files).toHaveLength(1)
     expect(diff.files[0]).toMatchObject({ path: 'x.ts', additions: 0, deletions: 0 })
   })
 
   it('ok:false gövdesi hata fırlatır', async () => {
     queue.push(json(200, { ok: false, error: 'session not found' }))
-    await expect(fetchSessionDiff('opencode2-app', 'ses-1')).rejects.toThrow('session not found')
+    await expect(fetchSessionDiff('codex-app', 'ses-1')).rejects.toThrow('session not found')
   })
 
   it('sessionId URL kodlanır', async () => {
-    await fetchSessionDiff('opencode2-app', 'a b/c')
-    expect(calls[0].url).toBe('/opencode2-app/diff?session=a%20b%2Fc')
+    await fetchSessionDiff('codex-app', 'a b/c')
+    expect(calls[0].url).toBe('/codex-app/diff?session=a%20b%2Fc')
   })
 })

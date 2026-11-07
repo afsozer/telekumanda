@@ -50,15 +50,10 @@ export function registerBackend(router, name, mod, opts = {}) {
         return json(res, guard?.status || 409, guard || { ok: false, error: 'prompt blocked' });
       }
     }
-    // agent: yalnız OpenCode telefonu gövdede gönderir; diğer backend'lerde
-    // undefined kalır ve prompt() destructure'ında yok sayılır. OpenCode
-    // prompt()'u `agent !== undefined` ise oturum ajanını buna çeker → seçici
-    // her turda otoriter olur (setAgent desync'i biter).
-    const r = await mod.prompt({ sessionId: b.sessionId, text: b.text, model: b.model, permissionMode: b.permissionMode, images: b.images, variant: b.variant, agent: b.agent });
+    const r = await mod.prompt({ sessionId: b.sessionId, text: b.text, model: b.model, permissionMode: b.permissionMode, images: b.images, variant: b.variant });
     promptRequests.finish(b.requestId, r);
-    // v1 söküldü (30.09.2026): bu "gövdede görünüyorsa aslında teslim edilmiştir"
-    // kurtarması ÖLÇÜLDÜĞÜ backend'lerde kalıyor. opencode-app düştü; v2 için
-    // aynı davranış ölçülmedi, ölçülmeden eklenmiyor.
+    // Bu "gövdede görünüyorsa aslında teslim edilmiştir" kurtarması yalnız
+    // ÖLÇÜLDÜĞÜ backend'de (codex-app); başkasına ölçülmeden eklenmiyor.
     if (name === 'codex-app' && (!r || r.ok !== true)) {
       const c = mod.getConversation?.(b.sessionId) || {};
       const text = String(b.text || '');

@@ -1,6 +1,6 @@
 @echo off
 setlocal
-REM Auto-restart supervisor for the Telekumanda bridge.
+REM Auto-restart supervisor for the AgentBridge bridge.
 REM If node exits for any reason (crash, OOM, accidental kill), it is relaunched
 REM after a short pause.
 REM
@@ -26,8 +26,8 @@ set "NODE_MAJOR="
 if exist "%TEMP%\agentbridge_nodemajor.txt" set /p NODE_MAJOR=<"%TEMP%\agentbridge_nodemajor.txt"
 del "%TEMP%\agentbridge_nodemajor.txt" 2>nul
 if not "%NODE_MAJOR%"=="22" (
-  echo ERROR: AgentBridge requires Node.js 22 LTS. Set AGENTBRIDGE_NODE to a Node 22 executable or put Node 22 first on PATH.
-  echo ERROR: AgentBridge requires Node.js 22 LTS. Set AGENTBRIDGE_NODE to a Node 22 executable or put Node 22 first on PATH. >> bootstrap.log
+  echo ERROR: Telekumanda requires Node.js 22 LTS. Set AGENTBRIDGE_NODE to a Node 22 executable or put Node 22 first on PATH.
+  echo ERROR: Telekumanda requires Node.js 22 LTS. Set AGENTBRIDGE_NODE to a Node 22 executable or put Node 22 first on PATH. >> bootstrap.log
   exit /b 1
 )
 :loop

@@ -130,7 +130,7 @@ export function killChildTree(pid) {
  * process.on('exit') içinden çağrılacak sürüm.
  *
  * Asenkron spawn orada İŞE YARAMIYOR: 3 Ağu 2026'da ölçüldü — çıkış kancasından
- * killChildTree çağrılan `opencode serve` süreci hayatta kaldı, taskkill hiç
+ * killChildTree çağrılan app-server süreci hayatta kaldı, taskkill hiç
  * doğmadı (event loop kapandığı için libuv spawn'ı tamamlanmıyor). spawnSync
  * çıkış anında da çalışıyor; yetim süreç birikmesinin sebebi buydu.
  */

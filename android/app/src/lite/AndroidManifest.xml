@@ -2,19 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Lite arka plan bildirimi ve kablosuz ADB onarımını hiç paketlemez. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <!-- Lite kablosuz ADB onarımını ve bildirim/hatırlatma alarmını hiç
+         paketlemez. Bildirim servisi 21.10.2026'da iki sürümden de kaldırıldı;
+         cihaz-yerel hatırlatma yalnız tam sürümde. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" tools:node="remove" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <!-- RECEIVE_BOOT_COMPLETED kalıyor: WorkManager (kota kartı) da istiyor. -->
 
     <application>
-        <service android:name=".BridgeMonitorService" tools:node="remove" />
-        <receiver android:name=".ApprovalReceiver" tools:node="remove" />
-        <receiver android:name=".NoteActionReceiver" tools:node="remove" />
+        <receiver android:name=".HatirlaticiAlarmReceiver" tools:node="remove" />
+        <receiver android:name=".HatirlaticiAdbReceiver" tools:node="remove" />
     </application>
 </manifest>

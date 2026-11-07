@@ -149,7 +149,7 @@ test('operations tracker hides events whose session no longer resolves', () => {
   const session = { id: 'shell-1', diskId: 'ses_kalici', status: 'idle', lastText: 'İş' };
   const alive = new Set(['shell-1', 'ses_kalici']);
   const modules = {
-    'opencode-app': {
+    'codex-app': {
       listSessions: () => [session],
       sessionExists: id => alive.has(String(id || '')),
     },

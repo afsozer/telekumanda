@@ -2,7 +2,7 @@
 <paths>
     <cache-path name="apk" path="." />
     <files-path name="files" path="." />
-    <external-path name="downloads" path="Download/AgentBridge" />
+    <external-path name="downloads" path="Download/Telekumanda" />
     <!-- Telefon gezgini /sdcard'ın her yerine gidebiliyor; açılan dosyayı dış
          uygulamaya verebilmek için kökü paylaşıyoruz. Paylaşım URI BAZINDA ve
          tek seferlik (FLAG_GRANT_READ_URI_PERMISSION) — burada "external" demek

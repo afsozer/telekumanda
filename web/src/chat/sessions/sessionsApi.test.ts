@@ -504,13 +504,13 @@ describe('cowork oturumları', () => {
   it('başlıksız kayıt sağlayıcısına göre adlandırılır', async () => {
     coworkFetch({
       'ws-a': [{ provider: 'codex-app', sessionId: 'a1', cwd: 'ws-a' }],
-      'ws-b': [{ provider: 'opencode-app', sessionId: 'b1', cwd: 'ws-b' }],
+      'ws-b': [{ provider: 'claude-app', sessionId: 'b1', cwd: 'ws-b' }],
     })
 
     const { sessions } = await listAllSessions(SOURCES)
 
     expect(sessions.find((s) => s.id === 'a1')?.title).toBe('Yeni Codex oturumu')
-    expect(sessions.find((s) => s.id === 'b1')?.title).toBe('Yeni OpenCode oturumu')
+    expect(sessions.find((s) => s.id === 'b1')?.title).toBe('Yeni Claude oturumu')
   })
 
   it('bir workspace okunamazsa ötekiler yine listelenir', async () => {

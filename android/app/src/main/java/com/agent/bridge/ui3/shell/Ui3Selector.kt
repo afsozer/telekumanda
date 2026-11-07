@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.agent.bridge.ui2.components.SelectorOption
 import com.agent.bridge.ui2.components.SelectorPinStore
 import com.agent.bridge.ui2.components.selectorScrollTargetIndex
@@ -87,7 +88,7 @@ internal enum class Ui3SecenekBicimi { Duz, Model }
  * ayıraç varsa sol taraf sağlayıcı, sağ taraf modelin kendi adı. Ayıraç yoksa
  * (ör. "GPT-5.6 Sol") sağlayıcı BİLİNMİYOR demektir ve uydurulmaz.
  *
- * OpenCode kimlikleri "saglayici/model" biçiminde (ör.
+ * Sağlayıcı önekli kimlikler "saglayici/model" biçiminde (ör.
  * "nanogpt/abliteration-ai/abliterated-model"): boşluksuz ve eğik çizgili
  * etikette İLK parça sağlayıcıdır, gerisi modelin adı. Böylece ad satırı
  * sağlayıcı önekiyle dolmuyor (20.09.2026: üç model ekranda aynı görünüyordu).
@@ -177,11 +178,9 @@ internal fun <T> ColumnScope.Ui3Selector(
     onGeri: (() -> Unit)? = null,
     // SATIR ALTI YUVASI — o seceneğe ÖZGÜ, secmekten baska bir eylem.
     //
-    // Bugunku tek musterisi RunPod hapi: RunPod modelinin satirinin altinda
-    // pod'u acip kapatiyor (bkz. Ui3Root, MODEL sheet'i). Yuva olarak yazildi
-    // cunku bu bilesen ajan/izin/hesap/saglayici sheet'lerini de ciziyor —
-    // "RunPod"i bilen bir dal buraya girseydi jenerik secici backend'e ozel
-    // olurdu ve "backend'e ozel secici YAZILMAZ" kurali icerden delinirdi.
+    // Ilk musterisi RunPod hapiydi (24.10.2026'da sokuldu); bugun kullanan yok. Yuva olarak yazildi cunku bu bilesen ajan/izin/hesap/
+    // saglayici sheet'lerini de ciziyor; backend'i bilen bir dal buraya
+    // girseydi "backend'e ozel secici YAZILMAZ" kurali icerden delinirdi.
     //
     // TIP NEDEN "composable DONDUREN duz fonksiyon": ilgisiz satirlarda hicbir
     // sey cizmeyen bir composable yeterli DEGIL — altindaki kutu dolgusuyla
@@ -331,7 +330,16 @@ internal fun SheetBasligi(baslik: String, altBaslik: String?, onGeri: (() -> Uni
             )
         }
         Column {
-            Text(baslik, style = Ui3Type.etiket, color = Ui3Colors.ink3)
+            // Kovan: büyük harfli sessiz etiket değil, düz başlık.
+            Text(
+                baslik,
+                style = Ui3Type.govde.copy(
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                ),
+                color = Ui3Colors.ink,
+            )
             if (!altBaslik.isNullOrBlank()) {
                 Text(
                     altBaslik,
@@ -707,11 +715,18 @@ private fun KucukEylem(
     }
 }
 
-/** Model bilgi kartı — açıklama, ne için uygun, profil, kaynak. */
+/**
+ * Model bilgi kartı — açıklama, ne için uygun, profil, kaynak.
+ *
+ * `originalText` doluysa "orijinali göster" açılır: özet bir dil modelinin
+ * yazdığı metin olduğu için kaynağı kapatmak onu doğrulanamaz kılardı (ui2'den
+ * devralınan gerekçe).
+ */
 @Composable
 private fun <T> ColumnScope.BilgiKarti(secenek: SelectorOption<T>, onGeri: () -> Unit) {
     val bilgi = secenek.info ?: return
     val uriAcici = LocalUriHandler.current
+    var orijinalAcik by remember { mutableStateOf(false) }
 
     Row(
         Modifier.fillMaxWidth().padding(start = Ui3Tokens.s8, end = Ui3Tokens.s20, bottom = Ui3Tokens.s8),
@@ -737,8 +752,8 @@ private fun <T> ColumnScope.BilgiKarti(secenek: SelectorOption<T>, onGeri: () ->
         verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s12),
     ) {
         Text(bilgi.description, style = Ui3Type.govde, color = Ui3Colors.ink2)
-        BilgiSatiri("En uygun", bilgi.bestFor)
-        BilgiSatiri("Profil", bilgi.profile)
+        BilgiSatiri(bilgi.bestForLabel, bilgi.bestFor)
+        BilgiSatiri(bilgi.profileLabel, bilgi.profile)
         val kaynak = bilgi.sourceUrl
         if (!kaynak.isNullOrBlank()) {
             Row(
@@ -755,7 +770,36 @@ private fun <T> ColumnScope.BilgiKarti(secenek: SelectorOption<T>, onGeri: () ->
                     tint = Ui3Colors.vurguHi,
                     modifier = Modifier.size(15.dp),
                 )
-                Text("Hugging Face'te aç", style = Ui3Type.alt, color = Ui3Colors.vurguHi)
+                Text(bilgi.sourceLabel, style = Ui3Type.alt, color = Ui3Colors.vurguHi)
+            }
+        }
+        val orijinal = bilgi.originalText
+        if (!orijinal.isNullOrBlank()) {
+            Text(
+                if (orijinalAcik) "Orijinali gizle" else "Orijinali göster",
+                style = Ui3Type.alt,
+                color = Ui3Colors.vurguHi,
+                modifier = Modifier
+                    .clip(Ui3Tokens.pill)
+                    .clickable { orijinalAcik = !orijinalAcik }
+                    .padding(vertical = 4.dp)
+                    .testTag("bilgi_orijinal"),
+            )
+            if (orijinalAcik) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(Ui3Tokens.r12))
+                        .background(Ui3Colors.kuyu)
+                        .border(1.dp, Ui3Colors.yuzey2, RoundedCornerShape(Ui3Tokens.r12))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        orijinal,
+                        style = Ui3Type.alt.copy(fontFamily = Ui3Mono),
+                        color = Ui3Colors.ink2,
+                    )
+                }
             }
         }
     }
@@ -765,7 +809,7 @@ private fun <T> ColumnScope.BilgiKarti(secenek: SelectorOption<T>, onGeri: () ->
 private fun BilgiSatiri(etiket: String, deger: String) {
     if (deger.isBlank()) return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(etiket.uppercase(), style = Ui3Type.etiket, color = Ui3Colors.ink3)
+        Text(etiket, style = Ui3Type.etiket, color = Ui3Colors.ink3)
         Text(deger, style = Ui3Type.alt, color = Ui3Colors.ink2)
     }
 }

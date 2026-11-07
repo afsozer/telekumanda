@@ -7,7 +7,6 @@ import { spawnSync } from 'node:child_process';
 // Her harness için temp klasör adı (bridge/<name>-tmp). CommandLine eşleşmesi bununla yapılır.
 const HARNESS_TMP = {
   codex:    'codex-tmp',
-  opencode: 'opencode-tmp',
   claude:   'claude-tmp',
   agy:      'agy-tmp',
 };

@@ -177,7 +177,7 @@ export function createOperationsTracker({
   // Olay hala acilabilir bir oturuma mi isaret ediyor? Backend modulu
   // sessionExists uygulamiyorsa kayit oldugu gibi kalir (davranis degismez);
   // uygulayan backend'de silinmis/diskte olmayan oturumlar listeden duser.
-  // Kullanici sikayeti 02.08.2026: opencode kayitlarina dokununca hicbir sey
+  // Kullanici sikayeti 02.08.2026: kayitlara dokununca hicbir sey
   // olmuyordu, cunku kayittaki kabuk kimligi artik hicbir seye cozulmuyordu.
   function eventResolvable(event) {
     const mod = (modules || {})[event.backend];

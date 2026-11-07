@@ -209,6 +209,13 @@ describe('claude-app: oturum kalıcılığı', () => {
     app.__restoreSessionsFromData({ sessions: [{ id, cwd: os.homedir(), model: 'claude-opus-5' }] });
     assert.equal(app.listSessions().find(s => s.id === id).model, 'claude-opus-5-5');
   });
+
+  it('offers Mythos 5.1 and keeps it on restore', () => {
+    assert.ok(app.MODELS.some(m => m.id === 'claude-mythos-5-1' && m.label === 'Mythos 5.1'));
+    const id = 'claude-restore-mythos-' + Date.now();
+    app.__restoreSessionsFromData({ sessions: [{ id, cwd: os.homedir(), model: 'claude-mythos-5-1' }] });
+    assert.equal(app.listSessions().find(s => s.id === id).model, 'claude-mythos-5-1');
+  });
 });
 
 describe('claude-app: watcher and poll fallback', () => {

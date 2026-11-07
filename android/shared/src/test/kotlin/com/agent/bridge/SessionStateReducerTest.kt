@@ -57,62 +57,23 @@ class SessionStateReducerTest {
         assertFalse(SessionStateReducer.shouldRefreshCoworkOutputs(stateBase, snapshotBase.copy(running = true)))
     }
 
-    // Ajan seçimi snapshot'ta taşınır (yan cihazda değiştirilince çip güncellensin),
-    // ama YALNIZ opencode aktifken — başka backend'in snapshot'ı opencode state'ini
-    // kirletmemeli.
-    @Test
-    fun ajanSecimiYalnizOpencodeAktifkenYazilir() {
-        val meta = BackendStreamSnapshot(
-            seq = 1L, transcript = null, messages = null, running = null,
-            awaitingApproval = null, awaitingFirstOutput = null, choices = null,
-            contextTokens = null, contextWindow = null, agent = "atlasjb",
-        )
-        val opencode = RemoteUiState(backend = "opencode2-app", opencode = OpencodeUiState(agent = "build"))
-        assertEquals("atlasjb", SessionStateReducer.reduceStreamSnapshot(opencode, meta).opencode.agent)
-
-        // "" geçerli bir değer (otomatik) — boş diye yok sayılmamalı.
-        assertEquals("", SessionStateReducer.reduceStreamSnapshot(opencode, meta.copy(agent = "")).opencode.agent)
-
-        // Alan hiç yoksa (eski köprü) mevcut seçime dokunma.
-        assertEquals("build", SessionStateReducer.reduceStreamSnapshot(opencode, meta.copy(agent = null)).opencode.agent)
-
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(agent = "build"))
-        assertEquals("build", SessionStateReducer.reduceStreamSnapshot(claude, meta).opencode.agent)
-
-        val coworkOpencode = RemoteUiState(
-            backend = "cowork",
-            cowork = CoworkUiState(provider = "opencode2-app"),
-            opencode = OpencodeUiState(agent = "build"),
-        )
-        assertEquals("atlasjb", SessionStateReducer.reduceStreamSnapshot(coworkOpencode, meta).opencode.agent)
-    }
-
-    // Canlı arıza (15 Ağu 2026): sekme değişiminde gelen geç bir Claude karesi
-    // opencode state'ine permissionMode="auto" yazdı; sonraki devam çağrısı
+    // Canlı arıza (15 Ağu 2026): sekme değişiminde gelen
+    // geç bir Claude karesi sağlayıcı state'ine permissionMode="auto" yazdı; sonraki devam çağrısı
     // köprüden "invalid permission mode: auto" alıp oturumu açtırmadı.
     @Test
     fun yabanciIzinKipiSaglayiciStateiniKirletmez() {
-        val opencode = RemoteUiState(
-            backend = "opencode2-app",
-            opencode = OpencodeUiState(permissionMode = "yolo"),
-        )
-        // "auto" Claude'un kipi — opencode'da yok, yok sayılmalı.
-        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(opencode, permissionMode = "auto").opencode.permissionMode)
-        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(opencode, permissionMode = "acceptEdits").opencode.permissionMode)
+        // OMP'de: "plan" ve "auto" OMP'nin kipi değil, yok sayılmalı.
+        val omp = RemoteUiState(backend = "omp", omp = OmpUiState(permissionMode = "yolo"))
+        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(omp, permissionMode = "plan").omp.permissionMode)
+        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(omp, permissionMode = "auto").omp.permissionMode)
         // Kendi kipleri geçmeli.
-        assertEquals("ask", SessionStateReducer.reduceBackendOptions(opencode, permissionMode = "ask").opencode.permissionMode)
-        assertEquals("plan", SessionStateReducer.reduceBackendOptions(opencode, permissionMode = "plan").opencode.permissionMode)
+        assertEquals("write", SessionStateReducer.reduceBackendOptions(omp, permissionMode = "write").omp.permissionMode)
 
         // Köprüden canlı liste geldiyse otorite odur; listede olmayan reddedilir.
-        val withList = opencode.copy(
-            opencode = opencode.opencode.copy(permissionModes = listOf(PermissionMode("yolo"), PermissionMode("ask"))),
+        val withList = omp.copy(
+            omp = omp.omp.copy(permissionModes = listOf(PermissionMode("yolo"), PermissionMode("ask"))),
         )
-        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(withList, permissionMode = "plan").opencode.permissionMode)
-
-        // OMP'de de aynı kapı: "plan" OMP'nin kipi değil.
-        val omp = RemoteUiState(backend = "omp", omp = OpencodeUiState(permissionMode = "yolo"))
-        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(omp, permissionMode = "plan").omp.permissionMode)
-        assertEquals("write", SessionStateReducer.reduceBackendOptions(omp, permissionMode = "write").omp.permissionMode)
+        assertEquals("yolo", SessionStateReducer.reduceBackendOptions(withList, permissionMode = "write").omp.permissionMode)
     }
 
     // Prefill (staleConversation) yalnız GERÇEK mesaj listesi taşıyan snapshot'la
@@ -300,199 +261,5 @@ class SessionStateReducerTest {
             emptyCodexSnapshot().copy(goalPresent = true, goal = goal),
         )
         assertEquals(null, claudeReduced.codexAppGoal)
-    }
-
-    // GÖREV PANOSU — soket yolu. Bu depoda tekrarlayan hata sınıfı "delege
-    // yazıldı, okuma dalı unutuldu"; pano iki taşımadan da (WS snapshot ve
-    // delta setMeta) geçtiği için okuma dalı burada kilitleniyor.
-    @Test
-    fun gorevPanosuYalnizOpencodeAktifkenYazilir() {
-        val liste = listOf(
-            OpencodeTodo("Köprüyü oku", "completed"),
-            OpencodeTodo("Panoyu ekle", "in_progress"),
-        )
-        val meta = emptyCodexSnapshot().copy(todos = liste, contextPctPresent = true, contextPct = 42)
-
-        val opencode = RemoteUiState(backend = "opencode2-app")
-        val yazildi = SessionStateReducer.reduceStreamSnapshot(opencode, meta)
-        assertEquals(liste, yazildi.opencode.todos)
-        assertEquals(42, yazildi.opencode.contextPct)
-
-        // Cowork + opencode aynı oturum: pano oraya da yazılmalı.
-        val cowork = RemoteUiState(backend = "cowork", cowork = CoworkUiState(provider = "opencode2-app"))
-        assertEquals(liste, SessionStateReducer.reduceStreamSnapshot(cowork, meta).opencode.todos)
-
-        // Başka backend'in geç gelen karesi opencode panosunu EZMEZ.
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(todos = liste, contextPct = 42))
-        val korundu = SessionStateReducer.reduceStreamSnapshot(claude, meta.copy(todos = emptyList(), contextPct = 5))
-        assertEquals(liste, korundu.opencode.todos)
-        assertEquals(42, korundu.opencode.contextPct)
-    }
-
-    @Test
-    fun gorevPanosuAlanYokkenMevcutHalineDokunmaz() {
-        val liste = listOf(OpencodeTodo("Tek madde", "pending"))
-        val state = RemoteUiState(
-            backend = "opencode2-app",
-            opencode = OpencodeUiState(todos = liste, contextPct = 63),
-        )
-
-        // Delta karesinde alanlar hiç yoksa (değişmedi) pano OLDUĞU GİBİ kalır.
-        val dokunulmadi = SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot())
-        assertEquals(liste, dokunulmadi.opencode.todos)
-        assertEquals(63, dokunulmadi.opencode.contextPct)
-
-        // Boş liste GERÇEK bir bilgi: ajan todo'ları temizledi.
-        val temizlendi = SessionStateReducer.reduceStreamSnapshot(
-            state,
-            emptyCodexSnapshot().copy(todos = emptyList()),
-        )
-        assertTrue(temizlendi.opencode.todos.isEmpty())
-
-        // contextPct'te null tek başına yetmiyor: "alan geldi ve ölçülemiyor"
-        // ancak present bayrağıyla ifade edilebiliyor.
-        val olculemez = SessionStateReducer.reduceStreamSnapshot(
-            state,
-            emptyCodexSnapshot().copy(contextPctPresent = true, contextPct = null),
-        )
-        assertEquals(null, olculemez.opencode.contextPct)
-    }
-
-    // CHECKPOINT GERİ SARMA ŞERİDİ — soket yolu. Pano ile aynı gerekçe: alan
-    // iki taşımadan da (WS snapshot ve delta setMeta) geçiyor ve üç-durumlu.
-    @Test
-    fun geriSarmaSeridiYalnizOpencodeAktifkenYazilir() {
-        val durum = OpencodeRevertState(messageID = "msg_2", filesReverted = true, files = 3)
-        val meta = emptyCodexSnapshot().copy(revertedPresent = true, reverted = durum)
-
-        val opencode = RemoteUiState(backend = "opencode2-app")
-        assertEquals(durum, SessionStateReducer.reduceStreamSnapshot(opencode, meta).opencode.reverted)
-
-        // Cowork + opencode aynı oturum: şerit oraya da yazılmalı.
-        val cowork = RemoteUiState(backend = "cowork", cowork = CoworkUiState(provider = "opencode2-app"))
-        assertEquals(durum, SessionStateReducer.reduceStreamSnapshot(cowork, meta).opencode.reverted)
-
-        // Başka backend'in geç gelen karesi opencode şeridini EZMEZ.
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(reverted = durum))
-        val korundu = SessionStateReducer.reduceStreamSnapshot(
-            claude,
-            emptyCodexSnapshot().copy(revertedPresent = true, reverted = null),
-        )
-        assertEquals(durum, korundu.opencode.reverted)
-    }
-
-    @Test
-    fun geriSarmaSeridiAlanYokkenDurur_alanNullGelinceDuser() {
-        val durum = OpencodeRevertState(messageID = "msg_2")
-        val state = RemoteUiState(backend = "opencode2-app", opencode = OpencodeUiState(reverted = durum))
-
-        // Alan hiç yoksa (değişmemiş delta / eski köprü) şerit olduğu gibi kalır.
-        assertEquals(durum, SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot()).opencode.reverted)
-
-        // Alan geldi ve null: yeni tur geri almayı kalıcı kıldı — şerit inmeli.
-        val dustu = SessionStateReducer.reduceStreamSnapshot(
-            state,
-            emptyCodexSnapshot().copy(revertedPresent = true, reverted = null),
-        )
-        assertEquals(null, dustu.opencode.reverted)
-    }
-
-    // PAYLAŞIM LİNKİ — soket yolu. Şeritle aynı gerekçe ve aynı üç-durum:
-    // alan hiç yoksa dokunma (değişmemiş delta / eski köprü), "" gelirse yayın
-    // kalkmış demek. Bu alan menüde "Paylaşımı kaldır" satırını yaşatıyor;
-    // okuma dalı unutulsaydı satır ilk kareye çivilenirdi.
-    @Test
-    fun paylasimLinkiYalnizOpencodeAktifkenYazilir() {
-        val meta = emptyCodexSnapshot().copy(share = "https://opncd.ai/share/A1")
-
-        val opencode = RemoteUiState(backend = "opencode2-app")
-        assertEquals("https://opncd.ai/share/A1", SessionStateReducer.reduceStreamSnapshot(opencode, meta).opencode.share)
-
-        val cowork = RemoteUiState(backend = "cowork", cowork = CoworkUiState(provider = "opencode2-app"))
-        assertEquals("https://opncd.ai/share/A1", SessionStateReducer.reduceStreamSnapshot(cowork, meta).opencode.share)
-
-        // Başka backend'in geç gelen karesi opencode linkini EZMEZ.
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(share = "https://opncd.ai/share/A1"))
-        val korundu = SessionStateReducer.reduceStreamSnapshot(claude, emptyCodexSnapshot().copy(share = ""))
-        assertEquals("https://opncd.ai/share/A1", korundu.opencode.share)
-    }
-
-    @Test
-    fun paylasimLinkiAlanYokkenDurur_bosGelinceDuser() {
-        val state = RemoteUiState(backend = "opencode2-app", opencode = OpencodeUiState(share = "https://opncd.ai/share/A1"))
-
-        // Alan hiç yoksa link olduğu gibi kalır.
-        assertEquals("https://opncd.ai/share/A1", SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot()).opencode.share)
-
-        // Alan geldi ve boş: yayın kalkmış (başka cihazdan ya da TUI'den).
-        assertEquals("", SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot().copy(share = "")).opencode.share)
-    }
-
-    // ÇÖZÜMLENEN AJAN — soket yolu. Oto kipte turu kimin koşacağı köprüde
-    // kararlaşıyor; okuma dalı unutulsaydı çip sonsuza dek "otomatik" derdi.
-    @Test
-    fun cozumlenenAjanYalnizOpencodeAktifkenYazilir() {
-        val meta = emptyCodexSnapshot().copy(resolvedAgent = "yerel")
-
-        val opencode = RemoteUiState(backend = "opencode2-app")
-        assertEquals("yerel", SessionStateReducer.reduceStreamSnapshot(opencode, meta).opencode.resolvedAgent)
-
-        val cowork = RemoteUiState(backend = "cowork", cowork = CoworkUiState(provider = "opencode2-app"))
-        assertEquals("yerel", SessionStateReducer.reduceStreamSnapshot(cowork, meta).opencode.resolvedAgent)
-
-        // Başka backend'in geç gelen karesi opencode göstergesini EZMEZ.
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(resolvedAgent = "yerel"))
-        val korundu = SessionStateReducer.reduceStreamSnapshot(claude, emptyCodexSnapshot().copy(resolvedAgent = ""))
-        assertEquals("yerel", korundu.opencode.resolvedAgent)
-    }
-
-    @Test
-    fun cozumlenenAjanAlanYokkenDurur_bosGelinceDuser() {
-        val state = RemoteUiState(backend = "opencode2-app", opencode = OpencodeUiState(resolvedAgent = "yerel"))
-
-        // Alan hiç yoksa (değişmemiş delta / eski köprü) değer olduğu gibi kalır.
-        assertEquals("yerel", SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot()).opencode.resolvedAgent)
-
-        // Alan geldi ve boş: köprü artık bilmiyor — çip "otomatik"e dönmeli.
-        assertEquals("", SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot().copy(resolvedAgent = "")).opencode.resolvedAgent)
-    }
-
-    // ALT AJAN KARTLARI — soket yolu. Pano/şeritle aynı gerekçe: alan iki
-    // taşımadan da (WS snapshot ve delta setMeta) geçiyor ve üç-durumlu.
-    @Test
-    fun altAjanlarYalnizOpencodeAktifkenYazilir() {
-        val liste = listOf(
-            OpencodeSubagent(id = "ses_a", title = "dosya sayimi", status = "running", lastText = "Dizini okuyorum"),
-            OpencodeSubagent(id = "ses_b", title = "selam metni", status = "idle", lastText = "merhaba"),
-        )
-        val meta = emptyCodexSnapshot().copy(subagents = liste)
-
-        val opencode = RemoteUiState(backend = "opencode2-app")
-        assertEquals(liste, SessionStateReducer.reduceStreamSnapshot(opencode, meta).opencode.subagents)
-
-        // Cowork + opencode aynı oturum: kartlar oraya da yazılmalı.
-        val cowork = RemoteUiState(backend = "cowork", cowork = CoworkUiState(provider = "opencode2-app"))
-        assertEquals(liste, SessionStateReducer.reduceStreamSnapshot(cowork, meta).opencode.subagents)
-
-        // Başka backend'in geç gelen karesi kart yığınını SÜPÜRMEZ.
-        val claude = RemoteUiState(backend = "claude-app", opencode = OpencodeUiState(subagents = liste))
-        val korundu = SessionStateReducer.reduceStreamSnapshot(claude, meta.copy(subagents = emptyList()))
-        assertEquals(liste, korundu.opencode.subagents)
-    }
-
-    @Test
-    fun altAjanlarAlanYokkenDurur_bosListeGercekTemizlik() {
-        val liste = listOf(OpencodeSubagent(id = "ses_a", title = "tek", status = "idle"))
-        val state = RemoteUiState(backend = "opencode2-app", opencode = OpencodeUiState(subagents = liste))
-
-        // Alan hiç yoksa (değişmemiş delta / eski köprü) yığın olduğu gibi kalır.
-        assertEquals(liste, SessionStateReducer.reduceStreamSnapshot(state, emptyCodexSnapshot()).opencode.subagents)
-
-        // Boş liste GERÇEK bilgi: oturum değişti ya da köprü yığını temizledi.
-        val temizlendi = SessionStateReducer.reduceStreamSnapshot(
-            state,
-            emptyCodexSnapshot().copy(subagents = emptyList()),
-        )
-        assertTrue(temizlendi.opencode.subagents.isEmpty())
     }
 }

@@ -13,7 +13,7 @@ data class DownloadRecord(
     val downloadedAt: Long,
     val localUri: String,
     // Klasör kaydı: workspace klasör olarak indirildiğinde true; localUri boş kalır,
-    // içerik relativePath (MediaStore RELATIVE_PATH, örn "Download/AgentBridge/dava-x/")
+    // içerik relativePath (MediaStore RELATIVE_PATH, örn "Download/Telekumanda/dava-x/")
     // üzerinden listelenir. Normal dosya kayıtlarında relativePath kökü gösterir.
     val folder: Boolean = false,
     val relativePath: String = "",

@@ -40,12 +40,6 @@ data class BackendStreamSnapshot(
     val availableModels: List<BackendModel>? = null,
     val permissionModes: List<PermissionMode>? = null,
     val commands: List<SlashCommand>? = null,
-    // opencode ajan secimi ("" = otomatik). null = snapshot'ta alan yok (eski köprü).
-    val agent: String? = null,
-    // Turu GERÇEKTEN koşan/koşacak ajan — oto kipte köprünün kararı (yerel/
-    // runpod/build). null = karede alan yok (eski köprü) -> dokunma; "" = köprü
-    // henüz bilmiyor (ajan listesi okunmadı) ve çip yalnız "otomatik" yazar.
-    val resolvedAgent: String? = null,
     // Cowork: tur sonunda teslim edilen dosyalar (snapshot.outputs → coworkOutputs).
     val outputs: List<CoworkOutput>? = null,
     // Codex oturum hedefi — uc durumlu. goalPresent=false: snapshot'ta "goal" alani
@@ -55,26 +49,6 @@ data class BackendStreamSnapshot(
     // ayri bir bayrak gerekti (null tek basina alan-yok/temiz ayrimini veremiyor).
     val goalPresent: Boolean = false,
     val goal: CodexGoal? = null,
-    // GÖREV PANOSU. todos null = karede alan yok (eski köprü ya da değişmemiş
-    // delta) -> mevcut listeye DOKUNMA; boş liste = ajan listeyi temizledi.
-    val todos: List<OpencodeTodo>? = null,
-    // contextPct null tek başına yetmiyor: null "ölçülemiyor" ANLAMINDA da
-    // gelebiliyor (pencere bilinmiyor). goalPresent ile aynı üç-durum ayrımı —
-    // alan hiç yoksa dokunma, alan var null ise sayacı temizle.
-    val contextPctPresent: Boolean = false,
-    val contextPct: Int? = null,
-    // Checkpoint geri sarma durumu (opencode). goalPresent ile aynı üç-durum:
-    // alan hiç yoksa dokunma, alan var null ise şeridi kaldır. Köprüde
-    // META_KEYS'te olduğu için delta kipinde de taşınıyor.
-    val revertedPresent: Boolean = false,
-    val reverted: OpencodeRevertState? = null,
-    // ALT AJANLAR. todos ile aynı üç-durum: null = karede alan yok -> dokunma,
-    // boş liste = gerçekten alt-ajan kalmadı.
-    val subagents: List<OpencodeSubagent>? = null,
-    // Oturum paylaşım linki (opencode). null = karede alan yok -> dokunma;
-    // "" = yayında değil. Köprüde META_KEYS'te olduğu için delta kipinde de
-    // taşınıyor; başka bir cihazdan/TUI'den paylaşınca burada da görünür.
-    val share: String? = null,
 )
 
 // Cowork teslimat dosyası — bridge snapshot'ındaki outputs[] alanıyla birebir.
@@ -187,6 +161,22 @@ class SessionStreamManager(
         connect(epoch, currentBackend, currentSessionId, settings)
     }
 
+    // Uygulama arka plana geçince (ON_STOP): soket kapanır, yeniden bağlanma
+    // denenmez ama oturum ve since hafızası (lastSeq + satırlar) yerinde kalır.
+    // Öne dönüşte nudge() aynı oturuma since=lastSeq ile bağlanır, köprü yalnız
+    // kaçan deltaları yollar. Eskiden soket arka planda da açık kalıp her token'ı
+    // ve 25 sn'lik ping'i taşıyordu; bağlantı koptuğunda sonsuza dek yeniden
+    // bağlanmaya çalışıyordu (21.10.2026 pil ölçümü).
+    fun suspendForBackground() {
+        if (currentSessionId.isBlank()) return
+        epoch++
+        reconnectJob?.cancel()
+        reconnectJob = null
+        socket?.close(1000, null)
+        socket = null
+        _isConnected.value = false
+    }
+
     fun close() {
         // Kapanan oturumun akış hafızası atılmaz, kenara konur: dönüşte since ile
         // yalnız kaçanlar istenir. rows aşağıda YENİ listeye bağlandığı için
@@ -239,18 +229,9 @@ class SessionStreamManager(
                         availableModels = parseSnapshotBackendModels(json.optJSONArray("availableModels")),
                         permissionModes = parseSnapshotPermissionModes(json.optJSONArray("permissionModes")),
                         commands = parseSnapshotSlashCommands(json.optJSONArray("commands")),
-                        agent = if (json.has("agent")) json.optString("agent") else null,
-                        resolvedAgent = if (json.has("resolvedAgent")) json.optString("resolvedAgent") else null,
                         outputs = parseCoworkOutputs(json.optJSONArray("outputs")),
                         goalPresent = json.has("goal"),
                         goal = CodexGoal.fromJson(json.optJSONObject("goal")),
-                        todos = parseTodoArray(json.optJSONArray("todos")),
-                        contextPctPresent = json.has("contextPct"),
-                        contextPct = parseContextPct(json),
-                        revertedPresent = json.has("reverted"),
-                        reverted = parseRevertState(json),
-                        subagents = parseSubagentArray(json.optJSONArray("subagents")),
-                        share = if (json.has("share")) json.optString("share") else null,
                     )
                     onSnapshot(currentSessionId, snapshot)
                 }
@@ -366,32 +347,10 @@ class SessionStreamManager(
             availableModels = parseSnapshotBackendModels(json.optJSONArray("availableModels")),
             permissionModes = parseSnapshotPermissionModes(json.optJSONArray("permissionModes")),
             commands = parseSnapshotSlashCommands(json.optJSONArray("commands")),
-            agent = if (json.has("agent")) json.optString("agent") else null,
-            // Delta setMeta yolu: köprüde META_KEYS'te. Değer tam da tur
-            // başlarken değişiyor ve uzun koşuda tam snapshot neredeyse hiç
-            // gelmiyor — burayı atlamak göstergeyi ilk kareye çivilerdi.
-            resolvedAgent = if (json.has("resolvedAgent")) json.optString("resolvedAgent") else null,
             outputs = parseCoworkOutputs(json.optJSONArray("outputs")),
             // Delta setMeta yolunda da uc-durumu koru: meta'da "goal" hic yoksa dokunma.
             goalPresent = json.has("goal"),
             goal = CodexGoal.fromJson(json.optJSONObject("goal")),
-            // Görev panosu delta kipinde de taşınır (köprüde META_KEYS'e eklendi).
-            // Uzun koşuda tam snapshot neredeyse hiç gelmiyor; burayı atlamak
-            // panoyu ilk kareden sonra donmuş bırakırdı.
-            todos = parseTodoArray(json.optJSONArray("todos")),
-            contextPctPresent = json.has("contextPct"),
-            contextPct = parseContextPct(json),
-            // Delta setMeta yolu: köprü "reverted"ı META_KEYS'te taşıyor. Burayı
-            // atlamak, uzun koşuda (tam snapshot neredeyse hiç gelmiyor) şeridin
-            // hiç doğmamasına ya da yeni tur sonrası asılı kalmasına yol açardı.
-            revertedPresent = json.has("reverted"),
-            reverted = parseRevertState(json),
-            // Alt-ajan kartları: aynı gerekçe. Kart yığınının bütün değeri UZUN
-            // koşuda ve orası tam da tam-snapshot'ın gelmediği yer.
-            subagents = parseSubagentArray(json.optJSONArray("subagents")),
-            // Paylaşım linki de META_KEYS'te: uzun koşuda tam snapshot gelmediği
-            // için burayı atlamak menüdeki satırı ilk kareye çivilerdi.
-            share = if (json.has("share")) json.optString("share") else null,
         )
     }
 

@@ -10,19 +10,11 @@ process.env.AGENTBRIDGE_COWORK_ROOT = COWORK_TMP;
 const cowork = await import('../cowork.mjs');
 const claudeApp = await import('../claude-app.mjs');
 const codexApp = await import('../codex-app.mjs');
-const opencodeApp = await import('../opencode2-app.mjs');
-const opencode2App = await import('../opencode2-app.mjs');
 
 after(() => {
   // Codex resume testleri kalıcı app-server child'ını başlatabilir. Kapatılmazsa
   // tüm assertion'lar geçse bile açık stdio pipe'ları `node --test`i ayakta tutar.
   codexApp.killAllSessions();
-  // OpenCode sağlayıcılı cowork oturumu da GERÇEK bir `opencode serve`
-  // başlatıyor ve aynı tuzağa düşüyordu: 3 Ağu 2026'da ölçüldü — 40 test 9,6
-  // saniyede geçti, süreç 330 saniye daha asılı kaldı, serve elle öldürülünce
-  // anında çıktı. `npm test`in "zaman aşımı" dediği şey buydu.
-  opencodeApp.killAllSessions();
-  opencode2App.killAllSessions();
   try { fs.rmSync(COWORK_TMP, { recursive: true, force: true }); } catch {}
 });
 
@@ -332,72 +324,18 @@ describe('cowork project metadata', () => {
     assert.equal(fs.readdirSync(dir).filter(n => n.endsWith('.json')).length, 1);
   });
 
-  it('starts OpenCode App sessions with ask default in the same metadata namespace', async () => {
-    const p = cowork.createProject({ name: 'project-opencode' });
-    const r = await cowork.startSession({ projectPath: p.path, provider: 'opencode2-app', model: 'deepseek/deepseek-flash' });
-    assert.equal(r.ok, true);
-    assert.equal(r.provider, 'opencode2-app');
-    assert.equal(r.apiBackend, 'opencode2-app');
-    assert.ok(r.sessionId);
-
-    const fileDir = path.join(p.path, '.cowork', 'providers', 'opencode2-app', 'sessions');
-    const files = fs.readdirSync(fileDir).filter(n => n.endsWith('.json'));
-    assert.equal(files.length, 1);
-    const rec = JSON.parse(fs.readFileSync(path.join(fileDir, files[0]), 'utf8'));
-    assert.equal(rec.provider, 'opencode2-app');
-    assert.equal(rec.cwd, p.path);
-    assert.equal(rec.model, 'deepseek/deepseek-flash');
-    assert.equal(rec.permissionMode, 'ask', 'opencode cowork default should be approval-required (madde 6)');
-  });
-
-  it('opts into yolo for OpenCode only when explicitly requested (madde 6)', async () => {
-    const p = cowork.createProject({ name: 'project-opencode-yolo' });
-    const r = await cowork.startSession({ projectPath: p.path, provider: 'opencode2-app', model: 'deepseek/deepseek-flash', permissionMode: 'yolo' });
-    assert.equal(r.ok, true);
-
-    const fileDir = path.join(p.path, '.cowork', 'providers', 'opencode2-app', 'sessions');
-    const files = fs.readdirSync(fileDir).filter(n => n.endsWith('.json'));
-    const rec = JSON.parse(fs.readFileSync(path.join(fileDir, files[0]), 'utf8'));
-    assert.equal(rec.permissionMode, 'yolo', 'explicit yolo opt-in should be honored');
-    assert.equal(rec.permissionModeExplicit, true, 'explicit yolo opt-in should be marked');
-  });
-
-  it('updates OpenCode metadata with the native ses_ id after first prompt (onSessionResolved)', async () => {
-    const p = cowork.createProject({ name: 'project-opencode-sid' });
-    const r = await cowork.startSession({ projectPath: p.path, provider: 'opencode2-app', model: 'deepseek/deepseek-flash' });
-    const update = cowork.updateOpencode2SessionSid({
-      sessionId: r.sessionId,
-      threadId: 'ses_native_abc123',
-      cwd: p.path,
-      model: 'deepseek/deepseek-flash',
-      permissionMode: 'ask',
-    });
-    assert.equal(update.ok, true);
-    assert.equal(update.updated, 1);
-
-    const sessions = cowork.listProjectSessions({ projectPath: p.path }).sessions;
-    const latest = sessions.find(s => s.provider === 'opencode2-app' && s.sessionId === r.sessionId);
-    assert.ok(latest);
-    assert.equal(latest.threadId, 'ses_native_abc123');
-  });
-
-  it('starts OpenCode 2 in Cowork and records its native session id', async () => {
-    const p = cowork.createProject({ name: 'project-opencode2' });
-    const r = await cowork.startSession({ projectPath: p.path, provider: 'opencode2-app', model: 'deepseek/deepseek-flash' });
-    assert.equal(r.ok, true, r.error);
-    assert.equal(r.apiBackend, 'opencode2-app');
-    assert.ok(r.sessionId);
-    assert.equal(r.record.permissionMode, 'ask');
-    const updated = cowork.updateOpencode2SessionSid({
-      sessionId: r.sessionId,
-      threadId: 'ses_v2_native_abc123',
-      cwd: p.path,
-      model: 'deepseek/deepseek-flash',
-    });
-    assert.equal(updated.updated, 1);
-    const rec = cowork.listProjectSessions({ projectPath: p.path }).sessions.find(s => s.provider === 'opencode2-app');
-    assert.equal(rec.threadId, 'ses_v2_native_abc123');
-    assert.equal(rec.permissionMode, 'ask');
+  // Diskteki eski kayıtlar projeyi "unknown provider" ile kilitlememeli:
+  // tanınmayan sağlayıcı kimliği Claude'a düşülür.
+  it('maps unknown stale providers to Claude, including project metadata', () => {
+    assert.equal(cowork.normalizeProvider('eski-saglayici'), 'claude-app');
+    assert.equal(cowork.normalizeProvider('eski-saglayici-v2'), 'claude-app');
+    assert.equal(cowork.normalizeProvider('omp'), 'omp');
+    const p = cowork.createProject({ name: 'project-eski-saglayici' });
+    const file = path.join(p.path, '.cowork', 'project.json');
+    const meta = JSON.parse(fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, JSON.stringify({ ...meta, activeProvider: 'eski-saglayici-v2' }));
+    const listed = cowork.listProjects().projects.find(x => x.name === 'project-eski-saglayici');
+    assert.equal(listed.activeProvider, 'claude-app');
   });
 
   it('starts OMP sessions with ask default in the same metadata namespace', async () => {
@@ -458,36 +396,6 @@ describe('cowork project metadata', () => {
       .filter(s => s.provider === 'omp' && s.threadId === 'omp-native-same');
     assert.equal(sessions.length, 1);
     assert.equal(sessions[0].sessionId, 'omp-native-same');
-  });
-
-  it('collapses OpenCode records by native ses_ id after bridge-local session id changes', () => {
-    const p = cowork.createProject({ name: 'project-opencode-dedup' });
-    const dir = path.join(p.path, '.cowork', 'providers', 'opencode2-app', 'sessions');
-    fs.mkdirSync(dir, { recursive: true });
-    const base = {
-      provider: 'opencode2-app',
-      threadId: 'ses_native_same',
-      cwd: p.path,
-      model: 'deepseek/deepseek-flash',
-      permissionMode: 'ask',
-      createdAt: '2024-01-01T00:00:00Z',
-    };
-    fs.writeFileSync(path.join(dir, 'old-bridge-id.json'), JSON.stringify({
-      ...base,
-      sessionId: 'old-bridge-uuid',
-      lastUsedAt: '2024-01-01T00:00:00Z',
-    }));
-    fs.writeFileSync(path.join(dir, 'native-sid.json'), JSON.stringify({
-      ...base,
-      sessionId: 'ses_native_same',
-      lastUsedAt: '2024-02-01T00:00:00Z',
-    }));
-
-    const sessions = cowork.listProjectSessions({ projectPath: p.path }).sessions
-      .filter(s => s.provider === 'opencode2-app' && s.threadId === 'ses_native_same');
-    assert.equal(sessions.length, 1);
-    assert.equal(sessions[0].sessionId, 'ses_native_same');
-    assert.equal(fs.readdirSync(dir).filter(n => n.endsWith('.json')).length, 1);
   });
 
   it('imports PC files and folders into the workspace (recursive, collision-safe)', () => {
@@ -725,7 +633,7 @@ describe('cowork project metadata', () => {
   it('publishes one provider model catalog with bridge-owned defaults', async () => {
     const catalog = await cowork.providerCatalog();
     assert.equal(catalog.ok, true);
-    assert.deepEqual(catalog.providers.map(p => p.id), ['claude-app', 'codex-app', 'opencode2-app', 'omp']);
+    assert.deepEqual(catalog.providers.map(p => p.id), ['claude-app', 'codex-app', 'omp']);
     for (const provider of catalog.providers) {
       assert.ok(provider.defaultModel);
       assert.ok(provider.models.some(model => model.id === provider.defaultModel));

@@ -110,7 +110,7 @@ describe('ModelPicker', () => {
   it('omp ve runpod modellerini seçeneklerden eler', async () => {
     render(
       <ModelPicker
-        backend="opencode-app"
+        backend="codex-app"
         sessionId="s1"
         models={[
           { id: 'deepseek-v4', label: 'DeepSeek' },

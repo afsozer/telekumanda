@@ -1,4 +1,4 @@
-# Telekumanda web arayüzü
+# AgentBridge web arayüzü
 
 Köprünün tarayıcı istemcisi. Compose Desktop istemcisinin (`android/desktop`)
 yerini aldı; o modül 10.08.2026'da silindi.
@@ -165,8 +165,8 @@ sabitlenmiş kopya. Yalnız birini düzeltmek yetmez.
 
 ## Bölümler
 
-Kabuk (`src/shell/AppShell.tsx`) altı bölüm taşıyor: **Sohbet**, **Ara**,
-**Projeler**, **Görsel**, **Notlar**, **Kullanım**. Ray dikey — ekran 1920px geniş, yatay yer bol;
+Kabuk (`src/shell/AppShell.tsx`) beş bölüm taşıyor: **Sohbet**, **Ara**,
+**Projeler**, **Notlar**, **Kullanım**. Ray dikey — ekran 1920px geniş, yatay yer bol;
 dikey yer ise sohbetin okuma alanı.
 
 Ekranlar **koşullu çiziliyor, gizlenmiyor**: sohbet bir WebSocket tutuyor ve
@@ -301,8 +301,8 @@ http ile açıldığında tanımsızdır. `newRequestId()` bu yüzden `getRandom
 
 ## Çok backend
 
-Arayüz `claude-app`, `codex-app`, `opencode-app`, `omp`, `agy` ve `cowork` ile
-çalışır. **Hangi kontrolün çizileceğine backend adına bakarak karar verme** —
+Arayüz `claude-app`, `codex-app`, `omp`, `agy` ve `cowork` ile çalışır.
+**Hangi kontrolün çizileceğine backend adına bakarak karar verme** —
 köprünün `/backends` kataloğu tek kaynaktır (`bridge/backend-contract.mjs`):
 
 ```tsx
@@ -317,19 +317,18 @@ uçlarını kullanır — ağ çağrılarında `id` değil `apiBackend` kullan.
 
 Yetenek matrisi (köprüden, `server.mjs` kayıtlarıyla doğrulandı):
 
-| | claude-app | codex-app | opencode-app | agy |
-|---|---|---|---|---|
-| approvals | ✓ | ✓ | ✓ | — |
-| permissionModes | ✓ | ✓ | ✓ | — |
-| efforts | ✓ | ✓ | — | — |
-| interrupt | ✓ | — | — | — |
-| runpod | — | — | ✓ | — |
-| plan | — | ✓ | — | — |
-| context | ✓ | ✓ | ✓ | — |
+| | claude-app | codex-app | agy |
+|---|---|---|---|
+| approvals | ✓ | ✓ | — |
+| permissionModes | ✓ | ✓ | — |
+| efforts | ✓ | ✓ | — |
+| interrupt | ✓ | — | — |
+| plan | — | ✓ | — |
+| context | ✓ | ✓ | — |
 
 `/stop` her backend'de var; `interrupt` ondan ayrı ve yalnız claude-app'te.
 
-**Eski köprüler `efforts`/`interrupt`/`runpod` bildirmiyor** (bu alanlar sonradan
+**Eski köprüler `efforts`/`interrupt` bildirmiyor** (bu alanlar sonradan
 eklendi). O ikisi için varsayılan `false` değil, gömülü tablodaki değer
 kullanılıyor — yoksa güncellenmemiş bir köprüde çaba seçicisi sebepsiz
 kaybolurdu.

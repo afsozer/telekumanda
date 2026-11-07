@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Telekumanda"
+rootProject.name = "AgentBridge"
 include(":app")
 include(":shared")

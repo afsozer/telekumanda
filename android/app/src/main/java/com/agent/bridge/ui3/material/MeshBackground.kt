@@ -45,6 +45,8 @@ fun MeshBackground(modifier: Modifier = Modifier) {
     // Renkler ve güç Canvas'ın DIŞINDA okunur: DrawScope composable değil.
     val palet = LocalUi3Palet.current
     val guc = palet.meshGucu
+    // Kovan dilinde zemin düz (meshGucu 0): hiçbir şey çizilmez.
+    if (guc <= 0f) return
     Canvas(modifier = modifier) {
         // Mockup ölçüsü (dp) → piksel. Tek kapı: aşağıdaki hiçbir yerde ham
         // sayı piksel olarak kullanılmaz.

@@ -48,7 +48,6 @@ fun ProjectQuickChatSheet(
         listOf(
             BackendOption("claude-app", "Claude"),
             BackendOption("codex-app", "Codex"),
-            BackendOption("opencode2-app", "OpenCode"),
         )
     } else {
         uiState.availableBackendIds().map { id ->

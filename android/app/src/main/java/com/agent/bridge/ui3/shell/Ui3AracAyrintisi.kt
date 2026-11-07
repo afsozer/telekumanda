@@ -69,8 +69,8 @@ internal fun ColumnScope.Ui3AracAyrintisi(
 ) {
     // Düşünce grubunu "ARAÇ" diye başlıklandırmak yanlış bilgi; ayrımı
     // gruplamayı yapan `GroupKind` veriyor, metinden tahmin edilmiyor.
-    val baslik = if (dusunceMi) "DÜŞÜNCE" else "ARAÇ"
-    SheetBasligi("$baslik · ${indeksler.size} ADIM", null)
+    val baslik = if (dusunceMi) "Düşünce" else "Araç"
+    SheetBasligi("$baslik · ${indeksler.size} adım", null)
     if (indeksler.isEmpty()) {
         Text(
             "Adım bulunamadı.",

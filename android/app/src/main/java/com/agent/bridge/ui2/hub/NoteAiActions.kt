@@ -50,7 +50,6 @@ private val noteAiActions = listOf(
 private val noteAskProviders = listOf(
     "claude-app" to "Claude",
     "codex-app" to "Codex",
-    "opencode2-app" to "OpenCode",
     "omp" to "OMP",
 )
 

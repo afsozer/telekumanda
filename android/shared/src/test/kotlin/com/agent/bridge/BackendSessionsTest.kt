@@ -102,10 +102,11 @@ class BackendSessionsTest {
         assertEquals("Yeni Claude oturumu", item.title)
     }
 
+    // OMP disk oturumlarında sabitleme bayrağı çekmeceye taşınmalı.
     @Test
-    fun testOpencodeDiskSessionsMappingIncludesPin() {
+    fun testOmpDiskSessionsMappingIncludesPin() {
         val session = AppDiskSession(
-            id = "ses_open",
+            id = "omp_1",
             cwd = "C:/open",
             title = "özel başlık",
             lastText = "son",
@@ -113,46 +114,18 @@ class BackendSessionsTest {
             mtime = 42L,
             pinned = true,
         )
-        val item = RemoteUiState().copy(opencodeAppDiskSessions = listOf(session))
-            .backendDiskSessions("opencode2-app")
-            .single()
+        val state = RemoteUiState().copy(omp = OmpUiState(diskSessions = listOf(session)))
+        val item = state.backendDiskSessions("omp").single()
         assertEquals("özel başlık", item.title)
         assertTrue(item.pinned)
-        assertFalse(item.archived)
-    }
-
-    @Test
-    fun testOpencodeDiskSessionClientParsesPinnedFromBridge() = runBlocking {
-        val client = FakeBridgeClient().apply {
-            jsonResponseProvider = {
-                JSONObject().put(
-                    "sessions",
-                    JSONArray().put(
-                        JSONObject()
-                            .put("id", "ses_pinned")
-                            .put("cwd", "C:/open")
-                            .put("title", "Sabitli")
-                            .put("lastText", "son")
-                            .put("turns", 2)
-                            .put("mtime", 42L)
-                            .put("pinned", true)
-                    )
-                )
-            }
-        }
-
-        val session = client.opencodeAppDiskSessions(BridgeSettings("http://localhost", "token")).single()
-        assertEquals("ses_pinned", session.id)
-        assertTrue(session.pinned)
     }
 
     @Test
     fun testBackendSessionActionCapabilities() {
         assertTrue(backendSessionPinSupported("claude-app"))
         assertTrue(backendSessionPinSupported("codex-app"))
-        assertTrue(backendSessionPinSupported("opencode2-app"))
-        assertTrue(backendSessionRenameSupported("opencode2-app"))
-        assertFalse(backendSessionArchiveSupported("opencode2-app"))
+        assertTrue(backendSessionPinSupported("omp"))
+        assertTrue(backendSessionRenameSupported("omp"))
         assertTrue(backendSessionArchiveSupported("claude-app"))
         assertTrue(backendSessionArchiveSupported("codex-app"))
         assertFalse(backendSessionPinSupported("agy"))
@@ -172,12 +145,14 @@ class BackendSessionsTest {
         val state = RemoteUiState(
             activeBridgeProfileId = "bridge-a",
             openTabs = listOf(
-                AppTab("active", "opencode2-app", sessionId = "h1", bridgeProfileId = "bridge-a"),
+                AppTab("active", "codex-app", sessionId = "h1", bridgeProfileId = "bridge-a"),
                 AppTab("inactive", "codex-app", sessionId = "c1", bridgeProfileId = "bridge-a"),
                 AppTab("cowork", "cowork", provider = "codex-app", sessionId = "o1", bridgeProfileId = "bridge-a"),
-                AppTab("empty-opencode", "opencode2-app", sessionId = "", bridgeProfileId = "bridge-a"),
+                AppTab("empty-codex", "codex-app", sessionId = "", bridgeProfileId = "bridge-a"),
                 AppTab("claude", "claude-app", sessionId = "cl1", bridgeProfileId = "bridge-a"),
-                AppTab("other-bridge", "opencode2-app", sessionId = "h2", bridgeProfileId = "bridge-b"),
+                AppTab("other-bridge", "codex-app", sessionId = "h2", bridgeProfileId = "bridge-b"),
+                // Isıtma yalnız codex-app'i kapsar: başka backend'in sekmesi hedef üretmez.
+                AppTab("agy", "agy", sessionId = "a1", bridgeProfileId = "bridge-a"),
                 AppTab("landing", "", sessionId = "", bridgeProfileId = "bridge-a"),
             ),
             activeTabId = "active",
@@ -185,12 +160,12 @@ class BackendSessionsTest {
 
         assertEquals(
             listOf(
-                BackendWarmTarget("opencode2-app", "h1"),
+                BackendWarmTarget("codex-app", "h1"),
                 BackendWarmTarget("codex-app", "c1"),
                 // cowork sekmesi saglayicisina (codex-app) esleniyor
                 BackendWarmTarget("codex-app", "o1"),
                 // sessionId bos olsa da backend hedefi korunur
-                BackendWarmTarget("opencode2-app"),
+                BackendWarmTarget("codex-app"),
             ),
             openTabWarmTargets(state),
         )
@@ -215,7 +190,7 @@ class BackendSessionsTest {
         client.warmOpenTabBackends(
             BridgeSettings("http://localhost", "token"),
             listOf(
-                BackendWarmTarget("opencode2-app", "h1"),
+                BackendWarmTarget("agy", "h1"),
                 BackendWarmTarget("codex-app", "c1", "C:\\work"),
             ),
         )
@@ -224,7 +199,7 @@ class BackendSessionsTest {
         assertEquals("POST", request.method)
         assertEquals("/backends/warm", request.path)
         val targets = request.body!!.getJSONArray("targets")
-        assertEquals("opencode2-app", targets.getJSONObject(0).getString("backend"))
+        assertEquals("agy", targets.getJSONObject(0).getString("backend"))
         assertEquals("h1", targets.getJSONObject(0).getString("sessionId"))
         assertEquals("codex-app", targets.getJSONObject(1).getString("backend"))
         assertEquals("c1", targets.getJSONObject(1).getString("sessionId"))

@@ -19,11 +19,14 @@ private val simpleConfirmations = setOf(
 
 private val confirmationPrefixes = listOf(
     "Kaydedildi: ", "PC'ye kaydedildi: ", "Telefona kaydedildi: ",
-    "PC'ye kopyalandı: ", "Not silindi: ",
+    "PC'ye kopyalandı: ", "Seed kopyalandı: ", "Not silindi: ",
     "Not oluşturuldu: ", "Not projeye bağlandı: ", "Not yeniden adlandırıldı: ",
     "Yeniden adlandırıldı: ", "Taşındı: ", "Yüklendi: ", "İndirildi: ", "Eklendi: ",
+    // Model seçimi de tek satırlık bir onay: "Ayrıntı" düğmesi gösterecek
+    // bir şeyi yok, üretim ekranının ortasında 9 saniye durması engel.
+    "Görsel modeli: ",
 )
 
 private val countedConfirmation = Regex(
-    "(?:[0-9]+ (?:not|öğe) silindi|[0-9]+ dosya eklendi|Proje ve [0-9]+ oturum geçmişi silindi)"
+    "(?:[0-9]+ (?:not|öğe|görsel) silindi|[0-9]+ dosya eklendi|[0-9]+ üretim kuyruğa eklendi|Proje ve [0-9]+ oturum geçmişi silindi)"
 )

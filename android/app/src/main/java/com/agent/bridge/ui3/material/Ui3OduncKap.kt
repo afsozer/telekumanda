@@ -110,21 +110,21 @@ private fun ui2CamPaleti(p: Ui3Palet) = Ui2Colors(
     // %6'lık saydam bir renk orada %90 opak bir bloğa dönüşüyordu — Dosyalar
     // yüklenirken ekranda koyu gri kutular çıktı (cihazda görüldü). Seçili
     // satır / aktif sekme zemini olarak da opak olması zaten doğru.
-    surface2 = if (p.koyuMu) Color(0xFF1A1D22) else Color(0xFFE6E9EF),
-    // Modal seçiciler (model seçici gibi) OPAK: saydam cam `surface`
+    surface2 = if (p.koyuMu) Color(0xFF292825) else Color(0xFFEFEDE8),
+    // Modal seçiciler (görsel model seçici gibi) OPAK: saydam cam `surface`
     // modal'da arkadaki ekranı gösterip seçim anında dikkat dağıtıyordu
     // (kullanıcı, 17.08.2026). surface2'den bir tık ayrık ki seçili satır
     // sheet zemininde kaybolmasın.
-    sheetSurface = if (p.koyuMu) Color(0xFF14171C) else Color(0xFFEDEFF4),
+    sheetSurface = if (p.koyuMu) Color(0xFF1F1E1C) else Color.White,
     line = p.cizgi,
-    lineStrong = p.vurguHi.copy(alpha = 0.45f),
+    lineStrong = p.vurgu.copy(alpha = 0.45f),
     ink = p.ink,
     ink2 = p.ink2,
     ink3 = p.ink3,
-    accent = p.vurguHi,
+    accent = p.vurgu,
     onAccent = p.birincilMurekkep,
     pillFill = p.vurgu.copy(alpha = 0.20f),
-    pillOn = p.vurguHi,
+    pillOn = p.vurgu,
     codeBg = p.kuyu,
     running = p.running,
     attention = p.attention,

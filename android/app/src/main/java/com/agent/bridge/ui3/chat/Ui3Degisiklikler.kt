@@ -69,9 +69,9 @@ internal enum class Ui3PatchSatiri { Ekleme, Silme, Hunk, Bilgi, Baglam }
  * başlıyorsa ekleme" kuralı onları yeşile/kırmızıya boyardı. Başlıklar ÖNCE
  * eleniyor. Aynı tuzak `@@` için yok ama hunk başlığı da gövdeden ayrı.
  *
- * Köprü iki farklı yama biçimi taşıyabiliyor (ölçüldü, opencode serve 1.18.21):
- * oturum turlarının diff'i jsdiff biçiminde (`Index: dosya` + `===` çizgisi),
- * git tarafı ise `diff --git` biçiminde. İkisinin başlıkları da burada.
+ * Köprü iki farklı yama biçimi taşıyabiliyor (ölçüldü): oturum turlarının
+ * diff'i jsdiff biçiminde (`Index: dosya` + `===` çizgisi), git tarafı ise
+ * `diff --git` biçiminde. İkisinin başlıkları da burada.
  */
 internal fun ui3PatchSatiriTipi(satir: String): Ui3PatchSatiri = when {
     satir.startsWith("@@") -> Ui3PatchSatiri.Hunk
@@ -153,7 +153,7 @@ internal fun ColumnScope.Ui3Degisiklikler(
         return
     }
 
-    SheetBasligi("DEĞİŞİKLİKLER", diff?.let { ozetMetni(it) }, onGeri)
+    SheetBasligi("Değişiklikler", diff?.let { ozetMetni(it) }, onGeri)
 
     // YÜKLENİRKEN ESKİ LİSTE KORUNUR: tazeleme sırasında listeyi boşaltmak
     // "bu oturum dosya değiştirmedi" boş durumunu bir an için yanlışlıkla

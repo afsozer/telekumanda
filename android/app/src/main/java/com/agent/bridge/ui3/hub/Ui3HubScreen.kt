@@ -332,7 +332,7 @@ private fun KahramanKart(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "ÇALIŞMA ALANLARI",
+                        "Çalışma alanları",
                         style = Ui3Type.etiket,
                         color = Ui3Colors.ink3,
                         modifier = Modifier.weight(1f),

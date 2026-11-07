@@ -57,6 +57,7 @@ import android.view.MotionEvent
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
 import io.noties.markwon.MarkwonConfiguration
+import io.noties.markwon.ext.tables.TableAwareMovementMethod
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.html.HtmlPlugin
 import java.net.URLDecoder
@@ -216,6 +217,13 @@ internal fun inlineMarkdown(text: String) = buildAnnotatedString {
 
 internal object SelectableLinkMovementMethod : ArrowKeyMovementMethod() {
     override fun onTouchEvent(widget: TextView, buffer: Spannable, event: MotionEvent): Boolean {
+        // Table links live in each cell's Layout, not the outer Spannable.
+        // Handle them before ArrowKeyMovementMethod consumes the selection gesture.
+        if (widget.layout != null &&
+            TableAwareMovementMethod.handleTableRowTouchEvent(widget, buffer, event)
+        ) {
+            return true
+        }
         val action = event.action
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             var x = event.x.toInt()
@@ -233,7 +241,7 @@ internal object SelectableLinkMovementMethod : ArrowKeyMovementMethod() {
                 if (action == MotionEvent.ACTION_UP) {
                     // Teşhis: dokunuş span'e ulaşıyor mu? (okuyucu modunda linkler
                     // sessizce ölü kalmıştı; SelectionContainer olayı yutuyordu)
-                    if (com.agent.bridge.BuildConfig.DEBUG) android.util.Log.d("AgMdLink", "up off=$off links=${link.size}")
+                    android.util.Log.d("AgMdLink", "up off=$off links=${link.size}")
                 }
                 if (link.isNotEmpty()) {
                     if (action == MotionEvent.ACTION_UP) {
@@ -548,7 +556,7 @@ internal fun buildMarkwon(context: Context, onFileClick: (String) -> Unit): Mark
             override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
                 builder.linkResolver { view, link ->
                     val filePath = filePathFromLink(link)
-                    if (com.agent.bridge.BuildConfig.DEBUG) android.util.Log.d("AgMdLink", "resolve link=$link filePath=$filePath")
+                    android.util.Log.d("AgMdLink", "resolve link=$link filePath=$filePath")
                     if (filePath != null) {
                         onFileClick(filePath)
                     } else {

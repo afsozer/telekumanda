@@ -1,27 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Telekumanda adaptive icon, arka katman (7 Kas 2026): sıcak koyu gradyan ve
+  sol üstten kehribar parıltı, Kovan paletiyle aynı aile. Tam taşar; maske ne
+  keserse kessin köşe boşluğu çıkmaz. Lite aynı arka katmanı kullanır.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:pathData="M0,0h108v108h-108z">
+    android:viewportWidth="432"
+    android:viewportHeight="432">
+    <path android:pathData="M0,0h432v432h-432z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="108"
-                android:endY="108"
-                android:startX="0"
-                android:startY="0"
-                android:type="linear">
-                <item
-                    android:color="#6D5DF6"
-                    android:offset="0" />
-                <item
-                    android:color="#39215F"
-                    android:offset="0.48" />
-                <item
-                    android:color="#1B1033"
-                    android:offset="1" />
+                android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="432" android:endY="432">
+                <item android:offset="0" android:color="#FF26221E" />
+                <item android:offset="1" android:color="#FF0E0D0C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M0,0h432v432h-432z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="121" android:centerY="86"
+                android:gradientRadius="367">
+                <item android:offset="0" android:color="#38D9893F" />
+                <item android:offset="1" android:color="#00D9893F" />
             </gradient>
         </aapt:attr>
     </path>

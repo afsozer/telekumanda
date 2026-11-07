@@ -32,7 +32,6 @@ import {
 } from './sessions'
 import { UsageChip } from '../usage'
 import { PlanPanel } from './PlanPanel'
-import { RulesPanel } from './rules/RulesPanel'
 import { ChangesPanel } from './changes/ChangesPanel'
 import { forkFromMessage, rewindTo } from './forkApi'
 import { useChatRows } from './useChatRows'
@@ -111,9 +110,6 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
   // Diskteki bir oturum açılırken önce köprüye adopt edilir; o sırada liste
   // kilitli ve satır "canlıya alınıyor" gösteriyor.
   const [adopting, setAdopting] = useState<string | null>(null)
-  // Oturum Kuralları paneli (yalnız opencode2-app, capability ile). Aç-çek:
-  // açılınca bir kez yüklenir.
-  const [rulesOpen, setRulesOpen] = useState(false)
   // Değişiklikler paneli (sessionDiff capability'si olan backend'lerde).
   const [changesOpen, setChangesOpen] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
@@ -126,11 +122,10 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
   const activeTab = tabState.tabs.find((tab) => tab.key === tabState.activeKey) ?? null
   const selected = activeTab?.sessionId ?? ''
   const selectedBackend = activeTab?.backend ?? ''
-  // Sekme değişince kurallar/değişiklikler paneli kapanır: açık kalsa yeni
+  // Sekme değişince değişiklikler paneli kapanır: açık kalsa yeni
   // oturumun verisini sessizce gösterirdi — başlıkta oturum adı olmadığı için
   // kullanıcı hangi oturuma baktığını sanabilirdi.
   useEffect(() => {
-    setRulesOpen(false)
     setChangesOpen(false)
   }, [selected])
 
@@ -156,8 +151,8 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
   )
   // `apiBackend` gerçek uç önekidir: cowork bir sunum katmanı ve claude-app
   // uçlarını kullanıyor. Katalog gelmeden önce seçili id ile devam edilir.
-  // Sekmenin kendi `api` alanı varsa o kazanır — cowork oturumu codex-app
-  // ya da opencode-app'e ait olabiliyor ve katalog eşlemesi onu bilmez.
+  // Sekmenin kendi `api` alanı varsa o kazanır: cowork oturumu codex-app'e
+  // ait olabiliyor ve katalog eşlemesi onu bilmez.
   const api = activeTab?.api || backend?.apiBackend || activeBackendId
   const caps = backend?.capabilities
 
@@ -266,7 +261,7 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
       model: row.model,
       status: row.status,
       // Cowork satırı kendi sağlayıcısının ucunu taşır; katalogdaki
-      // cowork→claude-app eşlemesi codex/opencode oturumları için yanlış.
+      // cowork→claude-app eşlemesi codex oturumları için yanlış.
       api: row.provider || undefined,
     }
     setTabState((current) => {
@@ -437,7 +432,7 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
     const owner = sources.find((source) => source.id === row.backend)
     const endpoint = owner?.apiBackend ?? row.backend ?? ''
     if (!endpoint) throw new Error('Oturumun backend’i bulunamadı')
-    // OpenCode canlı kabuk kimliğiyle disk kimliği ayrışabilir. Menü
+    // Canlı kabuk kimliğiyle disk kimliği ayrışabilir. Menü
     // Android gibi disk kaydını hedefler; varsa diskId bağlayıcı kimliktir.
     const id = row.diskId || row.id
     if (action === 'pin') await pinSession(endpoint, id)
@@ -752,14 +747,6 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
                   />
                 )}
 
-                {rulesOpen && (
-                  <RulesPanel
-                    backend={api}
-                    sessionId={selected}
-                    onClose={() => setRulesOpen(false)}
-                  />
-                )}
-
                 {changesOpen && (
                   <ChangesPanel
                     backend={api}
@@ -831,17 +818,6 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
                   tıklanınca hepsi. Eşleşme bucket id önekinden.
                 */}
                 <UsageChip backend={api} />
-                {caps?.sessionInstructions && (
-                  <button
-                    type="button"
-                    className={`${styles.rulesToggle} ${rulesOpen ? styles.rulesToggleActive : ''}`}
-                    aria-pressed={rulesOpen}
-                    title="Bu oturuma kalıcı talimatlar ve kayıtlı izin kuralları"
-                    onClick={() => setRulesOpen((open) => !open)}
-                  >
-                    Kurallar
-                  </button>
-                )}
                 {caps?.sessionDiff && (
                   <button
                     type="button"
@@ -875,8 +851,8 @@ export function ChatScreen({ navigationTarget, onNavigationHandled }: ChatScreen
 
       {creating && (
         <NewSessionDialog
-          // Ajan filtresi ÖNCELIKLI: kullanıcı listeyi "OpenCode 2"ye süzüp
-          // Yeni dediyse v2 oturumu bekler. Filtre "Tümü" iken (agents verilir,
+          // Ajan filtresi ÖNCELIKLI: kullanıcı listeyi bir ajana süzüp
+          // Yeni dediyse o ajanın oturumunu bekler. Filtre "Tümü" iken (agents verilir,
           // seçici çizilir) aktif sekmenin ajanıyla devam edilir — sekme
           // değiştirmeden aynı ajanda oturum açmak yaygın akış.
           backend={filterId !== ALL ? filterId : activeBackendId || sources[0]?.id || 'claude-app'}

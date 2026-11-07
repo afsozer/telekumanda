@@ -2,9 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import * as claude from '../claude-app.mjs';
-// OpenCode soru protokolü testleri 30.09.2026'da DÜŞTÜ: v1 backend'i söküldü ve
-// normalizeOpenCodeQuestions/buildOpenCodeQuestionAnswers onunla gitti. v2'nin
-// izin akışı tek allow/deny (answers alanı yok), karşılığı yok.
+// Kaldırılan backend'in soru protokolü testleri onunla birlikte DÜŞTÜ.
+// Aşağıdakiler yalnız ortak akışı denetliyor: izin akışı tek allow/deny
+// (answers alanı yok).
 
 const QUESTIONS = [
   { id: 'q1', question: 'Birinci?', options: [{ label: 'A' }, { label: 'B' }] },

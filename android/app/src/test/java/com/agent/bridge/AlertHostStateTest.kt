@@ -8,7 +8,8 @@ class AlertHostStateTest {
         val state = AlertHostState()
         listOf(
             "Oturum silindi", "PC'ye kaydedildi: rapor.docx", "Oturum kimliği kopyalandı",
-            "3 öğe silindi",
+            "3 öğe silindi", "Görsel modeli: local/raehoshi-illust-xl-vpred-v30",
+            "1 üretim kuyruğa eklendi", "5 üretim kuyruğa eklendi",
         ).forEach {
             state.show(it)
             assertFalse(it, state.visible)
@@ -22,6 +23,9 @@ class AlertHostStateTest {
             "3 öğe silindi, 1 tanesi başarısız",
             "PC'ye kaydedildi ancak yeni yerel değişiklik bekliyor: rapor.docx",
             "Sunucu hatası: Oturum silindi", "Beklenmeyen cevap",
+            "Görsel modeli değiştirilemedi: bağlantı yok",
+            "3/5 üretim kuyruğa eklendi. Bağlantı yok. Aynı ayarlarla tekrar basınca kalanlardan devam edilir.",
+            "5 üretim kuyruğa eklendi ancak bağlantı kesildi",
         ).forEach {
             val state = AlertHostState()
             state.show(it)

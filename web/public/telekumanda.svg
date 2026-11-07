@@ -1,0 +1,45 @@
+<!--
+  Telekumanda logosu — KANONİK KAYNAK.
+  Buradaki path verisi Android adaptive icon'a (res/drawable/ic_launcher_*.xml)
+  birebir taşındı. Değiştirirken ikisini birlikte değiştir; VectorDrawable
+  filtre/maske desteklemediği için burada da filtre KULLANMA.
+  Tuval 432 = 108dp. Android ön katmanda mark 0.72 ölçeklenir (güvenli bölge).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 432 432" width="432" height="432">
+  <defs>
+    <linearGradient id="zemin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#121a24"/>
+      <stop offset="1" stop-color="#05070b"/>
+    </linearGradient>
+    <radialGradient id="parilti" cx="0.28" cy="0.2" r="0.85">
+      <stop offset="0" stop-color="#2d5c86" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#2d5c86" stop-opacity="0"/>
+    </radialGradient>
+    <!-- userSpaceOnUse ŞART: dikey sap'ın sınırlayıcı kutusu sıfır genişlikte,
+         objectBoundingBox gradyanı orada çöküyor ve çizgi hiç çizilmiyor
+         (ölçüldü). Ayrıca bu koordinatlar VectorDrawable'dakilerle birebir. -->
+    <linearGradient id="isin" gradientUnits="userSpaceOnUse"
+                    x1="124" y1="124" x2="308" y2="308">
+      <stop offset="0" stop-color="#8fd4cb"/>
+      <stop offset="0.52" stop-color="#56AEA4"/>
+      <stop offset="1" stop-color="#3E76B0"/>
+    </linearGradient>
+    <linearGradient id="sap" gradientUnits="userSpaceOnUse"
+                    x1="216" y1="104" x2="216" y2="196">
+      <stop offset="0" stop-color="#9bdad1"/>
+      <stop offset="1" stop-color="#56AEA4"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M0,0h432v432H0z" fill="url(#zemin)"/>
+  <path d="M0,0h432v432H0z" fill="url(#parilti)"/>
+
+  <path d="M268.8,140.6 A92,92 0 1 1 163.2,140.6"
+        fill="none" stroke="url(#isin)" stroke-width="31" stroke-linecap="round"/>
+  <path d="M216,104 L216,196"
+        fill="none" stroke="url(#sap)" stroke-width="31" stroke-linecap="round"/>
+  <path d="M300.5,101.6 A132,132 0 0 1 338.3,172.4"
+        fill="none" stroke="#D2A354" stroke-width="15" stroke-linecap="round"/>
+  <path d="M327.2,78.9 A167,167 0 0 1 375.1,168.5"
+        fill="none" stroke="#D2A354" stroke-width="13" stroke-linecap="round" opacity="0.7"/>
+</svg>

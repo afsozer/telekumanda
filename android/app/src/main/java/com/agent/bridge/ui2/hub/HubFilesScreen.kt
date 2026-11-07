@@ -82,6 +82,7 @@ import com.agent.bridge.clipboardAfterPaste
 import com.agent.bridge.selectAllToggle
 import com.agent.bridge.selectionTitle
 import com.agent.bridge.toggleSelection
+import com.agent.bridge.PhoneFiles
 import com.agent.bridge.PhoneStorage
 import com.agent.bridge.phoneBase
 import com.agent.bridge.phoneEntries
@@ -102,6 +103,7 @@ import com.agent.bridge.coworkRootPath
 import com.agent.bridge.coworkBrowserScope
 import com.agent.bridge.filterHidden
 import com.agent.bridge.isUnderDrive
+import com.agent.bridge.seedFromGeneratedName
 import com.agent.bridge.formatByteCount
 import com.agent.bridge.isImageFile
 import com.agent.bridge.isUdfFile
@@ -136,11 +138,14 @@ fun HubFilesScreen(
     onBack: () -> Unit,
     onOpenViewer: () -> Unit,
     // Bos = ev dizini (Merkez > Dosyalar'in davranisi). Dolu gelirse gezgin
-    // dogrudan o klasorde acilir (oturumun klasorunden acilis bunu kullanir).
+    // dogrudan o klasorde acilir — "Görsel üret > Üretilenler" bunu kullanir.
     // Kopru tarafinda yol kisiti yok (confinementRoot bos), mutlak yol serbest.
     initialPath: String = "",
+    // Doluysa gezgin TELEFON sekmesinde ve bu klasörde açılır ("Mobil cihaz"
+    // kartı bunu kullanır). Kilit yok, üst klasörlere çıkılabilir.
+    initialPhonePath: String = "",
 ) {
-    var tab by rememberSaveable { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableStateOf(if (initialPhonePath.isNotBlank()) 1 else 0) }
     // Gezgin, bu ZİYARETTE bir kez başlangıç klasörüne gider; sonrası kullanıcının.
     //
     // Bayraklar rememberSaveable: dosya açıp görüntüleyiciye gidince bu ekranın
@@ -151,18 +156,20 @@ fun HubFilesScreen(
     var pcLoaded by rememberSaveable { mutableStateOf(false) }
     var phoneLoaded by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(initialPath) {
-        if (pcLoaded) return@LaunchedEffect
+        if (pcLoaded || initialPhonePath.isNotBlank()) return@LaunchedEffect
         pcLoaded = true
         actions.loadBrowserDir(initialPath)
     }
     // Sürücü listesi bir kez; delege zaten doluysa istek atmıyor.
     LaunchedEffect(Unit) { actions.loadDriveRoots() }
-    // Telefon sekmesi AgentBridge kökünde açılır ama KİLİTLİ DEĞİL — üst
+    // Telefon sekmesi Telekumanda kökünde açılır ama KİLİTLİ DEĞİL — üst
     // klasörlere çıkıp /sdcard'ın geri kalanına gidilebilir (rootLock verilmiyor).
-    LaunchedEffect(tab) {
+    LaunchedEffect(tab, initialPhonePath) {
         if (tab != 1 || phoneLoaded) return@LaunchedEffect
         phoneLoaded = true
-        actions.loadPhoneDir(actions.phoneRootPath())
+        val hedef = initialPhonePath.ifBlank { actions.phoneRootPath() }
+        if (initialPhonePath.isNotBlank()) PhoneFiles.ensureDir(hedef)
+        actions.loadPhoneDir(hedef)
     }
     val pcOps = rememberPcOps(uiState, actions, coworkOnly = false)
     val phoneOps = rememberPhoneOps(uiState, actions, coworkOnly = false)
@@ -365,6 +372,8 @@ data class FileBrowserOps(
  */
 data class FilePickerMode(
     val onConfirm: (List<DirEntry>) -> Unit,
+    // Görsel üreticide tek kaynak isteniyor: ikinci seçim öncekini düşürür.
+    val single: Boolean = false,
 )
 
 // rootLock: verilirse gezinme bu kökün altına KİLİTLENİR (cowork gezgini) — üst
@@ -445,6 +454,7 @@ private fun FilesPane(
                 count = selected.size,
                 fileCount = files.size,
                 allSelected = files.isNotEmpty() && selected.containsAll(files.map { it.path }),
+                single = picker!!.single,
                 onSelectAll = { selected = selectAllToggle(selected, files.map { it.path }) },
                 onClear = { selected = emptySet() },
                 onConfirm = {
@@ -616,7 +626,13 @@ private fun FilesPane(
                         // küçük resmi için dosyanın tamamını indirmek gerekirdi.
                         showThumbnail = ops.localFiles,
                         onOpen = {
-                            if (picking || selectionMode) {
+                            if (picking) {
+                                selected = if (picker!!.single) {
+                                    if (entry.path in selected) emptySet() else setOf(entry.path)
+                                } else {
+                                    toggleSelection(selected, entry.path)
+                                }
+                            } else if (selectionMode) {
                                 selected = toggleSelection(selected, entry.path)
                             } else {
                                 // Görüntüleyici klasörde kaydırabilsin diye komşu
@@ -661,6 +677,18 @@ private fun FilesPane(
                         contextEntry = null
                     }) {
                         Icon(Icons.Default.ContentCopy, null); Text("Yolu kopyala")
+                    }
+                    // Yalnız üretilmiş görsel/videolarda: seed dosya adında
+                    // duruyor, oradan okunuyor. Aynı kareyi tekrar üretmek için
+                    // Görsel üret ekranındaki Seed alanına yapıştırılır.
+                    seedFromGeneratedName(entry.name)?.let { seed ->
+                        TextButton(onClick = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(seed))
+                            actions.notifyUser("Seed kopyalandı: $seed")
+                            contextEntry = null
+                        }) {
+                            Icon(Icons.Default.ContentCopy, null); Text("Seed'i kopyala")
+                        }
                     }
                     TextButton(onClick = { editMode = "rename"; editText = entry.name }) { Icon(Icons.Default.DriveFileRenameOutline, null); Text("Yeniden adlandır") }
                     TextButton(onClick = { editMode = "move"; editText = ops.base }) { Icon(Icons.Default.Folder, null); Text("Taşı") }
@@ -712,7 +740,8 @@ private fun FilesPane(
 }
 
 /**
- * "Bilgisayardan dosya seç" ekranı. Sohbet ekleri buradan geçer.
+ * "Bilgisayardan dosya seç" ekranı. Sohbet ekleri ve görsel üreticinin kaynak
+ * görseli buradan geçer.
  *
  * PC/telefon anahtarı YOK: bu ekrana zaten "bilgisayardan" denerek gelindi,
  * ikinci bir yerde aynı soruyu sormak kafa karıştırır. Telefon seçilirse
@@ -724,6 +753,7 @@ fun PcFilePickerScreen(
     actions: RemoteViewModel,
     onBack: () -> Unit,
     onPicked: (List<DirEntry>) -> Unit,
+    single: Boolean = false,
 ) {
     val ops = rememberPcOps(uiState, actions, coworkOnly = false)
     // Ziyaret başına tek yükleme: seçiciden dönüp tekrar açınca kaldığın klasör
@@ -736,7 +766,7 @@ fun PcFilePickerScreen(
     }
     Column(Modifier.fillMaxSize().background(Ui2.colors.bg)) {
         ScreenHeader(
-            title = "Bilgisayardan dosya seç",
+            title = if (single) "Bilgisayardan görsel seç" else "Bilgisayardan dosya seç",
             subtitle = shortDisplayPath(ops.base),
             onBack = onBack,
         )
@@ -744,7 +774,7 @@ fun PcFilePickerScreen(
             ops = ops,
             actions = actions,
             onFileTap = {},
-            picker = FilePickerMode(onConfirm = onPicked),
+            picker = FilePickerMode(onConfirm = onPicked, single = single),
         )
     }
 }
@@ -874,6 +904,7 @@ private fun PickerBar(
     count: Int,
     fileCount: Int,
     allSelected: Boolean,
+    single: Boolean,
     onSelectAll: () -> Unit,
     onClear: () -> Unit,
     onConfirm: () -> Unit,
@@ -887,12 +918,17 @@ private fun PickerBar(
             IconButton(onClick = onClear) { Icon(Icons.Default.Close, "Seçimi bırak", tint = Ui2.colors.ink2) }
         }
         Text(
-            if (count > 0) selectionTitle(count) else "Dosyaları seç",
+            when {
+                count > 0 -> selectionTitle(count)
+                single -> "Bir dosya seç"
+                else -> "Dosyaları seç"
+            },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleSmall,
             color = Ui2.colors.ink,
         )
-        if (fileCount > 0) {
+        // Tek seçimlik kipte "tümünü seç" çelişkili olurdu.
+        if (!single && fileCount > 0) {
             IconButton(onClick = onSelectAll) {
                 Icon(
                     if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,

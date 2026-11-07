@@ -1,10 +1,10 @@
 // Delta yayınının backend KAPSAMI. Protokolün kendisi agent-session-core
 // testlerinde; buradaki soru şu: hangi backend'ler onu gerçekten kullanıyor?
 //
-// Kapsam boşluğu canlıda pahalıya patladı: omp, opencode-app ve agy `subscribe`
-// içinde opts'u yutuyordu, dolayısıyla `delta=1` isteyen istemciye (Android
-// 07.08'den beri, web de öyle) HER karede tam transkript gidiyordu. Bu dosya
-// bir backend eklendiğinde ya da subscribe imzası bozulduğunda uyarır.
+// Kapsam boşluğu canlıda pahalıya patladı: omp ve agy `subscribe` içinde opts'u
+// yutuyordu, dolayısıyla `delta=1` isteyen istemciye (Android 07.08'den beri,
+// web de öyle) HER karede tam transkript gidiyordu. Bu dosya bir backend
+// eklendiğinde ya da subscribe imzası bozulduğunda uyarır.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -21,31 +21,33 @@ test('dosya yoksa existed=false, liste boş', () => {
 });
 
 test('tek kapsam yazılır ve okunur', () => {
-  writeUiPinScope('backend-model:opencode-app', ['opencode-go/glm-5.3', 'opencode/go-deepseek']);
+  writeUiPinScope('backend-model:claude-app', ['fable-5/opus', 'fable-5/sonnet']);
   const r = readUiPins();
   assert.equal(r.existed, true);
-  assert.deepEqual(r.pins['backend-model:opencode-app'], ['opencode-go/glm-5.3', 'opencode/go-deepseek']);
+  assert.deepEqual(r.pins['backend-model:claude-app'], ['fable-5/opus', 'fable-5/sonnet']);
 });
 
 test('ikinci kapsam yazılınca ilkine dokunulmaz', () => {
-  writeUiPinScope('backend-model:claude-app', ['claude-opus']);
+  writeUiPinScope('backend-agent:codex-app', ['uygulayici']);
   const r = readUiPins();
-  assert.deepEqual(r.pins['backend-model:opencode-app'], ['opencode-go/glm-5.3', 'opencode/go-deepseek']);
-  assert.deepEqual(r.pins['backend-model:claude-app'], ['claude-opus']);
+  assert.deepEqual(r.pins['backend-model:claude-app'], ['fable-5/opus', 'fable-5/sonnet']);
+  assert.deepEqual(r.pins['backend-agent:codex-app'], ['uygulayici']);
 });
 
 test('aynı kapsam tekrar yazılınca SON YAZAN KAZANIR', () => {
-  writeUiPinScope('backend-model:opencode-app', ['opencode/go-nano-grok']);
+  writeUiPinScope('backend-model:claude-app', ['fable-5/haiku']);
   const r = readUiPins();
-  assert.deepEqual(r.pins['backend-model:opencode-app'], ['opencode/go-nano-grok']);
+  assert.deepEqual(r.pins['backend-model:claude-app'], ['fable-5/haiku']);
   // Diğer kapsamdan haber yok:
-  assert.deepEqual(r.pins['backend-model:claude-app'], ['claude-opus']);
+  assert.deepEqual(r.pins['backend-agent:codex-app'], ['uygulayici']);
 });
 
 test('boş set göndermek kapsamı tamamen temizler', () => {
-  writeUiPinScope('backend-model:claude-app', []);
+  writeUiPinScope('backend-agent:codex-app', []);
   const r = readUiPins();
-  assert.equal(Object.hasOwn(r.pins, 'backend-model:claude-app'), false);
+  assert.equal(Object.hasOwn(r.pins, 'backend-agent:codex-app'), false);
+  // Diğer kapsam yerinde kalır:
+  assert.deepEqual(r.pins['backend-model:claude-app'], ['fable-5/haiku']);
 });
 
 test('boşluk ve duplikasyon temizlenir', () => {

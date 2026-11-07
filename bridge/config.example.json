@@ -15,13 +15,5 @@
   "sessionPrune": {
     "retentionDays": 7,
     "intervalHours": 6
-  },
-  "runpod": {
-    "enabled": false,
-    "scriptDir": "C:/Users/YOU/runpod"
-  },
-  "oturumImha": {
-    "enabled": true,
-    "script": "C:/Users/YOU/CoworkSpaces/opencode-v2/scripts/oturum-imha.ps1"
   }
 }

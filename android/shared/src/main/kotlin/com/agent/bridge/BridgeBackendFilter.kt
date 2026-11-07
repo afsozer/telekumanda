@@ -2,7 +2,7 @@ package com.agent.bridge
 
 // Yeni oturum / cekmece / proje sohbeti listelerinde gosterilecek backend'ler.
 // Kullanicinin ayari (sira + gorunurluk) telefon genelidir; ama her kopru her
-// backend'i sunmaz (Mac koprusu yalniz claude-app + opencode-app). Koprunun
+// backend'i sunmaz (ör. Mac koprusu yalniz bir kismini). Koprunun
 // /backends katalogu yuklendiyse onda OLMAYAN backend gizlenir. Katalog yoksa
 // (eski kopru, henuz yuklenmedi, cevrimdisi) kullanici ayari aynen gecerlidir.
 // Ayarlar > Saglayicilar ekrani bunu KULLANMAZ: orada hepsi gorunmeli.

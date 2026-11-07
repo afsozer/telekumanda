@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +67,16 @@ data class SelectorInfo(
     val bestFor: String,
     val profile: String,
     val sourceUrl: String? = null,
+    // Etiketler override edilebilir: metin modellerinde "En uygun / Profil /
+    // Kaynak" dogru, gorsel modellerinde ayni kutular model kartindaki adi ve
+    // temel modeli tasiyor. Varsayilanlar eski cagrilari aynen birakir.
+    // Ozetin kaynagi olan BIREBIR metin. Doluysa bilgi kartinda "orijinali
+    // goster" dugmesi cikar. Ozet bir dil modelinin yazdigi metin oldugu icin
+    // kaynagi kapatmak onu dogrulanamaz kilardi.
+    val originalText: String? = null,
+    val bestForLabel: String = "En uygun",
+    val profileLabel: String = "Profil",
+    val sourceLabel: String = "Hugging Face'te aç",
 )
 
 // Yarı açık sheet'te kabaca bu kadar satır görünüyor; bu aralıktaki seçim için
@@ -118,6 +129,8 @@ fun <T> SelectorSheet(
     // listesi ayrı kapsam, yoksa biri diğerinin yıldızını görür.
     pinScope: String? = null,
     pinKey: (T) -> String = { it.toString() },
+    // Non-null enables multiple selection; the caller toggles values without closing.
+    selectedValues: Set<T>? = null,
 ) {
     var infoOption by remember { mutableStateOf<SelectorOption<T>?>(null) }
     val context = LocalContext.current
@@ -228,6 +241,11 @@ fun <T> SelectorSheet(
                 )
             } else {
                 SheetTitle(title, subtitle)
+                if (selectedValues != null) {
+                    TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                        Text("Tamam (${selectedValues.size} seçili)")
+                    }
+                }
                 if (loading) {
                     LoadingSkeleton(rows = 3, modifier = Modifier.padding(bottom = Ui2Tokens.sheetBottom))
                 } else if (options.isEmpty() && emptyText != null) {
@@ -244,7 +262,7 @@ fun <T> SelectorSheet(
                         verticalArrangement = Arrangement.spacedBy(Ui2Tokens.s4),
                     ) {
                         items(orderedOptions) { opt ->
-                            val selected = selectedValue != null && opt.value == selectedValue
+                            val selected = selectedValues?.contains(opt.value) ?: (selectedValue != null && opt.value == selectedValue)
                             val optionKey = if (pinScope == null) null else pinKey(opt.value)
                             val pinned = optionKey != null && optionKey in pinnedKeys
                             ListRow(
@@ -252,6 +270,9 @@ fun <T> SelectorSheet(
                                 detail = opt.detail,
                                 detailMaxLines = detailMaxLines,
                                 onClick = { onSelect(opt.value) },
+                                leading = if (selectedValues != null) ({
+                                    Checkbox(checked = selected, onCheckedChange = { onSelect(opt.value) })
+                                }) else null,
                                 trailing = {
                                     // Yildiz ve (i) IconButton iken her biri 48dp
                                     // yer kapliyordu; aralarinda da satirin 12dp'lik
@@ -292,7 +313,7 @@ fun <T> SelectorSheet(
                                         }
                                     }
                                     if (opt.badge != null) StatusBadge(opt.badge)
-                                    if (selected) {
+                                    if (selected && selectedValues == null) {
                                         Icon(
                                             Icons.Default.Check,
                                             "Seçili",
@@ -342,6 +363,8 @@ private fun SelectorInfoContent(
     onBack: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    // Model degisince orijinal yeniden kapansin (info key'i olarak kullanilir).
+    var showOriginal by remember(modelName) { mutableStateOf(false) }
     LazyColumn(
         Modifier.padding(bottom = Ui2Tokens.sheetBottom),
         verticalArrangement = Arrangement.spacedBy(Ui2Tokens.s12),
@@ -366,12 +389,31 @@ private fun SelectorInfoContent(
                 color = Ui2.colors.ink,
             )
         }
-        if (info.bestFor.isNotBlank()) item { SelectorInfoRow("En uygun", info.bestFor) }
-        if (info.profile.isNotBlank()) item { SelectorInfoRow("Profil", info.profile) }
+        if (!info.originalText.isNullOrBlank()) {
+            item {
+                TextButton(onClick = { showOriginal = !showOriginal }) {
+                    Text(
+                        if (showOriginal) "Orijinali gizle" else "Orijinali göster",
+                        color = Ui2.colors.accent,
+                    )
+                }
+            }
+            if (showOriginal) {
+                item {
+                    Text(
+                        info.originalText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ui2.colors.ink2,
+                    )
+                }
+            }
+        }
+        if (info.bestFor.isNotBlank()) item { SelectorInfoRow(info.bestForLabel, info.bestFor) }
+        if (info.profile.isNotBlank()) item { SelectorInfoRow(info.profileLabel, info.profile) }
         if (info.sourceUrl != null) {
             item {
                 TextButton(onClick = { runCatching { uriHandler.openUri(info.sourceUrl) } }) {
-                    Text("Hugging Face'te aç", color = Ui2.colors.accent)
+                    Text(info.sourceLabel, color = Ui2.colors.accent)
                 }
             }
         }

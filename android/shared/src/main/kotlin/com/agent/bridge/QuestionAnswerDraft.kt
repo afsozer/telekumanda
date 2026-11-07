@@ -5,8 +5,8 @@ package com.agent.bridge
  * Backend'e yalnız bütün sorular cevaplandıktan sonra gönderilir.
  *
  * Soru başına cevap bir LİSTE: `multiple` işaretli sorularda ajan birden fazla
- * seçenek bekler (opencode'un reply şeması soru başına etiket dizisi taşır).
- * Tek seçimli soruda liste hep tek elemanlıdır.
+ * seçenek bekler (köprü şeması soru başına etiket dizisi taşır). Tek seçimli
+ * soruda liste hep tek elemanlıdır.
  */
 data class QuestionAnswerDraft(
     private val answersByQuestion: Map<String, List<ApprovalAnswer>> = emptyMap(),

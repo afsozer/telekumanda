@@ -18,7 +18,7 @@ interface DownloadRepo {
         settings: BridgeSettings,
         sourcePath: String,
         displayName: String,
-        // AgentBridge kökünün altındaki alt klasör ("Pictures" gibi). Boş =
+        // Telekumanda kökünün altındaki alt klasör ("Pictures" gibi). Boş =
         // doğrudan kök. Görseller Galeri'de düzgün görünsün diye ayrıldı.
         subDir: String = "",
         onProgress: (Float) -> Unit,

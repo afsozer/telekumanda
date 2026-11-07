@@ -1,7 +1,6 @@
-# Metin dosyalari depoda LF durur; Windows betikleri her makinede CRLF iner
-# (cmd.exe LF'li .bat/.cmd dosyalarinda etiket ve goto'yu yanlis okuyabiliyor).
-* text=auto eol=lf
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-*.vbs text eol=crlf
+# CLIP BPE sozlugu: satir sonu DONUSTURULMEZ.
+# autocrlf=true olan bir makinede checkout CRLF yazarsa tokenizer'in her
+# kurali '\r' ile biter, hicbir birlestirme eslesmez ve prompt sayaci her
+# karakteri token sayar (14.09.2026'da canlida goruldu). Ikinci savunma
+# ClipTokenizer.fromStream icinde, ama dosya bastan dogru inmeli.
+android/app/src/main/assets/bpe_simple_vocab_16e6.txt -text

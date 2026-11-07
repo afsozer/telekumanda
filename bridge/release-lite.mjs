@@ -28,8 +28,11 @@ const versionCode = Math.max(sourceCode, publishedCode) + 1;
 fs.writeFileSync(versionPath, `versionCode=${versionCode}\nversionName=${versionName}\n`);
 try {
   const windows = process.platform === 'win32';
+  // './gradlew' gibi Windows'ta da YOLU açıkça yaz: bazı kabuklarda
+  // NoDefaultCurrentDirectoryInExePath=1 oluyor ve cmd.exe çıplak
+  // 'gradlew.bat'ı çalışma dizininde ARAMIYOR ("not recognized" ile düşüyor).
   const build = spawnSync(windows ? 'cmd.exe' : './gradlew',
-    windows ? ['/c', 'gradlew.bat :app:assembleLite'] : [':app:assembleLite'],
+    windows ? ['/c', '.\\gradlew.bat :app:assembleLite'] : [':app:assembleLite'],
     { cwd: androidDir, stdio: 'inherit' });
   if (build.error || build.status !== 0) throw build.error || new Error(`Gradle failed: ${build.status}`);
   const apkDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'lite');

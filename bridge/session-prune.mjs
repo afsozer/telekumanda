@@ -2,11 +2,10 @@ import path from 'node:path';
 
 // Bir haftadan fazla inaktif kalmis backend oturumlarini budar.
 //
-// INAKTIFLIK OLCUTU her backend'in kendi liste kaydindaki `mtime`'dir ve uc
+// INAKTIFLIK OLCUTU her backend'in kendi liste kaydindaki `mtime`'dir ve iki
 // backend'de de ayni seyi gosterir: son kullanici promptu ya da son ajan mesaji.
 // - claude-app: transcript icindeki son mesajin zamani
 // - codex-app: rollout dosyasinin son yazilma zamani
-// - opencode-app: opencode.db'deki `time_updated`
 //
 // MUAFIYETLER (kullanici karari, 19.08.2026):
 // - **Cowork / calisma alani oturumlari.** cwd cowork kokunun altindaysa
@@ -21,7 +20,7 @@ import path from 'node:path';
 /** `p` (dosya/klasor) `root` altinda mi? Kokun kendisi de altinda sayilir. */
 export function isUnderRoot(p, root) {
   if (!p || !root) return false;
-  // Ayirici normalize: opencode cwd'yi '/' ile veriyor, Windows yollari '\' ile.
+  // Ayirici normalize: backend'ler cwd'yi '/' ile de '\' ile de verebiliyor.
   const norm = (x) => path.resolve(String(x).replace(/\//g, path.sep));
   let rel;
   try { rel = path.relative(norm(root), norm(p)); } catch { return false; }

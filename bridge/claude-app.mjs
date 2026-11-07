@@ -48,6 +48,8 @@ export const CLAUDE_APP_MODELS = [
   { label: 'Opus 5.5', id: 'claude-opus-5-5' },
   { label: 'Sonnet 5', id: 'sonnet' },
   { label: 'Fable 5.1', id: 'claude-fable-5-1' },
+  // CVP Defense Access ile açıldı (14 Eki 2026); Windows köprüsünün CLI'sinde denendi.
+  { label: 'Mythos 5.1', id: 'claude-mythos-5-1' },
   { label: 'Haiku 4.5', id: 'haiku' },
 ];
 export const MODELS = CLAUDE_APP_MODELS;
@@ -409,7 +411,7 @@ export function coworkRoot() { return COWORK_ROOT; }
 // noktaları kaldır. Boş veya 120 karakterden uzunsa null. { ok:false, error } değil null
 // döner — çağıran (route) uygun HTTP cevabını kurar.
 function sanitizeWorkspaceName(raw) {
-  // \w ASCII-only'dir; onunla süzmek Türkçe harfleri yutuyordu ("ışık" → "k").
+  // \w ASCII-only'dir; onunla süzmek Türkçe harfleri yutuyordu ("ışıl" → "l").
   // Unicode harf/rakam sınıfları (\p{L}\p{N}) ile süz: path ayraçları, Windows'un
   // yasak karakterleri (< > : " | ? *) ve kontrol karakterleri yine elenir.
   // NFC: ayrık yazılmış harf+birleşik işaret çifti tek koda toplanıp korunur.
@@ -1864,6 +1866,7 @@ export function adoptSession({ id, cwd, cowork = false }) {
   const mdl = pm.includes('opus') ? 'claude-opus-5-5'   // alias değil spesifik id (picker etiketiyle aynı)
     : pm.includes('haiku') ? 'haiku'
     : pm.includes('fable') ? 'claude-fable-5-1'   // Fable oturumu sonnet'e düşmesin
+    : pm.includes('mythos') ? 'claude-mythos-5-1'
     : 'sonnet';
 
   sessions.set(id, {

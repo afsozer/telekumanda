@@ -86,7 +86,7 @@ class KotaWidgetWorker(appContext: Context, params: WorkerParameters) : Coroutin
         val prefs = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
         val baseUrl = prefs.getString("url", null).orEmpty()
         if (baseUrl.isBlank()) {
-            KotaWidgetStore.saveError(ctx, "Köprü ayarı yok — AgentBridge'i aç")
+            KotaWidgetStore.saveError(ctx, "Köprü ayarı yok — Telekumanda'yı aç")
         } else {
             val settings = BridgeSettings(baseUrl, prefs.getString("token", null).orEmpty())
             try {

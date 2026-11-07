@@ -91,7 +91,7 @@ class CodexAppActionsDelegate(
      * "Değişiklikler" listesini çeker — uzun otonom koşu bitince telefondan
      * "bu oturum neyi değiştirdi" incelemesi.
      *
-     * OpencodeAppActionsDelegate.loadDiff ile AYNI sözleşme: yoklamaya binmez
+     * Sözleşme: yoklamaya binmez
      * (kullanıcı görünümü açınca çekilir), hata bildirilir ama ÖNCEKİ LİSTE
      * KORUNUR — köprü bir an cevap veremedi diye ekranı boşaltmak, "bu oturum
      * dosya değiştirmedi" yalanına dönüşürdü.

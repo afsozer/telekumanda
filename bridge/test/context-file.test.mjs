@@ -74,13 +74,13 @@ describe('/context/file', () => {
     const res = fakeRes();
     const req = fakeRawReq('içerik');
     delete req.headers['x-filename'];
-    req.url = '/context/file?filename=' + encodeURIComponent('Sipariş Sözleşmesi Onayı - Örnek.mht');
+    req.url = '/context/file?filename=' + encodeURIComponent('Sipariş Sözleşmesi Onayı - AKINSOFT.mht');
     await route.handler(req, res);
 
     assert.equal(res.statusCode, 200);
     const json = JSON.parse(res.data);
     writtenFiles.push(json.path);
-    assert.equal(json.name, 'Sipariş Sözleşmesi Onayı - Örnek.mht');
+    assert.equal(json.name, 'Sipariş Sözleşmesi Onayı - AKINSOFT.mht');
     assert.equal(fs.existsSync(json.path), true);
   });
 

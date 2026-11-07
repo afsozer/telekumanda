@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  Telekumanda koprusunu yeniden baslat.
+REM  AgentBridge'i yeniden baslat.
 REM  :8787 dinleyen node (server.mjs) surecini agac olarak oldurur.
 REM  run-bridge.cmd supervisor'u node cikinca ~3 sn icinde tekrar
 REM  baslattigi icin sonuc "temiz restart" olur.

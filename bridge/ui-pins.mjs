@@ -6,7 +6,7 @@
 // sync"), eşitlenmezler.
 //
 // Dosya biçimi:
-//   { "scopes": { "backend-model:opencode-app": ["opencode-go/glm-5.3"], ... } }
+//   { "scopes": { "backend-model:claude-app": ["fable-5/opus"], ... } }
 // Scope adları istemciden gelir (SelectorPinStore kapsamları):
 //   backend-model:<backendId> · backend-agent:<backendId>
 //
@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // Override yolu testler için: temp dosyaya yönlenip köprünün canlı
-// ui-pins.json'una dokunmamak için (desen: AGENTBRIDGE_IMAGE_CATALOG).
+// ui-pins.json'una dokunmamak için (desen: AGENTBRIDGE_OMP_ROOT).
 function pinsFile() {
   const override = String(process.env.AGENTBRIDGE_UI_PINS || '').trim();
   // Her iki dal da URL NESNESI döndürsün: fs işlevleri URL kabul eder ama

@@ -32,7 +32,7 @@ export function findWingetPopplerBin({
 
 /**
  * Bridge eski bir terminalden yeniden başlatılsa bile yeni Winget PATH yayılımını
- * beklemeden Claude/Codex/OpenCode child süreçlerine Poppler'i taşır.
+ * beklemeden Claude/Codex child süreçlerine Poppler'i taşır.
  */
 export function ensureDocumentToolPath(env = process.env) {
   if (process.platform !== 'win32') return { changed: false, bin: '' };

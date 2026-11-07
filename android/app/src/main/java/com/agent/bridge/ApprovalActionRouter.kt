@@ -10,7 +10,6 @@ class ApprovalActionRouter(
     fun answerQuestions(answers: List<ApprovalAnswer>) {
         when (approvalBackend) {
             Backend.CODEX_APP.id -> actions.codexAppAnswerQuestions(answers)
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppAnswerQuestions(answers)
             Backend.OMP.id -> actions.ompAnswerQuestions(answers)
             else -> actions.claudeAppAnswerQuestions(answers)
         }
@@ -19,7 +18,6 @@ class ApprovalActionRouter(
     fun approve(allow: Boolean) {
         when (approvalBackend) {
             Backend.CODEX_APP.id -> actions.codexAppApprove(allow)
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(allow)
             Backend.OMP.id -> actions.ompApprove(allow)
             else -> actions.claudeAppApprove(allow)
         }
@@ -36,7 +34,6 @@ class ApprovalActionRouter(
                 deny -> actions.codexAppApprove(false, if (id == "cancel" || consequence == "cancel") "cancel" else "deny")
                 else -> actions.codexAppApprove(true, id.ifBlank { "accept" })
             }
-            Backend.OPENCODE2_APP.id -> actions.opencodeAppApprove(!deny)
             Backend.OMP.id -> actions.ompApprove(!deny)
             // ACP secenekleri (allow_once/allow_always/reject_once/reject_always)
             // bridge tarafinda allow bayragina indirgeniyor.

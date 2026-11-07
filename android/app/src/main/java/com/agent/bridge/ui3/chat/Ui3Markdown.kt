@@ -79,10 +79,11 @@ internal fun Ui3AjanMetni(
     val parcalar = remember(metin) { splitMarkdownSegments(metin) }
     // Markdown bir TextView'de çiziliyor; Compose'un fontFamily'si oraya
     // ulaşmıyor, typeface elden veriliyor. Kaynak res/font, yani Ui3Serif'in
-    // tam aynısı (Liberation Serif) — ajan metni sohbetin geri kalanıyla aynı
+    // tam aynısı (şimdi Tiempos) — ajan metni sohbetin geri kalanıyla aynı
     // yüzde. Ui3Serif değişirse BURASI DA değişmeli; iki kaynak var.
     val yazTipi = androidx.compose.ui.platform.LocalContext.current.let { ctx ->
-        remember(ctx) { androidx.core.content.res.ResourcesCompat.getFont(ctx, com.agent.bridge.R.font.liberation_serif_regular) }
+        // Kovan dili: sistem sans'ı (Ui3Serif = FontFamily.Default ile aynı yüz).
+        remember(ctx) { android.graphics.Typeface.DEFAULT }
     }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s8)) {
         parcalar.forEach { parca ->
@@ -101,7 +102,7 @@ internal fun Ui3AjanMetni(
                     // ajan metninden farklı ritimde akar (kullanıcı yakaladı).
                     // Punto ELLE YAZILMAZ: aynı kaynaktan okunur.
                     textSizeSp = Ui3Type.akis.fontSize.value,
-                    satirCarpani = 1.28f,
+                    satirCarpani = 1.2f,
                 )
                 is MarkdownSegment.Code -> Ui3KodKarti(parca)
             }

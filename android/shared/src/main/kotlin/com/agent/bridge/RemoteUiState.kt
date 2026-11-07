@@ -92,14 +92,13 @@ data class FilesUiState(
     val phoneError: String = "",
 )
 
-/** Cihaz anahtarı eşleştirmesi ve bildirim tercihi. */
+/** Cihaz anahtarı eşleştirmesi. */
 @androidx.compose.runtime.Immutable
 data class DeviceUiState(
     val pairingCode: String = "",
     val pairingExpiresAt: String = "",
     val paired: Boolean = false,
     val authLoading: Boolean = false,
-    val batteryOptimizationIgnored: Boolean = false,
 )
 
 /** Antigravity CLI'ye ait oturum, model ve disk kayıtları. */
@@ -143,9 +142,9 @@ data class CoworkUiState(
     val filesOpenDir: String = "",
 )
 
-/** OpenCode App'e ait oturum, model, izin ve bilgi durumu. */
+/** OMP'ye ait oturum, model, izin ve bilgi durumu. */
 @androidx.compose.runtime.Immutable
-data class OpencodeUiState(
+data class OmpUiState(
     val sessionId: String = "",
     val lastSessionId: String = "",
     val cwd: String = "",
@@ -157,145 +156,17 @@ data class OpencodeUiState(
     val availableModels: List<BackendModel> = emptyList(),
     val permissionMode: String = "yolo",
     val permissionModes: List<PermissionMode> = emptyList(),
-    val info: OpencodeAppInfo? = null,
-    val runpod: RunPodStatus = RunPodStatus(),
-    // Silinmis oturum kalintilarinin durumu (Ayarlar > Gelismis karti).
-    val purge: SessionPurgeStatus = SessionPurgeStatus(),
+    val info: OmpAppInfo? = null,
     // Secili akil yurutme eforu ("" = modelin varsayilani). Gecerli degerler
     // modele gore degisir; availableModels icindeki variants listesinden gelir.
     val variant: String = "",
-    // Turu kosacak ajan ("" = otomatik: yerel/RunPod modellerinde yalin ajan,
-    // digerlerinde opencode'un varsayilani). Snapshot'tan da gelir, boylece cip
-    // cihazlar arasi ayni degeri gosterir.
-    val agent: String = "",
-    // Köprünün ÇÖZÜMLEDİĞİ ajan: turu gerçekten koşan/koşacak ad. Oto kipte
-    // ([agent] boş) çipin tek bilgi kaynağı bu — karar köprüde veriliyor ve
-    // telefon onu başka türlü göremez. Açık seçimde [agent] ile aynı değeri
-    // taşır (alan tutarlı kalsın diye), o yüzden çip bunu yalnız oto kipte
-    // kullanır. "" = köprü henüz bilmiyor -> çip sadece "otomatik" yazar.
-    val resolvedAgent: String = "",
-    val agents: List<BackendAgent> = emptyList(),
-    // GÖREV PANOSU — uzun otonom koşuyu telefondan transkript kaydırmadan
-    // izlemek için. İkisi de köprünün conversation/snapshot yükünden geliyor
-    // (ayrı uç ya da ayrı yoklama YOK, bkz. OpencodeTodo).
-    val todos: List<OpencodeTodo> = emptyList(),
-    // Bağlam doluluğu 0-100. null = ÖLÇÜLEMİYOR (model penceresi bilinmiyor ya
-    // da oturumda henüz token bildiren cevap yok). Sıfırdan ayrı tutuluyor:
-    // pano null'da çubuğu hiç çizmez, %0'da boş çubuk çizer.
-    val contextPct: Int? = null,
-    // DEĞİŞİKLİKLER — uzun otonom koşu bitince "bu oturum neyi değiştirdi".
-    // Yoklamaya BİNMEZ: kullanıcı görünümü açınca bir kez çekilir (bkz.
-    // OpencodeAppActionsDelegate.loadDiff). null = hiç istenmedi; boş liste
-    // taşıyan bir kayıt ise "gerçekten hiçbir dosya değişmedi" demek — ikisi
-    // ayrı, çünkü boş durum metni ancak ÖLÇTÜKTEN sonra yazılabilir.
-    val diff: BackendSessionDiff? = null,
-    val diffLoading: Boolean = false,
-    // CHECKPOINT GERİ SARMA. Liste diff ile aynı kuralla çalışıyor: yoklamaya
-    // binmez, kullanıcı "Geri sar"a dokununca bir kez çekilir (her istek
-    // oturumun bütün mesaj listesini köprüye okutuyor).
-    val checkpoints: List<OpencodeCheckpoint> = emptyList(),
-    val checkpointsLoading: Boolean = false,
-    // ALT AJANLAR — opencode'un `task` aracının doğurduğu çocuk oturumlar.
-    // Görev panosuyla aynı taşıma (snapshot + delta setMeta + poll), ayrı uç ya
-    // da ayrı yoklama YOK: köprü zaten akan SSE olaylarından besliyor.
-    val subagents: List<OpencodeSubagent> = emptyList(),
-    // Karta dokununca açılan salt-okunur transkript. Diff/checkpoint ile aynı
-    // kural: yoklamaya binmez, kullanıcı açınca bir kez çekilir. null = hiç
-    // istenmedi; boş `messages` taşıyan kayıt "gerçekten hiç konuşmadı" demek.
-    val subagentTranscript: OpencodeSubagentTranscript? = null,
-    val subagentTranscriptLoading: Boolean = false,
-    // Geri sarılmış durum — null = sarılmamış. Snapshot'tan geliyor (köprüde
-    // META_KEYS'te), böylece başka cihazdan geri sarılınca şerit burada da
-    // beliriyor ve yeni tur onu kalıcı kılınca kendiliğinden düşüyor.
-    val reverted: OpencodeRevertState? = null,
-    // OTURUM TALİMATLARI (yalnız v2): AGENTS.md'ye dokunmadan bu oturuma
-    // bağlı kalıcı kural parçaları. Diff/checkpoint ile aynı kural: yoklamaya
-    // binmez, "Oturum Kuralları" görünümü açılınca bir kez çekilir.
-    val instructions: List<Opencode2Instruction> = emptyList(),
-    val instructionsLoading: Boolean = false,
-    // KAYITLI İZİN KURALLARI (yalnız v2): "always" yanıtı verilen izinlerin
-    // birikimi. Oturumdan bağımsız (v2 deposu genel) ama aynı görünümde
-    // listeleniyor; aynı aç-çek kuralı.
-    val savedPermissions: List<Opencode2SavedPermission> = emptyList(),
-    val savedPermissionsLoading: Boolean = false,
-    // PAYLAŞIM LİNKİ — "" = oturum yayında değil. Snapshot'tan geliyor
-    // (köprüde META_KEYS'te), yani TUI'den ya da başka bir cihazdan yapılan
-    // paylaşım burada da görünür. Bu alan İNTERNETE AÇIK bir yayını temsil
-    // ediyor: dolu olması menüdeki satırı "Paylaşımı kaldır"a çeviriyor.
-    val share: String = "",
-    // ÖZEL KOMUTLAR — serve'ün kendi komut + skill kataloğu (/opencode2-app/commands).
-    // Statik `slashCommands`tan AYRI tutuluyor, bilerek: o liste composer'a metin
-    // YAZIYOR, bu liste komutu ÇALIŞTIRIYOR. Aynı kutuda taşınsalardı seçilen
-    // satırın ne yapacağı listenin kaynağına bağlı olurdu.
-    //
-    // OTURUMA DEĞİL KURULUMA ait (serve global katalog veriyor), o yüzden
-    // `panoSifirla` bunu temizlemiyor.
-    val commands: List<SlashCommand> = emptyList(),
-)
-
-/**
- * Geri sarılabilecek bir nokta — oturumun bir KULLANICI mesajı.
- *
- * [messageID] opencode'un `msg_...` kimliği; geri sarma bununla yapılıyor,
- * sıra numarasıyla değil. Sebebi ölçülmüş: köprü ile telefonun mesaj
- * görünümleri cap yüzünden farklı uzunlukta olabiliyor, kimlik ise tek
- * anlamlı. [turn] yalnız gösterim için ("3. tur").
- */
-@androidx.compose.runtime.Immutable
-data class OpencodeCheckpoint(
-    val messageID: String,
-    val text: String,
-    val turn: Int,
-    val truncated: Boolean = false,
-)
-
-/**
- * Oturum talimatı (yalnız v2) — AGENTS.md'ye dokunmadan oturuma bağlanan
- * kalıcı kural parçası. [key] v2 şeması gereği `a-z 0-9 . _ -`; [value] köprü
- * üzerinden metin olarak taşınıyor (v2 serbest JSON kabul ediyor).
- */
-@androidx.compose.runtime.Immutable
-data class Opencode2Instruction(
-    val key: String,
-    val value: String,
-)
-
-/**
- * Kayıtlı izin kuralı (yalnız v2) — "always" yanıtı verilen bir iznin
- * kalıntısı. [resource] kuralın kapsadığı dosya/araç, [action] izin verilen
- * işlem; tek tuşla kaldırılabiliyor.
- */
-@androidx.compose.runtime.Immutable
-data class Opencode2SavedPermission(
-    val id: String,
-    val projectID: String,
-    val action: String,
-    val resource: String,
-    val created: Long,
-)
-
-/**
- * "Geri sarıldı" durumu.
- *
- * [filesReverted] AYRI bir alan, çünkü dosyaların gerçekten sarılıp
- * sarılmadığı garanti değil: opencode ancak izlediği araçlarla (write/edit) ve
- * git deposu içinde anlık görüntü tutuyor. Köprü bunu serve'ün cevabından
- * ölçüp bildiriyor — arayüz "dosyalar da geri alındı" derken yalan söylemesin.
- * [files] geri alınan dosya sayısı (0 = yalnız konuşma sarıldı).
- */
-@androidx.compose.runtime.Immutable
-data class OpencodeRevertState(
-    val messageID: String,
-    val filesReverted: Boolean = false,
-    val files: Int = 0,
 )
 
 /**
  * `GET /<backend>/diff` yanıtı — oturumun dosya değişiklikleri.
  *
- * BACKEND'DEN BAĞIMSIZ, bilerek: OpenCode ile codex-app aynı şemayı
- * döndürüyor (dönüşüm köprüde yapılıyor, gerekçesi codex-app.mjs'in sessionDiff
- * başlığında) ve telefonda ikisini de aynı Compose gövdesi çiziyor.
+ * BACKEND'DEN BAĞIMSIZ, bilerek: dönüşüm köprüde yapılıyor (gerekçesi
+ * codex-app.mjs'in sessionDiff başlığında). Bugün tek kaynağı codex-app.
  *
  * [turns] kaç ayrı turda dokunulduğu; 0/1 ise arayüz tur satırını hiç yazmıyor.
  * [truncated] köprünün listeyi kestiğini söyler (dosya başına ~100KB patch ya da
@@ -332,114 +203,6 @@ data class BackendDiffFile(
     val truncated: Boolean = false,
 )
 
-/**
- * opencode'un `todowrite` maddesi — köprüdeki normalize edilmiş hâliyle birebir.
- *
- * `status` serbest metin DEĞİL: köprü tanımadığı durumu `pending`e düşürüyor
- * (bkz. opencode2-app.mjs normalizeTodos), böylece pano "3/7" sayarken
- * tanımadığı bir durumu tamamlanmış sayıp ilerlemeyi olduğundan ileri
- * göstermiyor. Burada enum'a çevrilmiyor çünkü sunucu bir gün yeni bir durum
- * eklerse çip onu göstermeye devam etsin, çökmesin.
- */
-data class OpencodeTodo(
-    val content: String,
-    val status: String,
-    val priority: String = "",
-) {
-    val bitti: Boolean get() = status == "completed" || status == "cancelled"
-    val suradaki: Boolean get() = status == "in_progress"
-}
-
-/**
- * Bir alt-ajan kartı — opencode'un `task` aracının doğurduğu çocuk oturum.
- *
- * [id] çocuğun `ses_...` kimliği; transkript bununla isteniyor. [status] serbest
- * metin DEĞİL ama enum'a da çevrilmiyor (OpencodeTodo ile aynı gerekçe: sunucu
- * yeni bir durum eklerse çip onu göstermeye devam etsin). Köprünün ürettiği üç
- * değer: `running` / `idle` / `error`.
- *
- * [lastText] kartın tek satırı: koşarken çocuğun o anki metni ya da aracı,
- * bitince `<task_result>` içinden soyulmuş sonuç. Köprüde zaten kırpılıyor.
- */
-@androidx.compose.runtime.Immutable
-data class OpencodeSubagent(
-    val id: String,
-    val title: String,
-    val status: String,
-    val lastText: String = "",
-    val turns: Int = 0,
-    val agent: String = "",
-) {
-    val kosuyor: Boolean get() = status == "running"
-    val hatali: Boolean get() = status == "error"
-}
-
-/** Bir alt-ajanın salt-okunur konuşması (kart sheet'i). */
-@androidx.compose.runtime.Immutable
-data class OpencodeSubagentTranscript(
-    val childId: String,
-    val title: String,
-    val agent: String = "",
-    val status: String = "idle",
-    val messages: List<OpencodeSubagentLine> = emptyList(),
-    val truncated: Boolean = false,
-)
-
-/** Transkript satırı. `role`: user / agent / thought — ana sohbetle aynı dil. */
-@androidx.compose.runtime.Immutable
-data class OpencodeSubagentLine(
-    val role: String,
-    val text: String,
-)
-
-/**
- * opencode oturumu aktif mi — doğrudan ya da cowork'ün sağlayıcısı olarak.
- *
- * "backend == opencode" tek başına YETMİYOR: cowork bir sunum katmanı ve
- * altında opencode koşarken bütün opencode alanları (pano, bağlam yüzdesi,
- * paylaşım) yine geçerli. Bu kapı üç yerde ayrı ayrı yazılmıştı (reducer, poll
- * delegesi, arayüz) ve ayrışması "cowork'te pano boş kalıyor" sınıfı bir hata
- * demek — tek yerden okunuyor.
- */
-val RemoteUiState.opencodeAktif: Boolean
-    get() = backend == Backend.OPENCODE2_APP.id ||
-        (backend == Backend.COWORK.id && normalizeCoworkProvider(coworkProvider) == Backend.OPENCODE2_APP.id)
-
-/**
- * OTURUM DEĞİŞİRKEN panoyu boşalt.
- *
- * Pano oturuma ait; yeni/başka bir oturuma geçerken taşınırsa telefonda bir
- * önceki koşunun maddeleri ve doluluğu yeni sohbetin üstünde asılı kalır —
- * üstelik tam da "yanlış bilgiyi doğru sanma" hâli, çünkü pano tazelenene
- * kadar hiçbir şey onu yalanlamıyor. Aynı oturuma yeniden bağlanmada
- * (refreshSession) çağrılmaz: orada liste zaten geçerli.
- */
-fun OpencodeUiState.panoSifirla(): OpencodeUiState =
-    // Diff de oturuma ait: taşınırsa telefonda ÖNCEKİ koşunun dosya listesi yeni
-    // oturumun "Değişiklikler"i olarak görünür — panonun kendisiyle aynı tuzak,
-    // üstelik burada yalanı çürütecek hiçbir şey yok (liste kendiliğinden
-    // tazelenmiyor, kullanıcı açınca çekiliyor).
-    // Checkpoint listesi ve geri sarma durumu da oturuma ait: taşınırsa yeni
-    // oturumun üstünde ÖNCEKİ koşunun "Geri sarıldı" şeridi asılı kalır ve
-    // "Geri Al"a basmak alakasız bir oturumu bozardı.
-    // Alt-ajan kartları da oturuma ait: taşınırsa yeni sohbetin üstünde ÖNCEKİ
-    // koşunun ajanları asılı kalır ve karta dokunmak alakasız bir oturumun
-    // transkriptini açardı (köprü çocuğu ana oturumda doğruluyor, uç 400 döner
-    // ama kullanıcı o ana kadar yanlış listeye bakmış olur).
-    // Paylaşım linki de oturuma ait ve BU ALAN TAŞINIRSA YALAN SÖYLER: yeni
-    // oturumun menüsü "Paylaşımı kaldır" der ve dokunulunca ÖNCEKİ oturumun
-    // yayınını kaldırır. Komut listesi ise kuruluma ait (serve global katalog),
-    // bilerek taşınıyor — her oturum açılışında yeniden çekmenin anlamı yok.
-    // Çözümlenen ajan da oturuma ait: yeni oturumun modeli farklı olabilir ve
-    // taşınan değer, köprünün ilk karesi gelene kadar yanlış ajanı gösterirdi
-    // (panonun aynı tuzağı). Boş = "henüz bilinmiyor", çip yalnız "otomatik" der.
-    copy(
-        todos = emptyList(), contextPct = null, diff = null, diffLoading = false,
-        checkpoints = emptyList(), checkpointsLoading = false, reverted = null,
-        subagents = emptyList(), subagentTranscript = null, subagentTranscriptLoading = false,
-        share = "", resolvedAgent = "",
-    )
-
 /** Codex App'e ait oturum, model, plan, izin ve reasoning durumu. */
 @androidx.compose.runtime.Immutable
 data class CodexUiState(
@@ -459,7 +222,7 @@ data class CodexUiState(
     val plan: List<PlanItem> = emptyList(),
     val planDraft: String = "",
     val info: CodexAppInfo? = null,
-    // DEĞİŞİKLİKLER — opencode ile ORTAK tip ve ortak ekran. null = hiç
+    // DEĞİŞİKLİKLER — backend'den bağımsız tip ve ekran. null = hiç
     // istenmedi; boş `files` taşıyan kayıt "gerçekten hiçbir dosya değişmedi"
     // demek (ikisi ayrı, boş durum metni ancak ÖLÇTÜKTEN sonra yazılabilir).
     val diff: BackendSessionDiff? = null,
@@ -623,7 +386,7 @@ data class RemoteUiState(
     val lastCoworkSessionId: String = "",
     val lastCoworkProvider: String = "",
     val lastAgySessionId: String = "",
-    // TEK ATIMLIK bağlanma hedefi (claude-app/codex-app/opencode2-app): sekme
+    // TEK ATIMLIK bağlanma hedefi (claude-app/codex-app/omp): sekme
     // etkinleştirme, bildirim/operasyon ve fork akışları enter*Mode'dan hemen önce
     // yazar; enter* okuyup tüketir. Hedef BOŞKEN enter* hiçbir canlı oturuma
     // otomatik yapışmaz, kurulum/oturum seçici gösterilir. (Eski lastSessionId +
@@ -655,14 +418,11 @@ data class RemoteUiState(
     val backendProcessCounts: Map<String, Int> = emptyMap(),
     val truncateAfterIndex: Int? = null,
     val messagePageSize: Int = 100,
-    // TEK OpenCode ailesi: v1 30.09.2026'da söküldü, ikinci örnek (opencode2)
-    // kaldırıldı. Seçiciler Opencode2Support.kt'de.
-    val opencode: OpencodeUiState = OpencodeUiState(),
-    val omp: OpencodeUiState = OpencodeUiState(),
+    val omp: OmpUiState = OmpUiState(),
     // Dosya gezgini + indirilenler, ayrı aile olarak taşındı.
     val files: FilesUiState = FilesUiState(),
-    val visibleBackends: Set<String> = setOf("claude-app", "agy", "codex-app", "opencode2-app", "omp", "cowork"),
-    val backendOrder: List<String> = listOf("claude-app","agy","codex-app","opencode2-app","omp","cowork"),
+    val visibleBackends: Set<String> = setOf("claude-app", "agy", "codex-app", "omp", "cowork"),
+    val backendOrder: List<String> = listOf("claude-app","agy","codex-app","omp","cowork"),
     val search: SearchUiState = SearchUiState(),
     val chatSearch: ChatSearchState = ChatSearchState(),
     val projectDelete: ProjectDeleteUiState = ProjectDeleteUiState(),
@@ -708,18 +468,6 @@ internal fun RemoteUiState.copy(
     codexAppEffortsByModel: Map<String, List<String>> = codex.effortsByModel,
     codexAppDefaultEffort: String = codex.defaultEffort,
     codexAppModelDefaultEfforts: Map<String, String> = codex.modelDefaultEfforts,
-    opencodeAppSessionId: String = opencode.sessionId,
-    lastOpencodeAppSessionId: String = opencode.lastSessionId,
-    opencodeAppCwd: String = opencode.cwd,
-    opencodeAppModel: String = opencode.model,
-    opencodeAppDefaultModel: String = opencode.defaultModel,
-    opencodeAppSetupPending: Boolean = opencode.setupPending,
-    opencodeAppDiskSessions: List<AppDiskSession> = opencode.diskSessions,
-    opencodeAppDiskLoading: Boolean = opencode.diskLoading,
-    opencodeAppAvailableModels: List<BackendModel> = opencode.availableModels,
-    opencodeAppPermissionMode: String = opencode.permissionMode,
-    opencodeAppPermissionModes: List<PermissionMode> = opencode.permissionModes,
-    opencodeAppInfo: OpencodeAppInfo? = opencode.info,
     cowork: CoworkUiState = this.cowork,
     lastCoworkSessionId: String = this.lastCoworkSessionId,
     lastCoworkProvider: String = this.lastCoworkProvider,
@@ -732,7 +480,6 @@ internal fun RemoteUiState.copy(
 ): RemoteUiState = copy(
     claude = claude.copy(models = claudeModels, sessionId = claudeAppSessionId, lastSessionId = lastClaudeAppSessionId, cwd = claudeAppCwd, model = claudeAppModel, defaultModel = claudeAppDefaultModel, permissionMode = claudeAppPermissionMode, effort = claudeAppEffort, efforts = claudeAppEfforts, setupPending = claudeAppSetupPending, diskSessions = claudeAppDiskSessions, diskLoading = claudeAppDiskLoading, info = claudeAppInfo),
     codex = codex.copy(sessionId = codexAppSessionId, models = codexModels, lastSessionId = lastCodexAppSessionId, cwd = codexAppCwd, model = codexAppModel, defaultModel = codexAppDefaultModel, setupPending = codexAppSetupPending, diskSessions = codexAppDiskSessions, diskLoading = codexAppDiskLoading, plan = codexAppPlan, planDraft = codexAppPlanDraft, info = codexAppInfo, diff = codexAppDiff, diffLoading = codexAppDiffLoading, commands = codexAppCommands, steerMode = codexAppSteerMode, contextPercent = codexAppContextPercent, permissionMode = codexAppPermissionMode, permissionModes = codexAppPermissionModes, effort = codexAppEffort, efforts = codexAppEfforts, effortsByModel = codexAppEffortsByModel, defaultEffort = codexAppDefaultEffort, modelDefaultEfforts = codexAppModelDefaultEfforts),
-    opencode = opencode.copy(sessionId = opencodeAppSessionId, lastSessionId = lastOpencodeAppSessionId, cwd = opencodeAppCwd, model = opencodeAppModel, defaultModel = opencodeAppDefaultModel, setupPending = opencodeAppSetupPending, diskSessions = opencodeAppDiskSessions, diskLoading = opencodeAppDiskLoading, availableModels = opencodeAppAvailableModels, permissionMode = opencodeAppPermissionMode, permissionModes = opencodeAppPermissionModes, info = opencodeAppInfo),
     cowork = cowork, lastCoworkSessionId = lastCoworkSessionId, lastCoworkProvider = lastCoworkProvider, backend = backend,
     healthOk = healthOk, protocolCompatible = protocolCompatible, device = device, backendOrder = backendOrder, visibleBackends = visibleBackends,
 )
@@ -784,7 +531,6 @@ val RemoteUiState.pairingCode get() = device.pairingCode
 val RemoteUiState.pairingExpiresAt get() = device.pairingExpiresAt
 val RemoteUiState.devicePaired get() = device.paired
 val RemoteUiState.deviceAuthLoading get() = device.authLoading
-val RemoteUiState.batteryOptimizationIgnored get() = device.batteryOptimizationIgnored
 val RemoteUiState.agySessionId get() = agy.sessionId
 val RemoteUiState.agyModels get() = agy.models
 val RemoteUiState.agyCwd get() = agy.cwd
@@ -808,18 +554,6 @@ val RemoteUiState.coworkImportLoading get() = cowork.importLoading
 val RemoteUiState.coworkRootPath get() = cowork.rootPath
 val RemoteUiState.coworkFilesStart get() = cowork.filesStart
 val RemoteUiState.coworkFilesOpenDir get() = cowork.filesOpenDir
-val RemoteUiState.opencodeAppSessionId get() = opencode.sessionId
-val RemoteUiState.lastOpencodeAppSessionId get() = opencode.lastSessionId
-val RemoteUiState.opencodeAppCwd get() = opencode.cwd
-val RemoteUiState.opencodeAppModel get() = opencode.model
-val RemoteUiState.opencodeAppDefaultModel get() = opencode.defaultModel
-val RemoteUiState.opencodeAppSetupPending get() = opencode.setupPending
-val RemoteUiState.opencodeAppDiskSessions get() = opencode.diskSessions
-val RemoteUiState.opencodeAppDiskLoading get() = opencode.diskLoading
-val RemoteUiState.opencodeAppAvailableModels get() = opencode.availableModels
-val RemoteUiState.opencodeAppPermissionMode get() = opencode.permissionMode
-val RemoteUiState.opencodeAppPermissionModes get() = opencode.permissionModes
-val RemoteUiState.opencodeAppInfo get() = opencode.info
 val RemoteUiState.ompSessionId get() = omp.sessionId
 val RemoteUiState.ompCwd get() = omp.cwd
 val RemoteUiState.ompModel get() = omp.model

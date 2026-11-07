@@ -46,16 +46,16 @@ const SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions');
 const CODEX_STATE_DB = path.join(os.homedir(), '.codex', 'state_5.sqlite');
 const REQ_TIMEOUT_MS = 30_000;       // single JSON-RPC request fails-open timeout
 
-// Inactivity watchdog (opencode-app deseninin codex-app karsiligi):
+// Inactivity watchdog: codex app-server'a ozgu sessizlik bekcisi.
 // session/prompt response'u kaybolursa ya da app-server sessiz kalirsa turn
 // sonsuza kadar 'running' kalmasin. Son N ms hicbir item/turn eventi gelmediyse
 // turn'u finalize et. (NOT: awaitingApproval/awaitingUserInput iken calismaz.)
 const INACTIVITY_MS = 120_000;
 const WATCHDOG_TICK_MS = 15_000;
 // "Değişiklikler" kırpma sınırları (gerekçeler sessionDiff başlığında).
-const DIFF_PATCH_LIMIT = 100 * 1024;             // dosya başına ~100KB — opencode-app ile aynı söz
+const DIFF_PATCH_LIMIT = 100 * 1024;             // dosya başına ~100KB kırpma sınırı
 const CODEX_DIFF_BYTE_BUDGET = 4 * 1024 * 1024;  // oturum başına toplam yama belleği
-const DIFF_FILE_LIMIT = 300;                     // dosya sayısı tavanı (opencode-app ile aynı)
+const DIFF_FILE_LIMIT = 300;                     // dosya sayısı tavanı
 // Codex'in kendisi CODEX_HOME'u okuyor; kopru de ayni yere baksin ki kullanici
 // codex home'unu tasidiginda profil/config okumalari kaymasin.
 const CODEX_HOME = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
@@ -1871,12 +1871,11 @@ function appendThreadItemToMessages(s, item, time, turnId) {
       const applyDurumu = String(item.status || '');
       for (const fc of (Array.isArray(item.changes) ? item.changes : [item])) {
         const ham = String(fc.diff || fc.unifiedDiff || '');
-        // Bütçe: 100KB dosya başına opencode ile aynı söz, ama codex'te yamalar
-        // BELLEKTE duruyor (opencode her açılışta serve'den çekiyor). Oturum
-        // toplamı da sınırlı olmasa 200 kayıt × 100KB = 20MB'a çıkardı. Bütçe
-        // dizinin kendisinden sayılıyor, ayrı sayaç alanından değil: dizi yedi
-        // ayrı yerde sıfırlanıyor ve sayaç sıfırlamayı unutmak sessizce
-        // "yama gelmiyor"a dönerdi.
+        // Bütçe: 100KB dosya başına kırpma sınırı, çünkü yamalar BELLEKTE
+        // duruyor. Oturum toplamı da sınırlı olmasa 200 kayıt × 100KB = 20MB'a
+        // çıkardı. Bütçe dizinin kendisinden sayılıyor, ayrı sayaç alanından
+        // değil: dizi yedi ayrı yerde sıfırlanıyor ve sayaç sıfırlamayı unutmak
+        // sessizce "yama gelmiyor"a dönerdi.
         const kullanilan = s._fileChanges.reduce((n, c) => n + (c.diff ? c.diff.length : 0), 0);
         const pay = Math.min(DIFF_PATCH_LIMIT, Math.max(0, CODEX_DIFF_BYTE_BUDGET - kullanilan));
         s._fileChanges.push({
@@ -2744,13 +2743,12 @@ export async function steerTurn({ sessionId, text } = {}) {
 
 // ── Feature 4: Diff/File Change Panel ───────────────────────────────────────
 //
-// Telefondaki "Değişiklikler" görünümü opencode ile ORTAK (aynı Compose gövdesi,
-// aynı JSON şeması). Dönüşüm KÖPRÜDE yapılıyor, Android'de değil, üç ölçülmüş
-// sebeple:
+// Telefondaki "Değişiklikler" görünümü tek bir Compose gövdesi çiziyor
+// (aynı JSON şeması). Dönüşüm KÖPRÜDE yapılıyor, Android'de değil, üç
+// ölçülmüş sebeple:
 //
 //   1. Codex yükünde additions/deletions YOK — yama metninden sayılması
-//      gerekiyor. Aynı sayım opencode tarafında zaten serve'den geliyor; sayacı
-//      Kotlin'e taşımak mantığı iki dilde çoğaltırdı.
+//      gerekiyor; sayacı Kotlin'e taşımak mantığı iki dilde çoğaltırdı.
 //   2. Aynı dosyaya birden çok `fileChange` item'ında dokunuluyor; liste yol
 //      bazlı BİRLEŞTİRİLMEK ZORUNDA — telefondaki LazyColumn `key = { path }`
 //      kullanıyor, yinelenen anahtar çalışma anında çöker.
@@ -2758,7 +2756,7 @@ export async function steerTurn({ sessionId, text } = {}) {
 //      bütçe), Android o kaybı dışarıdan göremez. "Kırpıldı" satırını dürüstçe
 //      ancak burası söyleyebilir.
 //
-// Codex'te opencode'un "tur diff'i" gibi donmuş bir anlık görüntü yok: kaynak,
+// Codex'te donmuş bir "tur diff'i" yok: kaynak,
 // akan `item/completed` bildirimlerinden biriktirilen `_fileChanges` dizisi.
 // Bunun bilinen sınırı: geçmişi rollout dosyasından kurulan oturumlarda
 // (`hydrateHistoryFromRollout`) dizi boş kalır — rollout'ta app-server'ın
@@ -2798,7 +2796,7 @@ function patchSayaclari(patch) {
 /**
  * Yolu proje köküne göreli hâle getirir ve ayraçları '/' yapar.
  *
- * Codex mutlak yol veriyor (ölçüldü: `C:\Users\<you>\proje\lib\x.dart`).
+ * Codex mutlak yol veriyor (ölçüldü: `C:\Users\Dev\proje\app\lib\x.dart`).
  * Telefonda satır dar: mutlak yol yazılırsa ayırt edici kısım (dosya adı)
  * kırpmaya kurban gidiyor. Kök dışındaki dosya mutlak kalır — yalan söylemek
  * yerine uzun görünmek yeğdir.
@@ -2814,9 +2812,9 @@ function diffGoreliYol(mutlak, cwd) {
 }
 
 /**
- * "Değişiklikler" yükü — opencode-app'in `sessionDiff` şemasının BİREBİR aynısı
- * ({ files:[{path,additions,deletions,status,patch,truncated}], additions,
- * deletions, turns, truncated }), çünkü telefonda ikisini de aynı gövde çiziyor.
+ * "Değişiklikler" yükü — telefonda tek bir Compose gövdesi çiziyor, şema o
+ * gövdenin beklediği biçimde sabit: { files:[{path,additions,deletions,status,
+ * patch,truncated}], additions, deletions, turns, truncated }.
  *
  * Uygulanmayan yamalar (failed/declined) LİSTEYE GİRMEZ: soru "bu oturum neyi
  * değiştirdi" ve o dosyalar diske hiç dokunmadı; onları da göstermek reddedilen
@@ -2838,9 +2836,8 @@ export function sessionDiff({ sessionId } = {}) {
     if (varOlan) {
       // Aynı dosyaya birden çok kez dokunulmuş: sayılar TOPLANIR ("net" değil),
       // yamalar ARDIŞIK eklenir — tek yamaya kaynatmak satır numaralarını
-      // yanlış yapardı. Durum birleşimi opencode-app'teki `mergeDiffEntry` ile
-      // aynı: silme son sözü söyler, ekleme (dosya bu oturumdan önce yoktu)
-      // sonraki düzenlemelerde de korunur.
+      // yanlış yapardı. Durum birleşimi: silme son sözü söyler, ekleme (dosya
+      // bu oturumdan önce yoktu) sonraki düzenlemelerde de korunur.
       varOlan.additions += additions;
       varOlan.deletions += deletions;
       if (fc.status === 'deleted') varOlan.status = 'deleted';
@@ -2859,8 +2856,8 @@ export function sessionDiff({ sessionId } = {}) {
       truncated: !!fc.diffTruncated,
     });
   }
-  // Sıralama opencode-app ile AYNI (yola göre alfabetik): aynı ekran iki
-  // backend'de farklı sırada dosya gösterirse liste "değişmiş" gibi okunuyor.
+  // Sıralama yola göre alfabetik: aynı ekran iki backend'de farklı sırada
+  // dosya gösterirse liste "değişmiş" gibi okunuyor.
   const files = [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
   return {
     ok: true,
@@ -2974,7 +2971,7 @@ export async function deleteDiskSession({ id } = {}) {
   // Çekmece disk kaydını (threadId) listeler, bellek haritası köprü id'siyle
   // anahtarlı. Genelde ikisi aynı ama adopt yollarında ayrışabiliyor; ayrıştığı
   // anda canlı oturum bellekte kalıp sohbeti servis etmeye devam eder
-  // (opencode'da tam olarak bu yaşandı, 1 Ağu 2026).
+  // (canlıda tam olarak bu yaşandı, 1 Ağu 2026).
   const s = sessions.get(id) || [...sessions.values()].find(x => x.threadId === id) || null;
   if (s) {
     try { await stop(s.id); } catch {}
@@ -3267,7 +3264,7 @@ async function hydrateFromThread(s) {
 // No-op kept for parity with the other backend modules' startup cleanup hook.
 export function cleanupTmp() { /* no temp scripts in this backend */ }
 
-// ── Process admin (agy/opencode-app paritesi) ──────────────────────────
+// ── Process admin (agy paritesi) ────────────────────────────────────────────
 export function listLiveProcesses() {
   const out = [];
   if (appServer && !appServer.exitCode) out.push({ pid: appServer.pid, kind: 'app-server' });
@@ -3275,7 +3272,7 @@ export function listLiveProcesses() {
 }
 // Kalici app-server'i ve kosan turlari kapatir. Testler de bunu after() icinde
 // cagirir — child pipe'lari event loop'u tutmasin, node --test temiz cikssin.
-// Bellekteki oturum kayitlari da temizlenir (opencode-app ile ayni sozlesme):
+// Bellekteki oturum kayitlari da temizlenir (agy ile ayni sozlesme):
 // gecmis codex'in kendi thread deposunda durur, drawer listDiskSessions'tan dolar.
 export function killAllSessions() {
   const killed = [];
@@ -3301,7 +3298,6 @@ export function killAllSessions() {
 // app-server uzun-omurlu oldugundan, turn/start response'u kaybolursa ya da
 // event akisi durursa turn sonsuza kadar 'running' kalir; prompt() hep 'busy'
 // doner. N ms hicbir aktivite (item/turn eventi) yoksa turn'u finalize et.
-// (opencode-app deseninin codex-app karsiligi.)
 const codexInactivityWatchdog = createCollectionWatchdog({
   sessions,
   intervalMs: WATCHDOG_TICK_MS,
@@ -3411,7 +3407,7 @@ export async function searchDiskSessions({ query, cwd, limit = 40, deadline = 0 
   return { hits: results, truncated: kesildi };
 }
 
-// Köprü kapanırken app-server'ı da götür — opencode-app'teki yetim süreç
+// Köprü kapanırken app-server'ı da götür — aksi halde yetim süreç
 // taramasında burada da ebeveynsiz kalmış bir codex süreci çıktı. claude-app'te
 // aynı kanca vardı, burada yoktu.
 process.on('exit', () => {

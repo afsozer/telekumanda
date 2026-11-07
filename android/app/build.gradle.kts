@@ -31,8 +31,8 @@ android {
         applicationId = "com.agent.bridge"
         minSdk = 26
         targetSdk = 34
-        versionCode = 437
-        versionName = "11.115"
+        versionCode = 446
+        versionName = "11.124"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "IS_LITE", "false")
         buildConfigField("String", "LITE_BRIDGE_URL", "".asBuildConfigString())
@@ -155,6 +155,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test:runner:1.5.2")

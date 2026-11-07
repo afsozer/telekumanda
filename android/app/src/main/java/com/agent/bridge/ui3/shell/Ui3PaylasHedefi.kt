@@ -68,7 +68,7 @@ internal fun ColumnScope.Ui3PaylasHedefi(
     when (adim) {
         "alan" -> {
             Ui3Selector(
-                baslik = "HANGİ ÇALIŞMA ALANI?",
+                baslik = "Hangi çalışma alanı?",
                 altBaslik = shareDialogTitle(dosyalar),
                 secenekler = uiState.cowork.workspaces.map { alan ->
                     SelectorOption(
@@ -89,7 +89,7 @@ internal fun ColumnScope.Ui3PaylasHedefi(
         "pc" -> BilgisayaraYukle(uiState, actions, dosyalar, onKapat)
 
         else -> Ui3Selector(
-            baslik = "NEREYE?",
+            baslik = "Nereye?",
             altBaslik = shareDialogTitle(dosyalar),
             secenekler = buildList {
                 add(
@@ -167,7 +167,7 @@ private fun BilgisayaraYukle(
     // Boş kök = "sen bilirsin" (HubDataDelegate.loadWorkerDirs).
     LaunchedEffect(Unit) { if (dizinler == null) actions.loadWorkerDirs("") }
 
-    SheetBasligi("BİLGİSAYARA YÜKLE", shareDialogTitle(dosyalar))
+    SheetBasligi("Bilgisayara yükle", shareDialogTitle(dosyalar))
 
     Box(
         Modifier

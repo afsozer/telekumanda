@@ -664,7 +664,7 @@ internal fun tabbedLineOffsets(
 
 /**
  * Sekme içeren paragrafı çizer: her parça bir sonraki sekme durağına ilerler,
- * böylece "DAVACI\t: A.Y." satırında iki nokta masaüstü UYAP Editörü'ndeki
+ * böylece "DAVACI\t: K.H." satırında iki nokta masaüstü UYAP Editörü'ndeki
  * sütuna oturur, metnin hemen ardına yapışmaz.
  */
 @Composable

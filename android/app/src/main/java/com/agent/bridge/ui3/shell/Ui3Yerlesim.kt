@@ -122,27 +122,6 @@ internal fun Ui3OkumaSutunu(
 }
 
 /**
- * Composer şeridinin Yenile + Kullanım'ı TUR SÜRERKEN DE taşıyabildiği en dar
- * ekran genişliği (kullanıcı, 18.08.2026: "tablette gizlemeye gerek yok").
- *
- * Telefonda ikisi tur sürerken gizleniyor çünkü şerit dolup taşıyor
- * (aritmetik Ui3Composer başında). Tabletteyse aynı şeritte 600dp'den fazla
- * boş yer var — gizleme orada sebepsiz bir kayıp.
- *
- * Sayı şeridin en kalabalık hâlinden geliyor: yedi kutu (ek, ⋯, yenile,
- * kullanım, yönlendir, kuyruk, durdur) + aralar + kırpılmamış model çipi
- * ≈ 417dp; buna composer'ın kendi dolgusu (6×2), ekran kenar boşluğu (16×2)
- * ve satır dolgusu (2×2) ekleniyor → 465, yuvarlanmış hâli 470dp.
- *
- * EKRAN genişliğine bakılıyor, composer'ın kendi genişliğine değil: eşik
- * okuma sütununun (720dp) çok altında olduğu için ikisi bu bantta aynı şeyi
- * söylüyor, ama tek yerden okunması ⋯ menüsüyle şeridin ÇELİŞMEMESİNİ
- * garanti ediyor (menü, şeritte gizlenenleri satır olarak gösteriyor —
- * ikisi ayrı ölçüye baksa aynı anda ikisi birden çizilirdi).
- */
-internal val UI3_SERIT_TAM_ESIK = 470.dp
-
-/**
  * Merkez'in iki sütuna geçtiği genişlik (tablet fazı 2, 18.08.2026).
  *
  * Merkez tek sütunda üç kart: durum şeridi, çalışma alanları, dizin. Geniş

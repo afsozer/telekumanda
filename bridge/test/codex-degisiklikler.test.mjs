@@ -9,8 +9,8 @@
 //   FileChangeThreadItem { id, type:'fileChange', status: PatchApplyStatus,
 //                          changes: FileUpdateChange[] }
 //   FileUpdateChange     { path, kind:{type:'add'|'delete'|'update'}, diff }
-// Yanıt şeması opencode-app'in sessionDiff'iyle AYNI olmak ZORUNDA: telefonda
-// ikisini de tek bir Compose gövdesi çiziyor.
+// Yanıt şeması telefonda tek bir Compose gövdesiyle çiziliyor: şema değişirse
+// istemci kırılır.
 
 import assert from 'node:assert/strict';
 import { after, describe, it } from 'node:test';

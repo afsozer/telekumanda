@@ -6,8 +6,8 @@ enum class UpdateChannel(val manifestPath: String, val apkPath: String) {
 
     fun validateManifest(applicationId: String, apkPath: String, expectedApplicationId: String) {
         if (this == LITE) {
-            require(applicationId == expectedApplicationId) { "Güncelleme Lite uygulamasına ait değil" }
-            require(apkPath == this.apkPath) { "Güncelleme Lite kanalına ait değil" }
+            require(applicationId == expectedApplicationId) { "Güncelleme bu uygulamaya ait değil" }
+            require(apkPath == this.apkPath) { "Güncelleme bu kanala ait değil" }
         }
     }
 }

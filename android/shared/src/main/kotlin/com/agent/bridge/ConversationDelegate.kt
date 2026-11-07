@@ -25,13 +25,13 @@ internal data class PendingComposerDraft(
 )
 
 // bu backendler iyimser temizler: prompt ucu turn'u baslatip HEMEN doner
-// (codex/opencode ile ayni desen). Listede olmadigi icin yazi kutuda kaliyordu —
+// (codex/omp ile ayni desen). Listede olmadigi icin yazi kutuda kaliyordu —
 // ilk prompt'ta ACP session/new acildigi icin bu bekleme 10+ saniye surebiliyor
 // ve kullanici mesaji gitmedi sanip tekrar gonderiyordu (canli goruldu).
 internal fun shouldClearComposerOptimistically(state: RemoteUiState): Boolean = when (state.backend) {
-    Backend.CODEX_APP.id, Backend.OPENCODE2_APP.id, Backend.OMP.id -> true
+    Backend.CODEX_APP.id, Backend.OMP.id -> true
     Backend.COWORK.id -> normalizeCoworkProvider(state.cowork.provider) in
-        setOf(Backend.CODEX_APP.id, Backend.OPENCODE2_APP.id, Backend.OMP.id)
+        setOf(Backend.CODEX_APP.id, Backend.OMP.id)
     else -> false
 }
 
@@ -79,12 +79,10 @@ class ConversationDelegate(
             Backend.AGY.id -> if (current.agy.sessionId.isNotBlank()) load { client.agyConversation(current.settings, current.agy.sessionId) }
             Backend.COWORK.id -> when (normalizeCoworkProvider(current.cowork.provider)) {
                 Backend.CODEX_APP.id -> if (current.codex.sessionId.isNotBlank()) load { client.codexAppConversation(current.settings, current.codex.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
-                Backend.OPENCODE2_APP.id -> if (current.opencode.sessionId.isNotBlank()) load { client.opencodeAppConversation(current.settings, current.opencode.sessionId, Backend.OPENCODE2_APP.id) }
                 Backend.OMP.id -> if (current.omp.sessionId.isNotBlank()) load { client.ompConversation(current.settings, current.omp.sessionId) }
                 else -> if (current.claude.sessionId.isNotBlank()) load { client.claudeAppConversation(current.settings, current.claude.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
             }
             Backend.CODEX_APP.id -> if (current.codex.sessionId.isNotBlank()) load { client.codexAppConversation(current.settings, current.codex.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
-            Backend.OPENCODE2_APP.id -> if (current.opencode.sessionId.isNotBlank()) load { client.opencodeAppConversation(current.settings, current.opencode.sessionId, Backend.OPENCODE2_APP.id) }
             Backend.OMP.id -> if (current.omp.sessionId.isNotBlank()) load { client.ompConversation(current.settings, current.omp.sessionId) }
             Backend.CLAUDE_APP.id -> if (current.claude.sessionId.isNotBlank()) load { client.claudeAppConversation(current.settings, current.claude.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
         }
@@ -97,8 +95,7 @@ class ConversationDelegate(
         val text = if (initial.attachments.isEmpty()) baseText else baseText + "\n\nEk dosyalar:\n" + initial.attachments.joinToString("\n") { "- ${it.name}: ${it.path}" }
         if (text.isEmpty()) return@launch
         // /compact (ve /summarize) — bağlamı AI ile özetler. Slash komutlarını her
-        // iki sunucu da düz metin olarak ANLAMAZ: opencode'da /compact istemci
-        // özelliği, codex'te ise TUI özelliğidir (app-server yorumlamaz), yani metin
+        // sunucular düz metin olarak ANLAMAZ: codex'te /compact TUI özelliğidir (app-server yorumlamaz), yani metin
         // olarak gönderilince model onu sıradan bir mesaj sanıp cevap yazar — canlı
         // görüldü. Burada yakalayıp ilgili özetleme ucuna yönlendiriyoruz; prompt
         // olarak GÖNDERİLMEZ.
@@ -112,7 +109,6 @@ class ConversationDelegate(
                 initial.backend
             }
             val sid = when (provider) {
-                Backend.OPENCODE2_APP.id -> initial.opencode.sessionId
                 Backend.CODEX_APP.id -> initial.codex.sessionId
                 Backend.OMP.id -> initial.omp.sessionId
                 else -> ""
@@ -121,16 +117,14 @@ class ConversationDelegate(
             if (initial.running) { emit("Tur sürerken özetlenemez — önce bitmesini bekle."); return@launch }
             update { clearComposerIfUnchanged(it, composerDraft) }
             // codexAppCompact ok=false'ta fırlatır ve sunucunun mesajını taşır
-            // ("thread not started" gibi); opencodeAppCompact fırlatmaz, false döner
+            // ("thread not started" gibi); ompCompact fırlatmaz, false döner
             // — o yüzden ikisi de aynı biçimde "başarılı mı" diye sınanıyor.
             val r = runCatching {
                 if (provider == Backend.CODEX_APP.id) {
                     client.codexAppCompact(initial.settings, sid)
                     true
-                } else if (provider == Backend.OMP.id) {
-                    client.ompCompact(initial.settings, sid)
                 } else {
-                    client.opencodeAppCompact(initial.settings, sid, if (provider == Backend.OPENCODE2_APP.id) provider else Backend.OPENCODE2_APP.id)
+                    client.ompCompact(initial.settings, sid)
                 }
             }
             val started = r.getOrNull() == true
@@ -148,7 +142,6 @@ class ConversationDelegate(
             val provider = normalizeCoworkProvider(initial.cowork.provider)
             val sid = when (provider) {
                 Backend.CODEX_APP.id -> initial.codex.sessionId
-                Backend.OPENCODE2_APP.id -> initial.opencode.sessionId
                 Backend.OMP.id -> initial.omp.sessionId
                 else -> initial.claude.sessionId
             }
@@ -163,7 +156,7 @@ class ConversationDelegate(
                 return@launch
             }
         }
-        val optimistic = initial.backend in setOf(Backend.AGY.id, Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OPENCODE2_APP.id, Backend.OMP.id)
+        val optimistic = initial.backend in setOf(Backend.AGY.id, Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OMP.id)
         val clearComposerNow = shouldClearComposerOptimistically(initial)
         update {
             val next = it.copy(sending = true, running = it.running || optimistic, truncateAfterIndex = null)
@@ -183,12 +176,10 @@ class ConversationDelegate(
             Backend.CLAUDE_APP.id -> if (current.claude.sessionId.isBlank()) missing("Claude App session yok") else runCatching { client.claudeAppPrompt(current.settings, current.claude.sessionId, text, current.claude.model, current.claude.permissionMode) }.onSuccess { if (it.optBoolean("cleared", false)) handleClaudeCleared(it) }
             Backend.COWORK.id -> when (normalizeCoworkProvider(current.cowork.provider)) {
                 Backend.CODEX_APP.id -> if (current.codex.sessionId.isBlank()) missing("Codex App session yok") else runCatching { client.codexAppPrompt(current.settings, current.codex.sessionId, text, current.codex.model) }
-                Backend.OPENCODE2_APP.id -> if (current.opencode.sessionId.isBlank()) missing("OpenCode 2 session yok") else runCatching { client.opencodeAppPrompt(current.settings, current.opencode.sessionId, text, current.opencode.model, current.opencode.permissionMode, current.opencode.variant, current.opencode.agent, Backend.OPENCODE2_APP.id) }
                 Backend.OMP.id -> if (current.omp.sessionId.isBlank()) missing("OMP session yok") else runCatching { client.ompPrompt(current.settings, current.omp.sessionId, text, current.omp.model, current.omp.permissionMode, current.omp.variant) }
                 else -> if (current.claude.sessionId.isBlank()) missing("Claude App session yok") else runCatching { client.claudeAppPrompt(current.settings, current.claude.sessionId, text, current.claude.model, current.claude.permissionMode) }.onSuccess { if (it.optBoolean("cleared", false)) handleClaudeCleared(it) }
             }
             Backend.CODEX_APP.id -> if (current.codex.sessionId.isBlank()) missing("Codex App session yok") else runCatching { client.codexAppPrompt(current.settings, current.codex.sessionId, text, current.codex.model) }
-            Backend.OPENCODE2_APP.id -> if (current.opencode.sessionId.isBlank()) missing("OpenCode 2 session yok") else runCatching { client.opencodeAppPrompt(current.settings, current.opencode.sessionId, text, current.opencode.model, current.opencode.permissionMode, current.opencode.variant, current.opencode.agent, Backend.OPENCODE2_APP.id) }
             Backend.OMP.id -> if (current.omp.sessionId.isBlank()) missing("OMP session yok") else runCatching { client.ompPrompt(current.settings, current.omp.sessionId, text, current.omp.model, current.omp.permissionMode, current.omp.variant) }
             else -> Result.success(Unit)
         }
@@ -231,16 +222,6 @@ class ConversationDelegate(
                     // codex aktifse ve alan geldiyse yaz (null gelirse temizle). Ayni backend kapisi.
                     goal = if (conversation.goalPresent && (it.backend == Backend.CODEX_APP.id || (it.backend == Backend.COWORK.id && normalizeCoworkProvider(it.cowork.provider) == Backend.CODEX_APP.id))) conversation.goal else it.codex.goal,
                 ),
-                // GÖREV PANOSU — poll yolu. Aynı alanların soket yolu
-                // SessionStateReducer'da; ikisi de yazılmazsa pano yalnız bir
-                // taşımada canlanır (bu depoda tekrarlayan hata: delege yazıldı,
-                // okuma dalı unutuldu).
-                // AKTIF OpenCode AILESINE yazilir (v1 ya da v2). Eski kapi
-                // yalniz v1'i taniyordu: v2 sekmesinde pano/geri-sarma/baglam
-                // poll yolundan hic guncellenmiyordu.
-                opencode = if (it.aktifOpencodeBackendId() == Backend.OPENCODE2_APP.id) {
-                    it.opencode.pollIleBirlestir(conversation)
-                } else it.opencode,
                 omp = run {
                     // Cowork bir sunum katmanı: backend "cowork" iken de asıl oturum
                     // OMP'nin, dolayısıyla efor/izin kipi yine omp state'ine yazılmalı
@@ -273,7 +254,6 @@ class ConversationDelegate(
         Backend.CLAUDE_APP.id -> Backend.CLAUDE_APP.id to current.claude.sessionId
         Backend.COWORK.id -> when (normalizeCoworkProvider(current.cowork.provider)) {
             Backend.CODEX_APP.id -> Backend.CODEX_APP.id to current.codex.sessionId
-            Backend.OPENCODE2_APP.id -> Backend.OPENCODE2_APP.id to current.opencode.sessionId
             // OMP'yi claude'a DÜŞÜRME. Eski `else ->` dalı cowork-OMP sohbetinde
             // geri dön/çatalla hedefi olarak claude'un AKTİF oturumunu veriyordu:
             // kullanıcının açık bir claude oturumu varsa "mesaja geri dön" ALAKASIZ
@@ -283,9 +263,6 @@ class ConversationDelegate(
             else -> null
         }
         Backend.CODEX_APP.id -> Backend.CODEX_APP.id to current.codex.sessionId
-        // v2: /opencode2-app/rewind ve /fork-from köprüde var (26.09.2026) —
-        // aile opencode2'nin kendi durum ailesi (Opencode2Support.kt).
-        Backend.OPENCODE2_APP.id -> Backend.OPENCODE2_APP.id to current.opencode.sessionId
         else -> null
     }
 
@@ -302,7 +279,7 @@ class ConversationDelegate(
 
     // Buradan çatalla: orijinal oturuma dokunmadan bu mesajın ÖNCESİNE kadar kopya
     // oturum açtırır; başarıda onForked(backend, yeniSessionId, mesajMetni) çağrılır
-    // (ViewModel yeni sekmede açar). opencode/agy'de bridge fork ucu yok.
+    // (ViewModel yeni sekmede açar). agy'de bridge fork ucu yok.
     fun forkFromMessage(index: Int, onForked: (String, String, String) -> Unit) {
         val current = state(); val messages = current.messagesList
         if (index !in messages.indices) return
@@ -310,7 +287,7 @@ class ConversationDelegate(
         val drop = messages.drop(index).count { it.role.equals("user", ignoreCase = true) }
         val target = forkTarget(current)
         if (target == null || target.second.isBlank() || drop < 1) { scope.launch { emit("Bu mesajdan çatallanamıyor") }; return }
-        if (target.first !in setOf(Backend.CLAUDE_APP.id, Backend.CODEX_APP.id, Backend.OMP.id, Backend.OPENCODE2_APP.id)) { scope.launch { emit("Bu sağlayıcı çatallamayı desteklemiyor") }; return }
+        if (target.first !in setOf(Backend.CLAUDE_APP.id, Backend.CODEX_APP.id, Backend.OMP.id)) { scope.launch { emit("Bu sağlayıcı çatallamayı desteklemiyor") }; return }
         if (current.running) { scope.launch { emit("Tur sürerken çatallanamaz") }; return }
         scope.launch {
             runCatching { client.forkFromMessage(current.settings, target.first, target.second, drop) }
@@ -381,7 +358,7 @@ class ConversationDelegate(
     /**
      * Sohbet içi arama için TÜM geçmişi belleğe yükler (plan §16: son yüklü sayfayla
      * sınırlama yok). claude/codex sayfalı sağlayıcılarda `before` ile geriye doğru
-     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (opencode/agy) transcript'i
+     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (omp/agy) transcript'i
      * zaten tek seferde döndürdüğü için ek iş yapılmaz.
      *
      * Çağrandan ÖNCE hedef oturumun açılıp konuşmasının yüklendiği (messagesList dolu)
@@ -396,7 +373,7 @@ class ConversationDelegate(
             val current = state()
             val count = current.messagesList.size
             if (count >= cap) return FullHistoryLoadResult.Truncated(count)
-            // Sayfalanamayan sağlayıcı (opencode/agy) tam transcript'i zaten yükledi.
+            // Sayfalanamayan sağlayıcı (omp/agy) tam transcript'i zaten yükledi.
             val target = ConversationPaging.target(current) ?: return FullHistoryLoadResult.Complete
             val firstBefore = current.messagesList.firstOrNull()?.rowId
             val page = runCatching {
@@ -446,24 +423,3 @@ class ConversationDelegate(
     private object MissingSessionException : IllegalStateException()
 }
 
-/**
- * Poll yolundan gelen OpenCode alanlarini ailenin kutusuna birlestirir.
- *
- * Ayni alanlarin soket yolu [SessionStateReducer]'da; ikisi de yazilmazsa pano
- * yalniz bir tasimada canlanir (bu depoda tekrarlayan hata: delege yazildi,
- * okuma dali unutuldu). Uc-durum kurallari orayla BIREBIR ayni: `null` =
- * karede alan yok -> dokunma, `*Present` bayragi = alan geldi, degeri null
- * olsa bile yaz.
- */
-private fun OpencodeUiState.pollIleBirlestir(c: ConversationResult): OpencodeUiState = copy(
-    todos = c.todos ?: todos,
-    contextPct = if (c.contextPctPresent) c.contextPct else contextPct,
-    // Geri sarma seridi — soket kapaliyken tek kaynagi bu yol.
-    reverted = if (c.revertedPresent) c.reverted else reverted,
-    // Alt-ajan kartlari — soket kapaliyken tek kaynagi bu yol.
-    subagents = c.subagents ?: subagents,
-    // Paylasim linki — soket kapaliyken tek kaynagi bu yol.
-    share = c.share ?: share,
-    // Cozumlenen ajan — soket kapaliyken gostergenin tek kaynagi bu yol.
-    resolvedAgent = c.resolvedAgent ?: resolvedAgent,
-)

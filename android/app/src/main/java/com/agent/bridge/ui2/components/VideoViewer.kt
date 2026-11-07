@@ -32,7 +32,7 @@ import com.agent.bridge.ui2.theme.Ui2Tokens
 import java.io.File
 
 /**
- * Uygulama içi video oynatıcı (gezgindeki mp4'ler ve diğer klipler).
+ * Uygulama içi video oynatıcı (yerel LTX-Video çıktıları ve gezgindeki mp4'ler).
  *
  * Kararlar:
  * - Kaynak HER ZAMAN telefonun diskindeki dosya. Köprüden akış yapmak ExoPlayer'a

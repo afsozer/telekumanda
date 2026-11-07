@@ -71,7 +71,7 @@ class DownloadsDelegate(
     /**
      * Arşiv → telefon ZIP → extract → klasör olarak indir (Phase 6).
      * Bridge `/{projectId}/outputs` klasörünü zip'ler; Android zip'i geçici olarak
-     * indirir, `Download/AgentBridge/<displayName>-teslimatlar/` altına açar ve
+     * indirir, `Download/Telekumanda/<displayName>-teslimatlar/` altına açar ve
      * hem telefondaki geçici zip'i hem de bridge/tmp'deki arşivi temizler.
      * Ne telefonda ne bridge'de kalıcı .zip kalır (başarı ve hata yollarında).
      */

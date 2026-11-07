@@ -9,7 +9,7 @@ import org.junit.Test
  * Tur sürerken gönderim kipinin BACKEND ADINA GÖMÜLÜ olmadığını kilitler.
  *
  * 25.08.2026'ya kadar iki ekran da `backend == "omp" || backend == "hermes-app"`
- * yazıyordu; OpenCode'un kuyruk desteği köprüde varken telefonda hiç çıkmadı.
+ * yazıyordu; backend'in kuyruk desteği köprüde varken telefonda hiç çıkmadı.
  * Buradaki testler kipi capability'den türetiyor.
  */
 class MidTurnSendTest {
@@ -19,13 +19,11 @@ class MidTurnSendTest {
         cowork = CoworkUiState(provider = coworkProvider),
     )
 
-    // 30.09.2026: v1 söküldü. v2 teslim kipini gövdede taşıyor
-    // (delivery: "steer" | "queue"), yani OpenCode'da artık İKİSİ de var.
+    // Tanınmayan bir kimlik ortak tur-içi kipe girmemeli.
     @Test
-    fun opencodeIkisiniDeGosterir() {
-        val s = durum("opencode2-app")
-        assertTrue("kuyruk (ajana bırak) çıkmalı", s.midTurnQueueSupported())
-        assertTrue("yönlendir çıkmalı", s.midTurnSteerSupported())
+    fun taninmayanBackendOrtakKipeGirmez() {
+        assertFalse(durum("taninmayan-saglayici").midTurnQueueSupported())
+        assertFalse(durum("taninmayan-saglayici").midTurnSteerSupported())
     }
 
     @Test
@@ -47,21 +45,19 @@ class MidTurnSendTest {
 
     @Test
     fun coworkYeteneginiSaglayicidanAlir() {
-        assertTrue(durum("cowork", "opencode2-app").midTurnQueueSupported())
-        assertTrue(durum("cowork", "opencode2-app").midTurnSteerSupported())
+        assertTrue(durum("cowork", "omp").midTurnQueueSupported())
         assertTrue(durum("cowork", "omp").midTurnSteerSupported())
         assertFalse(durum("cowork", "claude-app").midTurnQueueSupported())
     }
 
-    // Dağıtım cowork sağlayıcısını AÇMALI: açmazsa cowork+OpenCode oturumu
-    // `else` dalından OMP delegesine gider ve boş oturum kimliğiyle sessizce
-    // hiçbir şey yapmaz.
+    // Dağıtım cowork sağlayıcısını AÇMALI; tanınmayan sağlayıcı cowork'te
+    // Claude'a normalleşir.
     @Test
     fun dagitimCoworkSaglayicisiniCozer() {
-        assertEquals("opencode2-app", midTurnSendBackend("cowork", "opencode2-app"))
+        assertEquals("claude-app", midTurnSendBackend("cowork", "taninmayan-saglayici"))
         assertEquals("omp", midTurnSendBackend("cowork", "omp"))
         assertEquals("claude-app", midTurnSendBackend("cowork", ""))
-        assertEquals("opencode2-app", midTurnSendBackend("opencode2-app", "omp"))
+        assertEquals("omp", midTurnSendBackend("omp", "codex-app"))
         assertEquals("", midTurnSendBackend(null, ""))
     }
 

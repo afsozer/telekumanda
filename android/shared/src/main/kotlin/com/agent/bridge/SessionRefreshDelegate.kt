@@ -29,7 +29,6 @@ class SessionRefreshDelegate(
                     Backend.AGY.id -> client.agyAdopt(current.settings, sid, cwd)
                     Backend.CLAUDE_APP.id -> client.claudeAppAdopt(current.settings, sid, cwd, cowork = provider.isNotBlank())
                     Backend.CODEX_APP.id -> client.codexAppAdopt(current.settings, sid, cwd)
-                    Backend.OPENCODE2_APP.id -> client.opencodeAppAdopt(current.settings, sid, cwd, Backend.OPENCODE2_APP.id)
                     Backend.OMP.id -> client.ompAdopt(current.settings, sid, cwd)
                     else -> sid
                 }
@@ -41,7 +40,6 @@ class SessionRefreshDelegate(
                         Backend.AGY.id -> reset.copy(agy = reset.agy.copy(sessionId = newSid))
                         Backend.CLAUDE_APP.id -> reset.copy(claude = reset.claude.copy(sessionId = newSid))
                         Backend.CODEX_APP.id -> reset.copy(codex = reset.codex.copy(sessionId = newSid))
-                        Backend.OPENCODE2_APP.id -> reset.copy(opencode = reset.opencode.copy(sessionId = newSid))
                         Backend.OMP.id -> reset.copy(omp = reset.omp.copy(sessionId = newSid))
                         else -> reset
                     }
@@ -56,14 +54,12 @@ class SessionRefreshDelegate(
                 val provider = normalizeCoworkProvider(current.cowork.provider)
                 val sid = when (provider) {
                     Backend.CODEX_APP.id -> current.codex.sessionId
-                    Backend.OPENCODE2_APP.id -> current.opencode.sessionId
                     Backend.OMP.id -> current.omp.sessionId
                     else -> current.claude.sessionId
                 }
                 if (sid.isNotBlank()) { adopt(provider, provider, sid, coworkProjectPath()); return@launch }
             }
             Backend.CODEX_APP.id -> if (current.codex.sessionId.isNotBlank()) { adopt(Backend.CODEX_APP.id, "", current.codex.sessionId, current.codex.cwd); return@launch }
-            Backend.OPENCODE2_APP.id -> if (current.opencode.sessionId.isNotBlank()) { adopt(Backend.OPENCODE2_APP.id, "", current.opencode.sessionId, current.opencode.cwd); return@launch }
             Backend.OMP.id -> if (current.omp.sessionId.isNotBlank()) { adopt(Backend.OMP.id, "", current.omp.sessionId, current.omp.cwd); return@launch }
         }
         refreshAll()

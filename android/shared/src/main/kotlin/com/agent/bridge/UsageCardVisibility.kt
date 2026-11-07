@@ -13,9 +13,6 @@ package com.agent.bridge
  * kaybolmaz.
  */
 
-/** RunPod kartı UsageGroup değil, ayrı çizilen bir kart — sabit anahtarı var. */
-const val RUNPOD_USAGE_CARD_KEY = "runpod"
-
 /**
  * Kart kimliği. HubUsageScreen'deki LazyColumn `key`'iyle AYNI olmak zorunda;
  * ayrıştıkları anda gizleme yanlış kartı tutar.
@@ -41,21 +38,12 @@ fun isUsageCardVisible(key: String, hidden: Set<String>): Boolean = key !in hidd
  */
 fun usageCardToggles(
     groups: List<UsageGroup>,
-    runpodEnabled: Boolean,
     hidden: Set<String>,
-): List<UsageCardToggle> {
-    val rows = groups.map { group ->
-        UsageCardToggle(
-            key = usageCardKey(group),
-            label = group.name.ifBlank { group.source.ifBlank { "Adsız kart" } },
-            visible = isUsageCardVisible(usageCardKey(group), hidden),
-        )
-    }
-    if (!runpodEnabled) return rows
-    return rows + UsageCardToggle(
-        key = RUNPOD_USAGE_CARD_KEY,
-        label = "RunPod",
-        visible = isUsageCardVisible(RUNPOD_USAGE_CARD_KEY, hidden),
+): List<UsageCardToggle> = groups.map { group ->
+    UsageCardToggle(
+        key = usageCardKey(group),
+        label = group.name.ifBlank { group.source.ifBlank { "Adsız kart" } },
+        visible = isUsageCardVisible(usageCardKey(group), hidden),
     )
 }
 
@@ -70,6 +58,5 @@ fun toggleUsageCard(hidden: Set<String>, key: String, visible: Boolean): Set<Str
  */
 fun hiddenUsageCardCount(
     groups: List<UsageGroup>,
-    runpodEnabled: Boolean,
     hidden: Set<String>,
-): Int = usageCardToggles(groups, runpodEnabled, hidden).count { !it.visible }
+): Int = usageCardToggles(groups, hidden).count { !it.visible }

@@ -13,8 +13,8 @@ export interface SessionTab {
   status?: string
   /**
    * Uç öneki için katalogdaki apiBackend'i EZER. Yalnız cowork'te gerekiyor:
-   * katalog cowork'ü claude-app'e eşliyor ama bir cowork oturumu codex-app,
-   * opencode-app'e ait olabilir; bu alan olmadan akış yanlış
+   * katalog cowork'ü claude-app'e eşliyor ama bir cowork oturumu codex-app'e
+   * ait olabilir; bu alan olmadan akış yanlış
    * backend'e kurulur.
    */
   api?: string

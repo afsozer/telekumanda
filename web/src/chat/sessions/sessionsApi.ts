@@ -130,7 +130,7 @@ export interface SessionSource {
  * oturumları arayüzde hiç görünmez — çift listeleme riski de yoktur.
  */
 export interface CoworkSessionRecord {
-  /** Oturumun gerçek sahibi: claude-app | codex-app | opencode-app. */
+  /** Oturumun gerçek sahibi: claude-app | codex-app. */
   provider: string
   sessionId: string
   threadId?: string
@@ -153,8 +153,8 @@ export interface TaggedSession extends Session {
   backendLabel: string
   /**
    * Cowork satırlarında oturumun GERÇEK sahibi. Cowork bir sunum katmanı ve
-   * katalogda apiBackend'i claude-app; ama bir cowork oturumu codex-app ya da
-   * opencode-app'e ait olabilir. Bu alan olmadan böyle bir oturum
+   * katalogda apiBackend'i claude-app; ama bir cowork oturumu codex-app'e
+   * ait olabilir. Bu alan olmadan böyle bir oturum
    * yanlış uçtan adopt edilir.
    */
   provider?: string
@@ -296,7 +296,6 @@ export function coworkEpochMs(record: CoworkSessionRecord): number {
 const COWORK_NEW_LABEL: Record<string, string> = {
   'claude-app': 'Yeni Claude oturumu',
   'codex-app': 'Yeni Codex oturumu',
-  'opencode-app': 'Yeni OpenCode oturumu',
 }
 
 export function coworkSessionRow(record: CoworkSessionRecord, projectPath: string): TaggedSession {

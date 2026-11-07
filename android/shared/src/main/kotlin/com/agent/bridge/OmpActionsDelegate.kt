@@ -16,7 +16,7 @@ class OmpActionsDelegate(
     private val startPolling: () -> Unit,
     private val refreshConversation: (Boolean) -> Unit,
     private val syncActiveTab: (String, String, String) -> Unit,
-    // Yeniden adlandırmada açık sekmenin başlığını da güncelle (opencode ile aynı).
+    // Yeniden adlandırmada açık sekmenin başlığını da güncelle.
     private val onSessionRenamed: (String, String) -> Unit = { _, _ -> },
 ) {
     fun cancelSetup() = update { it.copy(omp = it.omp.copy(setupPending = false)) }

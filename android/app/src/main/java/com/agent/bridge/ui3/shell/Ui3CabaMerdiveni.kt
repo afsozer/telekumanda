@@ -48,7 +48,7 @@ private val BASAMAK_ALANI = 46.dp
  *
  * SIRA LİSTENİN KENDİ SIRASI. Sabit bir "low < medium < high" tablosu
  * yazılmadı: seviyeler sağlayıcıdan ve modelden geliyor (codex'te modele göre
- * değişiyor, opencode'da variant adları başka) ve uydurma bir sıralama yanlış
+ * değişiyor, backend'lerin varyant adları başka) ve uydurma bir sıralama yanlış
  * bir merdiven çizerdi. `backendEffortOptions` zaten artan sırada veriyor.
  *
  * [varsayilan] listenin id'si BOŞ olan ilk elemanı — bir basamak değil,
@@ -122,7 +122,7 @@ internal fun ColumnScope.Ui3CabaMerdiveni(
                         .then(
                             if (aktif) {
                                 Modifier.background(
-                                    Brush.verticalGradient(listOf(Ui3Colors.vurguHi, Ui3Colors.vurgu)),
+                                    androidx.compose.ui.graphics.SolidColor(Ui3Colors.vurgu),
                                 )
                             } else {
                                 Modifier

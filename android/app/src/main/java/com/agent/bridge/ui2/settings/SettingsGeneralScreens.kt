@@ -44,7 +44,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.agent.bridge.BuildConfig
 import com.agent.bridge.RemoteUiState
 import com.agent.bridge.RemoteViewModel
-import com.agent.bridge.batteryOptimizationIgnored
 import com.agent.bridge.deviceAuthLoading
 import com.agent.bridge.devicePaired
 import com.agent.bridge.pairingCode
@@ -252,63 +251,12 @@ fun SettingsConnectionScreen(uiState: RemoteUiState, actions: RemoteViewModel, o
 }
 
 @Composable
-fun SettingsNotificationsScreen(uiState: RemoteUiState, actions: RemoteViewModel, onBack: () -> Unit) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) actions.refreshBatteryOptimizationStatus()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    Column(Modifier.fillMaxSize().background(Ui2.colors.bg).verticalScroll(rememberScrollState())) {
-        ScreenHeader(title = "Bildirimler", subtitle = "Not, hatırlatma, onay ve görev uyarıları", onBack = onBack)
-        Column(
-            Modifier.padding(horizontal = Ui2Tokens.screenPadding, vertical = Ui2Tokens.s8),
-            verticalArrangement = Arrangement.spacedBy(Ui2Tokens.s20),
-        ) {
-            SectionHeader("Bildirimler")
-            SurfaceCard {
-                // Seçim yok: tek kanal uygulamanın köprü bağlantısı. Susturmak için
-                // Android'in kendi uygulama/kanal bildirim ayarları kullanılır.
-                ListRow(
-                    title = "Uygulama bağlantısı",
-                    detail = "Notlar, hatırlatmalar, onaylar ve görev bildirimleri köprü bağlantısından gelir",
-                    detailMaxLines = 3,
-                    leading = { Icon(Icons.Outlined.Notifications, null, tint = Ui2.colors.ink2) },
-                )
-            }
-            SectionHeader("Arka plan bağlantısı")
-            SurfaceCard {
-                ListRow(
-                    title = "Pil optimizasyonu",
-                    detail = if (uiState.batteryOptimizationIgnored) {
-                        "İstisna açık; ekran kapalıyken bridge bağlantısı daha güvenilir"
-                    } else {
-                        "İsteğe bağlı: Doze sırasında bağlantı ve onay bildirimlerinin gecikmesini azaltır"
-                    },
-                    leading = { Icon(Icons.Outlined.BatterySaver, null, tint = Ui2.colors.ink2) },
-                    trailing = {
-                        if (uiState.batteryOptimizationIgnored) {
-                            OutlinedButton(onClick = actions::openBatteryOptimizationSettings) { Text("Ayarlar") }
-                        } else {
-                            Button(onClick = actions::requestBatteryOptimizationExemption) { Text("İzin ver") }
-                        }
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun SettingsUpdateScreen(actions: RemoteViewModel, onBack: () -> Unit) {
     val updateInfo by actions.updateInfo.collectAsState()
     val progress by actions.downloadProgress.collectAsState()
 
     Column(Modifier.fillMaxSize().background(Ui2.colors.bg)) {
-        ScreenHeader(title = "Güncelleme", subtitle = "Sürüm ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", onBack = onBack)
+        ScreenHeader(title = "Güncelleme", subtitle = "Sürüm ${BuildConfig.VERSION_NAME.removeSuffix("-lite")} (${BuildConfig.VERSION_CODE})", onBack = onBack)
         Column(
             Modifier.fillMaxWidth().padding(horizontal = Ui2Tokens.screenPadding, vertical = Ui2Tokens.s8),
             verticalArrangement = Arrangement.spacedBy(Ui2Tokens.s16),
@@ -316,7 +264,7 @@ fun SettingsUpdateScreen(actions: RemoteViewModel, onBack: () -> Unit) {
             SurfaceCard {
                 ListRow(
                     title = "Yüklü sürüm",
-                    detail = "${BuildConfig.VERSION_NAME} · versionCode ${BuildConfig.VERSION_CODE}",
+                    detail = "${BuildConfig.VERSION_NAME.removeSuffix("-lite")} · versionCode ${BuildConfig.VERSION_CODE}",
                     leading = { Icon(Icons.Outlined.SystemUpdate, null, tint = Ui2.colors.ink2) },
                     trailing = { StatusBadge("Yüklü") },
                 )

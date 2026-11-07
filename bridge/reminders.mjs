@@ -3,6 +3,10 @@
 // zamanlama bilgisini taşır. Ayrı veritabanı YOKTUR — notun kendisi tek kaynak,
 // böylece mevcut "Notlarım" arayüzünde görünür ve elle düzenlenebilir.
 //
+// - 21.10.2026: köprü artık bildirim göndermiyor (Android bildirim servisi
+//   pil/veri yüzünden söküldü). Cihaz `upcoming()` listesinden kendi alarmını
+//   kurar; `send` verilmezse tick yalnız durumu `sent`e çeker. Aşağıdaki
+//   `send` yolu testler ve olası başka bir kanal için duruyor.
 // - tick() vakti gelmiş `pending` kayıtları `send` ile cihaza bildirir; en az
 //   bir cihaz `ok:true` döndüyse `sent`, yoksa `attempts++` (maxAttempts sonrası
 //   `failed` + log). Bridge kapalıyken vakti geçenler açılışta gecikmeli olarak
@@ -95,7 +99,11 @@ export function createReminders({
   // mdPath → cowork not kimliği. Bildirime konur; uygulama dokunulduğunda
   // ilgili notu açar. Verilmezse derin bağlantı olmadan gönderilir.
   noteIdOf = null,
-  send,
+  // Verilmezse (21.10.2026'dan beri server.mjs böyle kurar) köprü hiçbir şey
+  // GÖNDERMEZ: hatırlatmayı cihaz kendi alarmıyla çalar (`upcoming()` listesi
+  // uygulama açılışında çekilir, değişince ADB ile itilir). tick o zaman
+  // vakti gelen kaydı yalnız `sent` olarak işaretler — "zamanı geldi".
+  send = null,
   targets = [],
   maxAttempts = 10,
   log = () => {},
@@ -262,6 +270,13 @@ export function createReminders({
       const due = all.filter((r) => r.state === 'pending' && r.at.getTime() <= nowMs);
       result.skipped = all.length - due.length;
 
+      if (typeof send !== 'function') {
+        for (const rec of due) {
+          if (writeMeta(rec.path, 'sent', rec.attempts)) result.sent += 1;
+        }
+        return result;
+      }
+
       for (const rec of due) {
         let outcomes = [];
         let threw = false;
@@ -347,5 +362,31 @@ export function createReminders({
     return { ok: true, path: mdPath, reminder_at: fields.reminder_at };
   }
 
-  return { create, scan, tick, setReminder, slugify };
+  // ── upcoming ──────────────────────────────────────────────────────────────
+  // Cihazın yerel alarm kurması için liste: [şimdi - pastMs, şimdi + futureMs]
+  // penceresindeki hatırlatmalar, zamana göre sıralı. Durum filtrelenmez —
+  // `sent` yalnız "vakti geldi" demek; göstermiş olup olmadığını cihaz kendisi
+  // tutar (yakın geçmiştekiler, cihaz o sırada kapalıysa açılışta gösterilsin).
+  function upcoming({ pastMs = 3 * 24 * 60 * 60 * 1000, futureMs = 60 * 24 * 60 * 60 * 1000, limit = 50 } = {}) {
+    const nowMs = now().getTime();
+    return scan()
+      .filter((r) => r.at.getTime() >= nowMs - pastMs && r.at.getTime() <= nowMs + futureMs)
+      .sort((a, b) => a.at.getTime() - b.at.getTime())
+      .slice(0, limit)
+      .map((r) => {
+        let noteId = '';
+        if (typeof noteIdOf === 'function') {
+          try { noteId = String(noteIdOf(r.path) || ''); } catch { noteId = ''; }
+        }
+        return {
+          noteId,
+          title: r.title.slice(0, 300),
+          summary: firstLineOf(r.path).slice(0, 300),
+          at: r.at.getTime(),
+        };
+      })
+      .filter((r) => r.noteId);
+  }
+
+  return { create, scan, tick, setReminder, upcoming, slugify };
 }

@@ -154,7 +154,7 @@ describe('SessionList', () => {
   it('başlığın önünde çalışma klasörünün repo adını gösterir', () => {
     render(<SessionList sessions={[session({ title: 'İş', cwd: 'C:\\Users\\Dev\\agtest' })]} onSelect={vi.fn()} />)
     expect(screen.getByText('agtest').getAttribute('title')).toBe('Repo: C:\\Users\\Dev\\agtest')
-    expect(sessionRepoName('/home/user/proje/')).toBe('proje')
+    expect(sessionRepoName('/home/dev/proje/')).toBe('proje')
   })
 
   it('sağ tık menüsünden oturumu sabitler', async () => {

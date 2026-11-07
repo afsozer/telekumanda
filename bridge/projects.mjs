@@ -125,9 +125,9 @@ function unwrapList(value, key) {
 
 const SECURITY_PROFILES = new Set(['safe', 'standard', 'full', 'custom']);
 const PERMISSION_MODES = {
-  safe: { 'claude-app': 'plan', 'codex-app': 'untrusted', 'opencode2-app': 'plan' },
-  standard: { 'claude-app': 'default', 'codex-app': 'ask', 'opencode2-app': 'ask' },
-  full: { 'claude-app': 'bypassPermissions', 'codex-app': 'yolo', 'opencode2-app': 'yolo' },
+  safe: { 'claude-app': 'plan', 'codex-app': 'untrusted' },
+  standard: { 'claude-app': 'default', 'codex-app': 'ask' },
+  full: { 'claude-app': 'bypassPermissions', 'codex-app': 'yolo' },
 };
 
 const DEFAULT_PROJECTS_STATE_DIR = process.env.NODE_TEST_CONTEXT

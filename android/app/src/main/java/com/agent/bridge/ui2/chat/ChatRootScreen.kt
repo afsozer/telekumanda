@@ -112,10 +112,6 @@ import com.agent.bridge.backendCapabilities
 import com.agent.bridge.midTurnQueueSupported
 import com.agent.bridge.midTurnSteerSupported
 import com.agent.bridge.backendShortLabel
-import com.agent.bridge.backendAgentLabel
-import com.agent.bridge.backendAgentOptions
-import com.agent.bridge.opencodeFamily
-import com.agent.bridge.backendAgentSupported
 import com.agent.bridge.backendEffortOptions
 import com.agent.bridge.backendEffortLabel
 import com.agent.bridge.backendEffortSupported
@@ -126,12 +122,9 @@ import com.agent.bridge.backendSkillGroups
 import com.agent.bridge.backendSkillOptions
 import com.agent.bridge.backendSkillsSupported
 import com.agent.bridge.loadBackendSkills
-import com.agent.bridge.textModelInfo
 import com.agent.bridge.loadBackendEfforts
 import com.agent.bridge.loadBackendInfo
 import com.agent.bridge.loadBackendPermissionModes
-import com.agent.bridge.loadBackendAgents
-import com.agent.bridge.setBackendAgent
 import com.agent.bridge.setBackendEffort
 import com.agent.bridge.setBackendModel
 import com.agent.bridge.setBackendPermissionMode
@@ -169,10 +162,8 @@ import com.agent.bridge.ui2.components.FileSourceChoiceDialog
 import com.agent.bridge.ui2.components.LoadingSkeleton
 import com.agent.bridge.ui2.components.SurfaceCard
 import com.agent.bridge.ui2.hub.UsageGroupCard
-import com.agent.bridge.ui2.hub.RunPodUsageCard
 import com.agent.bridge.ui2.hub.UsageCardVisibilityList
 import com.agent.bridge.ui2.hub.splitUsageGroupsAfterClaude
-import com.agent.bridge.RUNPOD_USAGE_CARD_KEY
 import com.agent.bridge.isUsageCardVisible
 import com.agent.bridge.usageCardToggles
 import com.agent.bridge.visibleUsageGroups
@@ -260,19 +251,7 @@ fun ChatRootScreen(
         }
     }
 
-    // Açık sohbeti bildirim katmanına duyur: o oturumun bildirimi bastırılsın ve
-    // ekrana girildiğinde bekleyenler düşsün. Yalnız bu oturumunkiler temizlenir;
-    // başka oturumların bildirimleri durur.
     val openSessionId = if (backendId != null) uiState.backendSession(backendId).sessionId else ""
-    DisposableEffect(backendId, openSessionId) {
-        if (backendId != null && openSessionId.isNotBlank()) {
-            AppForeground.openChat(backendId, openSessionId)
-            AppForeground.clearFor(context, backendId, openSessionId)
-        }
-        onDispose {
-            if (backendId != null) AppForeground.closeChat(backendId, openSessionId)
-        }
-    }
 
     var longClickedSessionId by remember { mutableStateOf<String?>(null) }
     // Global (repo açık değil) modda uzun basılan oturumun ait olduğu backend;
@@ -493,36 +472,6 @@ fun ChatRootScreen(
                             modifier = Modifier.size(36.dp),
                         ) {
                             Icon(Icons.Default.Search, "Sohbet içinde ara", tint = Ui2.colors.ink2)
-                        }
-                        // RunPod pill: başlık satırının EN SAĞINDA (kullanıcı isteği
-                        // 14.08.2026). Eskiden composer üstü çip satırındaydı; oturum
-                        // ayarı değil, makine yaşam döngüsü kontrolü — çipler arasında
-                        // kaybolmasın diye üst şeride alındı.
-                        if (backendId == "opencode2-app") {
-                            val runPodUriHandler = LocalUriHandler.current
-                            // Pill gecis halindeyken (basliyor/duruyor) durumu OTOMATIK
-                            // tazele. App aksi halde runpod durumunu yalniz manuel eylemde
-                            // (Kullanim/Yenile) poll ediyor; baslatma arka planda bitince
-                            // pill "basliyor"da takili kaliyordu. Gecis bitince (ready/hata)
-                            // rpBusy false olur, key degisir, dongu iptal edilir.
-                            val rpBusy = uiState.opencode.runpod.operationActive ||
-                                uiState.opencode.runpod.phase == "starting" ||
-                                uiState.opencode.runpod.phase == "stopping"
-                            LaunchedEffect(rpBusy) {
-                                if (rpBusy) {
-                                    while (true) {
-                                        kotlinx.coroutines.delay(3000)
-                                        actions.refreshRunPodStatus(showErrors = false)
-                                    }
-                                }
-                            }
-                            RunPodControlPill(uiState.opencode.runpod) {
-                                when (runPodPillAction(uiState.opencode.runpod)) {
-                                    "stop" -> actions.stopRunPod()
-                                    "connect" -> actions.startRunPod()
-                                    else -> runCatching { runPodUriHandler.openUri("https://console.runpod.io/pods") }
-                                }
-                            }
                         }
                     }
 
@@ -897,12 +846,11 @@ fun ChatRootScreen(
                                 else Modifier
 
                             // Buradan çatalla claude-app/codex-app/omp'de (cowork'te
-                            // sağlayıcısı bunlardansa): bridge fork ucu opencode v1/agy'de yok.
-                            // OMP çatallaması native `branch` RPC'sine dayanır (/omp/fork-from);
-                            // opencode2'de v2'nin native /fork ucu köprüye bağlı (26.09.2026).
+                            // sağlayıcısı bunlardansa): bridge fork ucu agy'de yok.
+                            // OMP çatallaması native `branch` RPC'sine dayanır (/omp/fork-from).
                             val forkSupported = when (uiState.backend) {
-                                "claude-app", "codex-app", "omp", "opencode2-app" -> true
-                                "cowork" -> normalizeCoworkProvider(uiState.coworkProvider) in setOf("claude-app", "codex-app", "omp", "opencode2-app")
+                                "claude-app", "codex-app", "omp" -> true
+                                "cowork" -> normalizeCoworkProvider(uiState.coworkProvider) in setOf("claude-app", "codex-app", "omp")
                                 else -> false
                             }
                             Box(highlightMod) {
@@ -958,7 +906,7 @@ fun ChatRootScreen(
                                         message.rowId.ifEmpty { message.thoughtIndex.toString() }
                                     ) { mutableStateOf(false) }
                                     // Detay indeksli her düşünce satırı katlanabilir kart: araç
-                                    // özeti "Araç", reasoning/thinking "Düşünce" (opencode/codex
+                                    // özeti "Araç", reasoning/thinking "Düşünce" (codex'in
                                     // 🧠 satırları dev düz blok yerine kompakt kart olsun).
                                     ToolCallCard(
                                         kind = if (isToolSummary(message.text)) "Araç" else "Düşünce",
@@ -977,7 +925,7 @@ fun ChatRootScreen(
                                         },
                                     )
                                 }
-                                // Detay indeksi OLMAYAN uzun düşünce (eski opencode geçmişi vb.):
+                                // Detay indeksi OLMAYAN uzun düşünce (eski oturum geçmişi vb.):
                                 // tam metin satırın kendisinde — kompakt kart, gövde yerelden açılır.
                                 role == "thought" && message.text.length > 200 -> {
                                     var expanded by rememberSaveable(
@@ -1088,7 +1036,6 @@ fun ChatRootScreen(
                             icon = Icons.Outlined.DataUsage,
                             onClick = {
                                 actions.loadUsage()
-                                actions.refreshRunPodStatus(showErrors = false)
                                 openSheet = "usage"
                             },
                         ),
@@ -1113,7 +1060,7 @@ fun ChatRootScreen(
                             horizontalArrangement = Arrangement.spacedBy(Ui2Tokens.s8),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // Cowork: aktif sağlayıcı (Claude/Codex/OpenCode) çipi. Dokununca
+                            // Cowork: aktif sağlayıcı (Claude/Codex/OMP) çipi. Dokununca
                             // çalışma alanında hangi ajanla konuşulacağı değiştirilir.
                             if (backendId == "cowork") {
                                 StatusBadge(
@@ -1133,20 +1080,6 @@ fun ChatRootScreen(
                                     modifier = Modifier.clickable {
                                         actions.loadBackendInfo(backendId)
                                         openSheet = "model"
-                                    }
-                                )
-                            }
-
-                            // Ajan çipi: turu build/plan/yerel/… hangisinin
-                            // koşacağı. Model çipinin yanında durur çünkü kendi
-                            // modeli olan bir ajan seçilince model de değişir.
-                            if (uiState.backendAgentSupported(backendId)) {
-                                StatusBadge(
-                                    text = uiState.backendAgentLabel(backendId),
-                                    solid = true,
-                                    modifier = Modifier.clickable {
-                                        actions.loadBackendAgents(backendId)
-                                        openSheet = "agent"
                                     }
                                 )
                             }
@@ -1264,8 +1197,7 @@ fun ChatRootScreen(
                     // Tur sürerken canlı gönderimin İKİ AYRI yolu var ve ayrı
                     // uçlara dayanıyor: yönlendir = /steer, sıraya bırak =
                     // /follow-up. Capability'den türetiliyor (shared/MidTurnSend.kt);
-                    // backend adı gömmek OpenCode'un kuyruk desteğini görünmez
-                    // bırakmıştı. OpenCode'da yalnız ikincisi çıkar.
+                    // backend adı gömmek kuyruk desteğini görünmez bırakmıştı.
                     val midTurnSteerSupported = uiState.midTurnSteerSupported()
                     val midTurnQueueSupported = uiState.midTurnQueueSupported()
                     // 4. Composer — bağlam pill'leri yukarıda ComposerPillRow ile
@@ -1365,11 +1297,8 @@ fun ChatRootScreen(
                         val options = rawOptions.map {
                             // Açıklama yalnız katalogda tanımlı modeller için var;
                             // bulunamayan modelde kutu çizilmez (uydurma yok).
-                            val modelInfo = if (backendId == "opencode2-app") {
-                                textModelInfo(it.id, it.label)
-                            } else {
-                                null
-                            }
+                            // Katalog açıklaması hiçbir backend'de yok; kutu çizilmez.
+                            val modelInfo: com.agent.bridge.TextModelInfo? = null
                             SelectorOption(
                                 value = it.id,
                                 label = it.label,
@@ -1410,27 +1339,6 @@ fun ChatRootScreen(
                             loading = rawOptions.isEmpty(),
                             onSelect = { id ->
                                 actions.setBackendPermissionMode(backendId, id)
-                                openSheet = null
-                            },
-                            onDismiss = { openSheet = null }
-                        )
-                    }
-                    "agent" -> {
-                        val rawOptions = uiState.backendAgentOptions(backendId)
-                        SelectorSheet(
-                            title = "Ajan seç",
-                            subtitle = "Turu hangi ajan koşacak; kendi modeli olan ajan seçilince model de değişir",
-                            options = rawOptions.map {
-                                SelectorOption(value = it.id, label = it.label, detail = it.detail.ifBlank { null })
-                            },
-                            selectedValue = uiState.opencodeFamily(backendId).agent,
-                            // "otomatik" tek başına dolu liste değil: gerçek ajanlar
-                            // gelene kadar yükleniyor göster.
-                            loading = rawOptions.size <= 1,
-                            detailMaxLines = 3,
-                            pinScope = "backend-agent:$backendId",
-                            onSelect = { id ->
-                                actions.setBackendAgent(backendId, id)
                                 openSheet = null
                             },
                             onDismiss = { openSheet = null }
@@ -1511,12 +1419,9 @@ fun ChatRootScreen(
                             ) {
                                 // Merkez > Kullanım'daki göster/gizle tercihi burada da
                                 // geçerli — aynı kart kümesi, aynı ayar.
-                                val runpodEnabled = uiState.opencode.runpod.enabled
                                 var editingCards by remember { mutableStateOf(false) }
                                 val shownGroups = visibleUsageGroups(uiState.usage.groups, uiState.hiddenUsageCards)
                                 val (throughClaude, afterClaude) = splitUsageGroupsAfterClaude(shownGroups)
-                                val showRunpod = runpodEnabled &&
-                                    isUsageCardVisible(RUNPOD_USAGE_CARD_KEY, uiState.hiddenUsageCards)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text("Kalan kullanım", style = MaterialTheme.typography.titleMedium, color = Ui2.colors.ink)
@@ -1525,7 +1430,7 @@ fun ChatRootScreen(
                                             Text(note, style = MaterialTheme.typography.bodySmall, color = Ui2.colors.ink2)
                                         }
                                     }
-                                    if (uiState.usage.groups.isNotEmpty() || runpodEnabled) {
+                                    if (uiState.usage.groups.isNotEmpty()) {
                                         TextButton(onClick = { editingCards = !editingCards }) {
                                             Text(if (editingCards) "Bitti" else "Kartlar", color = Ui2.colors.accent)
                                         }
@@ -1534,7 +1439,6 @@ fun ChatRootScreen(
                                     TextButton(
                                         onClick = {
                                             actions.loadUsage(force = true)
-                                            actions.refreshRunPodStatus(showErrors = false)
                                         },
                                         enabled = !uiState.usageLoading,
                                     ) {
@@ -1543,26 +1447,19 @@ fun ChatRootScreen(
                                 }
                                 if (editingCards) {
                                     UsageCardVisibilityList(
-                                        rows = usageCardToggles(uiState.usage.groups, runpodEnabled, uiState.hiddenUsageCards),
+                                        rows = usageCardToggles(uiState.usage.groups, uiState.hiddenUsageCards),
                                         onToggle = actions::setUsageCardVisible,
                                         onShowAll = actions::showAllUsageCards,
                                     )
                                 }
                                 throughClaude.forEach { group -> UsageGroupCard(group) }
-                                if (showRunpod) {
-                                    RunPodUsageCard(
-                                        status = uiState.opencode.runpod,
-                                        onStart = actions::startRunPod,
-                                        onStop = actions::stopRunPod,
-                                    )
-                                }
                                 if (uiState.usage.groups.isEmpty()) {
                                     LoadingSkeleton(rows = 3)
                                 } else {
                                     afterClaude.forEach { group -> UsageGroupCard(group) }
                                     // Hepsi gizliyken sheet bomboş görünmesin; düzenleme
                                     // zaten bir dokunuş uzakta ama çıkış yolu yazılı olsun.
-                                    if (throughClaude.isEmpty() && afterClaude.isEmpty() && !showRunpod && !editingCards) {
+                                    if (throughClaude.isEmpty() && afterClaude.isEmpty() && !editingCards) {
                                         Text(
                                             "Tüm kullanım kartları gizli — \"Kartlar\" ile geri getirebilirsin.",
                                             style = MaterialTheme.typography.bodySmall,

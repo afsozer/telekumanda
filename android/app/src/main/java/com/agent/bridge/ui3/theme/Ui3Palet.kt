@@ -7,6 +7,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 
 /**
  * ui3 paleti — koyu ve açık iki örnek.
@@ -96,8 +97,9 @@ data class Ui3Palet(
     /** O tuşun üstündeki yazı. */
     val birincilMurekkep: Color,
 ) {
-    /** Vurgu→petrol gradyanı: yalnız birincil aksiyon ve canlılıkta. */
-    val grad: Brush get() = Brush.linearGradient(listOf(vurgu, cyan))
+    /** Birincil aksiyon dolgusu. Kovan'da gradyan yok: düz vurgu. Brush
+     *  tipi çağıranlar değişmesin diye kaldı. */
+    val grad: Brush get() = SolidColor(vurgu)
 
     // Durum rolleri — ANLAM sabit, ton temaya göre değişir.
     val running: Color get() = cyan
@@ -107,113 +109,86 @@ data class Ui3Palet(
 }
 
 /**
- * Koyu palet — ui3'ün ilk ve referans teması. Cam/malzeme alfaları mockup ve
- * cihaz ölçümlerinden geliyor, dokunulmadı; RENKLER 17.08.2026 revizyonunda
- * profesyonel sete çevrildi (dosya başındaki not).
+ * Koyu palet: Kovan'ın koyu teması (7 Kas 2026, kullanıcı isteği "Kovan'ın
+ * UI'sini Telekumanda'ya geçir"). Kaynak Kovan mobil `src/theme.ts`.
+ *
+ * Cam yok: yüzeyler opak, kenar düz 1dp çizgi. Rim/spekular rolleri
+ * duruyor ama düz kenara eşit (rim) ya da saydam (spekular); malzeme
+ * dosyası onları artık okumuyor, alanlar API uyumu için kaldı.
  */
 val Ui3PaletKoyu = Ui3Palet(
     koyuMu = true,
-    bg0 = Color(0xFF060609),
-    // Mürekkepler lavantadan nötr soğuk griye: menekşe alt tonu paletle
-    // birlikte çıktı, aydınlıklar korundu (ink3 4.94 kartta / 5.59 düzde).
-    ink = Color(0xFFF3F5F9),
-    ink2 = Color(0xFFA9B1C2),
-    ink3 = Color(0xFF7D8799),
-    vurgu = Color(0xFF6C95BE),
-    vurguHi = Color(0xFF93B5D8),
-    // Durum seti kısık: petrol (çalışıyor), altın (onay), adaçayı (bitti),
-    // kiremit (hata). Hepsi kartta ≥5.6 : 1 — anlam ayrımı kayıpsız.
-    cyan = Color(0xFF56AEA4),
-    amber = Color(0xFFD2A354),
-    mint = Color(0xFF66A98A),
-    rose = Color(0xFFD97D75),
-    // Neonların aydınlığı doygunluk yerine AÇIKLIKLA korundu: mesh çok
-    // koyulaşırsa camın kıracağı ışık kalmıyor (açık temada %35 denemesinde
-    // ölçülen ders). İlk taslak (#33628F ailesi) önizlemede tam da bu yüzden
-    // söndü, bir kademe aydınlatıldı.
-    mesh1 = Color(0xFF3E76B0),
-    mesh2 = Color(0xFF2E96A0),
-    mesh3 = Color(0xFF2F62B0),
-    mesh4 = Color(0xFFA57C42),
-    meshGucu = 1f,
-    yuzey1 = Color.White.copy(alpha = 0.05f),
-    yuzey2 = Color.White.copy(alpha = 0.07f),
-    cizgi = Color.White.copy(alpha = 0.10f),
-    cizgiInce = Color.White.copy(alpha = 0.07f),
-    spekular = Color.White.copy(alpha = 0.16f),
-    rim1 = Color.White.copy(alpha = 0.60f),
-    rim2 = Color.White.copy(alpha = 0.07f),
-    rim3 = Color.White.copy(alpha = 0.02f),
-    rim4 = Color.White.copy(alpha = 0.34f),
-    kuyu = Color.Black.copy(alpha = 0.42f),
-    perde = Color.Black.copy(alpha = 0.45f),
-    tutamak = Color.White.copy(alpha = 0.30f),
-    grenOpaklik = 13,
-    birincilZemin = Color.White,
-    birincilMurekkep = Color(0xFF0A0E14),
+    bg0 = Color(0xFF161514),
+    ink = Color(0xFFECEBE7),
+    ink2 = Color(0xFFC2BEB5),
+    ink3 = Color(0xFF9B978E),
+    vurgu = Color(0xFFD9893F),
+    vurguHi = Color(0xFFE8A566),
+    // Durum seti Kovan'ın sıcak zeminine göre: adaçayı yeşili bağlı/bitti
+    // noktasıyla aynı aile, onay rengi vurgunun kendisi (Kovan'da izin
+    // kartı vurgu kenarlıydı).
+    cyan = Color(0xFF7DB3A8),
+    amber = Color(0xFFE0A04F),
+    mint = Color(0xFF6DB27A),
+    rose = Color(0xFFF2827A),
+    mesh1 = Color.Transparent,
+    mesh2 = Color.Transparent,
+    mesh3 = Color.Transparent,
+    mesh4 = Color.Transparent,
+    meshGucu = 0f,
+    yuzey1 = Color(0xFF1F1E1C),
+    yuzey2 = Color.White.copy(alpha = 0.06f),
+    cizgi = Color(0xFF34322E),
+    cizgiInce = Color(0xFF2B2A27),
+    spekular = Color.Transparent,
+    rim1 = Color(0xFF34322E),
+    rim2 = Color(0xFF34322E),
+    rim3 = Color(0xFF34322E),
+    rim4 = Color(0xFF34322E),
+    kuyu = Color(0xFF121110),
+    perde = Color.Black.copy(alpha = 0.50f),
+    tutamak = Color.White.copy(alpha = 0.25f),
+    grenOpaklik = 0,
+    birincilZemin = Color(0xFFD9893F),
+    birincilMurekkep = Color(0xFF1A1208),
 )
 
 /**
- * Açık palet.
- *
- * İki şey basit ton çevirmesi DEĞİL:
- *  - **Vurgu renkleri koyulaştı.** Koyu temanın orta tonları açık zeminde
- *    okunmaz; her renk WCAG 4.5 tabanının üstüne inecek kadar koyultuldu
- *    (tablo plandaki renk revizyonunda). Anlam eşlemesi (petrol=çalışıyor,
- *    altın=onay, adaçayı=bitti) korunuyor.
- *  - **Cam ters çevrildi.** Koyuda cam beyaz alfayla aydınlanıyor; açıkta beyaz
- *    üstüne beyaz kaybolur, o yüzden dolgu ve kenar siyah alfaya döndü. Üst
- *    spekular hattı beyaz kaldı — cam yüzeyin üstten ışık aldığı hissi oradan
- *    geliyor ve açık zeminde de doğru.
- *
- * Mesh gücü %62: koyu temanın tamamı açık zeminde metnin arkasında kirli
- * duruyordu, ama önce %35'e indirilince CAM GÖRÜNMEZ oldu — camın arkasında
- * bulanıklaştıracak renk kalmıyordu ve açık zemin üstündeki blur açık gri bir
- * panele dönüşüyordu (cihazda ölçüldü). %62 ikisinin arası: metin okunur,
- * cam arkasında renk süzülüyor.
+ * Açık palet: Kovan'ın açık teması. Sıcak kırık beyaz zemin, beyaz kart,
+ * ince bej çizgi, kahve-amber vurgu. Metin renkleri beyaz kartta ve zeminde
+ * WCAG 4.5'in üstünde (ink3 #6D6A63: kartta 5.4, zeminde 5.0).
  */
 val Ui3PaletAcik = Ui3Palet(
     koyuMu = false,
-    // Zemin lavanta beyazından mavi-gri beyaza (#F4F2FA → #F2F4F8): menekşe
-    // alt tonunun son izi buradaydı.
-    bg0 = Color(0xFFF2F4F8),
-    ink = Color(0xFF131820),
-    ink2 = Color(0xFF454F5E),
-    // 4.71 : 1 cam kart zemininde, 5.43 : 1 düz zeminde.
-    ink3 = Color(0xFF5A6474),
-    vurgu = Color(0xFF2E5A88),
-    vurguHi = Color(0xFF23486E),
-    cyan = Color(0xFF176B64),
-    amber = Color(0xFF7D5915),
-    mint = Color(0xFF276B50),
-    rose = Color(0xFF9C443D),
-    // Koyu temanın mesh'inden bir tık canlı: %62 güçle süzülünce aynı
-    // yumuşaklığa iniyor.
-    mesh1 = Color(0xFF4F86C2),
-    mesh2 = Color(0xFF35A5AE),
-    mesh3 = Color(0xFF4478C4),
-    mesh4 = Color(0xFFB8905A),
-    meshGucu = 0.62f,
-    // Açık temada kart dolgusu SİYAH değil BEYAZ: koyu temada cam, zeminden
-    // daha AYDINLIK olduğu için okunuyor. Açıkta siyah alfa (%4) denendi ve
-    // kartlar zeminden ayırt edilemedi — "Merkez'de hiç glass yok" (kullanıcı).
-    // Buzlu beyaz + koyu ince kenar, açık zeminde camın doğru karşılığı.
-    yuzey1 = Color.White.copy(alpha = 0.58f),
-    // yuzey2 kartların ÜSTÜNDEKİ tuş/rozet dolgusu: beyaz kart üstünde beyaz
-    // kaybolur, o yüzden burada siyah alfa kalıyor.
-    yuzey2 = Color.Black.copy(alpha = 0.06f),
-    cizgi = Color.Black.copy(alpha = 0.12f),
-    cizgiInce = Color.Black.copy(alpha = 0.08f),
-    spekular = Color.White.copy(alpha = 0.75f),
-    rim1 = Color.Black.copy(alpha = 0.16f),
-    rim2 = Color.Black.copy(alpha = 0.05f),
-    rim3 = Color.Black.copy(alpha = 0.02f),
-    rim4 = Color.Black.copy(alpha = 0.10f),
-    kuyu = Color.Black.copy(alpha = 0.06f),
-    perde = Color.Black.copy(alpha = 0.28f),
-    tutamak = Color.Black.copy(alpha = 0.24f),
-    grenOpaklik = 6,
-    birincilZemin = Color(0xFF131820),
+    bg0 = Color(0xFFF6F5F2),
+    ink = Color(0xFF1D1C1A),
+    ink2 = Color(0xFF4A4844),
+    ink3 = Color(0xFF6D6A63),
+    vurgu = Color(0xFF9E5615),
+    vurguHi = Color(0xFF7F4410),
+    cyan = Color(0xFF2F6B63),
+    amber = Color(0xFF9E5615),
+    mint = Color(0xFF3B7A4A),
+    rose = Color(0xFFB3261E),
+    mesh1 = Color.Transparent,
+    mesh2 = Color.Transparent,
+    mesh3 = Color.Transparent,
+    mesh4 = Color.Transparent,
+    meshGucu = 0f,
+    yuzey1 = Color.White,
+    yuzey2 = Color.Black.copy(alpha = 0.05f),
+    cizgi = Color(0xFFDEDBD3),
+    cizgiInce = Color(0xFFE8E5DF),
+    spekular = Color.Transparent,
+    rim1 = Color(0xFFDEDBD3),
+    rim2 = Color(0xFFDEDBD3),
+    rim3 = Color(0xFFDEDBD3),
+    rim4 = Color(0xFFDEDBD3),
+    kuyu = Color(0xFFF1EFEA),
+    perde = Color.Black.copy(alpha = 0.32f),
+    tutamak = Color.Black.copy(alpha = 0.20f),
+    grenOpaklik = 0,
+    birincilZemin = Color(0xFF9E5615),
     birincilMurekkep = Color.White,
 )
 

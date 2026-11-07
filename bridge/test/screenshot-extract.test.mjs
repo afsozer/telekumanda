@@ -94,7 +94,7 @@ describe('screenshot-extract', () => {
   // calardi. Tarih yalniz `hatirlatici` turunde tasinir.
   it('tur "bilgi" ise tarih_saat zamanlayiciya tasinmaz', async () => {
     const { client } = makeClient({
-      out: '{"tur":"bilgi","baslik":"Sozlesme","tarih_saat":"2026-07-22T00:00:00+03:00","alinti":"Sozlesme Tarihi: 22.07.2026","aciklama":"fiyat teklifi","metin":"Toplam Tutari: 1.000,00 TL","etiketler":["sozlesme"]}',
+      out: '{"tur":"bilgi","baslik":"Sozlesme","tarih_saat":"2026-07-22T00:00:00+03:00","alinti":"Sozlesme Tarihi: 22.07.2026","aciklama":"fiyat teklifi","metin":"Toplam Tutari: 4.492,80 TL","etiketler":["sozlesme"]}',
     });
     const r = await client.extract(FILE, CAPTURED_AT);
     assert.equal(r.tur, 'bilgi');

@@ -1,4 +1,4 @@
-// Telekumanda köprüsü — REST + WS API over Tailscale, CLI-agent orchestration.
+// AgentBridge Bridge — REST + WS API over Tailscale, CLI-agent orchestration.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,17 +15,12 @@ import { register as registerUpdate } from './routes/update.mjs';
 import * as claudeApp from './claude-app.mjs';
 import * as codexApp from './codex-app.mjs';
 import * as cowork from './cowork.mjs';
-// OpenCode v1 backend'i (opencode-app.mjs) 30.09.2026'da SÖKÜLDÜ: global
-// `opencode` komutu artık v2 (@opencode/cli), v1 npm paketi kaldırıldı.
-// Tek OpenCode girişi opencode2-app; telefonda etiketi "OpenCode".
-import * as opencode2App from './opencode2-app.mjs';
 import * as omp from './omp-app.mjs';
 import { readUiPins, writeUiPinScope } from './ui-pins.mjs';
 import * as agy from './agy.mjs';
 import * as mcp from './mcp.mjs';
 import * as claudeMcp from './claude-mcp.mjs';
 import * as codexMcp from './codex-mcp.mjs';
-import * as opencodeMcp from './opencode-mcp.mjs';
 import { getExternalUsageGroups } from './usage.mjs';
 import { ROTATION_DEFAULTS } from './log-rotation.mjs';
 import { initLogger, rotate as rotateLogger } from './logger.mjs';
@@ -41,20 +36,14 @@ import { pruneAll } from './disk-prune.mjs';
 import { pruneSessions } from './session-prune.mjs';
 import { serveWebUi } from './web-ui.mjs';
 import { createReminders } from './reminders.mjs';
+import { createHatirlaticiAdb } from './hatirlatici-adb.mjs';
 import { ensureDocumentToolPath } from './tool-path.mjs';
-import { createRunPodManager } from './runpod.mjs';
-import { createOturumImhaManager } from './oturum-imha.mjs';
 
 // Winget PATH değişikliği mevcut terminale yansımamış olsa da provider child
 // süreçleri PDF render/extract araçlarını görsün.
 ensureDocumentToolPath();
 const CFG_URL = new URL('./config.json', import.meta.url);
 const cfg = JSON.parse(fs.readFileSync(CFG_URL));
-const runpod = createRunPodManager(cfg.runpod || {});
-// Silinmis opencode oturumlarinin kalintilarini imha eden betik. Yol
-// yapilandirilabilir (cfg.oturumImha.script); yoksa varsayilan CoworkSpaces
-// altindaki betik kullanilir, o da yoksa uc "disabled" doner.
-const oturumImha = createOturumImhaManager(cfg.oturumImha || {});
 const PROTOCOL_VERSION = 2;
 
 // ── Logger (madde 14) ──────────────────────────────────────────────────────
@@ -73,7 +62,7 @@ initLogger({
 
 // ── Global güvenlik ağı ────────────────────────────────────────────────────
 // Node 22 varsayılanı: yakalanmamış promise rejection süreci öldürür. Backend
-// modüllerinde await'siz appSend/http çağrıları (opencode-app, vb.)
+// modüllerinde await'siz appSend/http çağrıları
 // kaçınabilir; tek bir rejection tüm bridge'i (ve tüm oturumların turn'lerini)
 // çökertmesin diye burada loglayıp yutuyoruz. uncaughtException için aynı şey:
 // supervisor'a bırakmaktansa logla ve devam et (kritik hatalar zaten yakalanır).
@@ -130,13 +119,6 @@ export const SLASH = {
     { name: 'Bu kodu refactor et; okunabilirliği ve bakım kolaylığını artır.', desc: 'Refactor' },
     { name: 'Proje bağımlılıklarını güncelle ve breaking change varsa bildir.', desc: 'Bağımlılık güncelle' },
     { name: '/compact', desc: 'Bağlamı sıkıştır, token tasarrufu yap' },
-  ],
-  'opencode2-app': [
-    { name: 'Bu kodu detaylı incele; hataları, güvenlik açıklarını ve iyileştirme önerilerini sırala.', desc: 'Kod incelemesi' },
-    { name: 'Adım adım düşünerek bir plan yap, sonra uygula.', desc: 'Planla ve uygula' },
-    { name: 'Değişiklikleri özetle (git diff).', desc: 'Diff özeti' },
-    { name: 'Bu projenin mimarisini analiz et ve açıkla.', desc: 'Proje analizi' },
-    { name: 'Commit mesajı yaz: son değişiklikleri özetleyen conventional commit formatında.', desc: 'Commit mesajı' },
   ],
 };
 
@@ -245,16 +227,12 @@ const CLI_MODULES = {
   agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
-  'opencode2-app': opencode2App,
   'omp': omp,
 };
 const MODULE_LABELS = {
   agy: 'Antigravity CLI',
   'claude-app': 'Claude App',
   'codex-app': 'Codex App',
-  // v1 söküldükten sonra tek OpenCode girişi bu: etiket "OpenCode 2" DEĞİL
-  // "OpenCode" (kullanıcı artık iki dünya görmüyor).
-  'opencode2-app': 'OpenCode',
   'omp': 'OMP',
 };
 
@@ -262,7 +240,6 @@ const OPERATIONS_MODULES = {
   agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
-  'opencode2-app': opencode2App,
   'omp': omp,
 };
 reconcilePromptRequests(OPERATIONS_MODULES);
@@ -344,10 +321,10 @@ function pruneNoteJunk() {
 }
 
 // ── Backend oturum budamasi ─────────────────────────────────────────────────
-// claude / codex / opencode: bir haftadan fazla inaktif oturumlar. Olcut ve
-// muafiyetler session-prune.mjs'te; burada yalniz her backend'in kendi liste ve
-// silme yolunun baglanmasi var. Neyin nasil silinecegini backend biliyor —
-// depolari birbirine hic benzemiyor (jsonl havuzu / rollout dosyalari / sqlite).
+// claude / codex: bir haftadan fazla inaktif oturumlar. Olcut ve muafiyetler
+// session-prune.mjs'te; burada yalniz her backend'in kendi liste ve silme
+// yolunun baglanmasi var. Neyin nasil silinecegini backend biliyor —
+// depolari birbirine hic benzemiyor (jsonl havuzu / rollout dosyalari).
 //
 // agy AYRI kaldi (yukarida, klasor yasina gore): oradaki birikim yalniz oturum
 // degil, `brain/` ve `log/` de var; ayrica CLI/IDE ayrimi dosya sistemi
@@ -384,13 +361,6 @@ const SESSION_PRUNE_BACKENDS = [
     list: async () => (await codexApp.listDiskSessions({ all: true }))?.sessions || [],
     remove: (s) => codexApp.deleteDiskSession({ id: s.id }),
   },
-  {
-    // v2'nin listDiskSessions'ı ASENKRON (sunucu kapalıyken db'yi salt okunur
-    // açıyor); v1'in senkron imzasıyla karıştırılmamalı, await şart.
-    label: 'opencode2-app',
-    list: async () => (await opencode2App.listDiskSessions())?.sessions || [],
-    remove: (s) => opencode2App.deleteDiskSession({ id: s.id }),
-  },
 ];
 
 // ── Bosta kalan claude surecleri ────────────────────────────────────────────
@@ -400,7 +370,7 @@ const SESSION_PRUNE_BACKENDS = [
 // sonraki mesaj --resume ile devam eder. Kurallar idle-reaper.mjs'te.
 // config: idleChildren.claudeMinutes (0 = kapali, varsayilan 30),
 //         idleChildren.intervalMinutes (kosma araligi, varsayilan 5).
-// codex/opencode kapsam DISI: onlar oturum basina degil backend basina TEK
+// codex kapsam DISI: oturum basina degil backend basina TEK
 // app-server tutuyor ve warmOpenTabBackends onu bilerek sicak tutuyor.
 const IDLE_CHILD_MINUTES = Number.isFinite(cfg.idleChildren?.claudeMinutes)
   ? cfg.idleChildren.claudeMinutes
@@ -477,8 +447,17 @@ const reminders = createReminders({
   // bir gerekçesi yok.
   listNotePaths: () => cowork.listNotes().notes.map((n) => n.mdPath).filter(Boolean),
   noteIdOf: (mdPath) => cowork.listNotes().notes.find((n) => n.mdPath === mdPath)?.id || '',
-  // Hedef verilmez: hatirlatma kayitli TUM cihazlara gider.
-  send: (extras, opts) => notificationDelivery.send(extras, opts),
+  // `send` YOK (21.10.2026): hatirlatmayi cihaz kendi alarmiyla caliyor.
+  // Liste GET /reminders ile cekilir, degisince asagidaki ADB itmesiyle gider.
+  log: (msg) => console.warn(msg),
+});
+
+// Hatirlatma listesi degisince cihazlara ADB ile itilir (uygulama acilmasa da
+// alarm kurulsun). Cihazlar config.adbPush.devices (Tailscale ip:5555).
+const hatirlaticiAdb = createHatirlaticiAdb({
+  adb: cfg.adbPush?.adb || '',
+  devices: Array.isArray(cfg.adbPush?.devices) ? cfg.adbPush.devices : [],
+  liste: () => reminders.upcoming(),
   log: (msg) => console.warn(msg),
 });
 
@@ -564,10 +543,7 @@ const operationsTracker = createOperationsTracker({
 operationsTracker.start();
 const projectsStore = createProjectsStore({
   modules: OPERATIONS_MODULES,
-  // opencode-mcp.mjs config DOSYASI üzerinden çalışıyor (~/.config/opencode/
-  // opencode.json `mcp`) — v2 aynı dosyayı okuduğu için v1 sökülürken modül
-  // korundu, yalnız backend kimliği değişti.
-  mcpModules: { 'codex-app': codexMcp, 'opencode2-app': opencodeMcp },
+  mcpModules: { 'codex-app': codexMcp },
   coworkModule: cowork,
   labels: MODULE_LABELS,
 });
@@ -649,7 +625,7 @@ function getActiveState() {
           : (raw && Array.isArray(raw.processes)) ? raw.processes : [];
         if (procList.length > 0) {
           pid = procList[0].pid;
-          // status'a DOKUNMA: codex/opencode kalıcı app-server'ı boşta da
+          // status'a DOKUNMA: codex kalıcı app-server'ı boşta da
           // yaşatır — süreç var diye "running" demek ışığı hep yeşil bırakırdı.
           // "running" yalnız gerçekten koşan turdan (listSessions status'u) gelir.
         }
@@ -683,7 +659,6 @@ function getActiveState() {
 const BACKEND_MODULES = {
   'claude-app': claudeApp,
   'codex-app': codexApp,
-  'opencode2-app': opencode2App,
   'omp': omp,
   'agy': agy,
   'cowork': cowork,
@@ -793,7 +768,7 @@ registerGeneral(router, {
   },
   recordFileEvent: projectsStore.recordFileEvent,
   getCoworkRoot: () => claudeApp.coworkRoot(),
-  getLiteRoot: () => path.join(os.homedir(), 'AgentBridge-Lite'),
+  getLiteRoot: () => path.join(os.homedir(), 'Telekumanda-Lite'),
 });
 registerBackend(router, 'agy', agy, {
   extras: [
@@ -920,14 +895,13 @@ router.post('/backends/warm', async (req, res) => {
     b.targets,
     {
       'codex-app': codexApp,
-      'opencode2-app': opencode2App,
     },
     (backend, error) => console.warn(`[${backend}] open-tab warmup failed:`, error?.message || error),
   );
   json(res, 200, result);
 });
 
-// ── Cowork project container (Claude + Codex + OpenCode sessions) ──
+// ── Cowork project container (Claude + Codex + OMP sessions) ──
 router.get('/cowork/providers', async (req, res) => json(res, 200, await cowork.providerCatalog()));
 router.get('/cowork/projects', (req, res) => json(res, 200, cowork.listProjects()));
 router.post('/cowork/project', async (req, res) => {
@@ -1062,6 +1036,7 @@ router.post('/cowork/note/from-share', async (req, res) => {
     sourceScreenshot: path.basename(localPath),
   });
   if (!note) return json(res, 500, { ok: false, error: 'not yazilamadi' });
+  if (rec.tarih_saat) hatirlaticiAdb.planla();
   const noteId = cowork.listNotes().notes.find((n) => n.mdPath === note.path)?.id || '';
   console.log(`paylasim -> not: ${note.id} [${rec.tur}]${rec.tarih_saat ? ` (${rec.tarih_saat})` : ''}`);
   json(res, 200, {
@@ -1090,21 +1065,36 @@ router.post('/cowork/note/reminder', async (req, res) => {
   const note = cowork.listNotes().notes.find((n) => n.id === b.noteId);
   if (!note?.mdPath) return json(res, 404, { ok: false, error: 'not bulunamadı' });
   const r = reminders.setReminder(note.mdPath, b.at ?? null);
+  if (r.ok) hatirlaticiAdb.planla();
   json(res, r.ok ? 200 : 400, r.ok ? { ...r, noteId: note.id, title: note.title } : r);
+});
+// Cihazın yerel alarm kurması için yaklaşan (ve son 3 günün) hatırlatmaları:
+// [{noteId, title, summary, at(ms)}]. Uygulama açılışta çeker.
+router.get('/reminders', (req, res) => {
+  json(res, 200, { reminders: reminders.upcoming() });
 });
 router.post('/cowork/note/attach', async (req, res) => {
   const b = await body(req);
   const r = cowork.attachNote({ noteId: b.noteId, projectPath: b.projectPath });
+  // Not kimligi/varligi degisti: cihazdaki alarm listesi tazelensin (liste
+  // ayni kaldiysa itme atlanir).
+  if (r.ok) hatirlaticiAdb.planla();
   json(res, r.ok ? 200 : 400, r);
 });
 router.post('/cowork/note/rename', async (req, res) => {
   const b = await body(req);
   const r = cowork.renameNote({ noteId: b.noteId, name: b.name });
+  // Not kimligi/varligi degisti: cihazdaki alarm listesi tazelensin (liste
+  // ayni kaldiysa itme atlanir).
+  if (r.ok) hatirlaticiAdb.planla();
   json(res, r.ok ? 200 : 400, r);
 });
 router.post('/cowork/note/delete', async (req, res) => {
   const b = await body(req);
   const r = cowork.deleteNote({ noteId: b.noteId });
+  // Not kimligi/varligi degisti: cihazdaki alarm listesi tazelensin (liste
+  // ayni kaldiysa itme atlanir).
+  if (r.ok) hatirlaticiAdb.planla();
   json(res, r.ok ? 200 : 400, r);
 });
 router.post('/cowork/note/ai', async (req, res) => {
@@ -1327,10 +1317,10 @@ registerBackend(router, 'codex-app', codexApp, {
       const sid = new URL(req.url, 'http://x').searchParams.get('sessionId') || '';
       json(res, 200, codexApp.getChanges(sid));
     }},
-    // "Değişiklikler": /opencode-app/diff ile AYNI şema, çünkü telefonda ikisini
-    // de aynı gövde çiziyor. Yoklamaya binmez, kullanıcı görünümü açınca çekilir.
-    // Parametre adı iki türlü de kabul ediliyor (`session` opencode tarafının,
-    // `sessionId` bu backend'in geri kalanının alışkanlığı).
+    // "Değişiklikler" görünümünün kaynağı. Yoklamaya binmez, kullanıcı
+    // görünümü açınca çekilir. Parametre adı iki türlü de kabul ediliyor
+    // (`session` eski istemcilerin alışkanlığı, `sessionId` bu backend'in
+    // geri kalanının kullandığı ad).
     { method: 'GET', pattern: '/diff', handler: (req, res) => {
       const p = new URL(req.url, 'http://x').searchParams;
       const r = codexApp.sessionDiff({ sessionId: p.get('session') || p.get('sessionId') || '' });
@@ -1414,227 +1404,6 @@ registerBackend(router, 'codex-app', codexApp, {
     }},
   ],
 });
-// OpenCode (v2.0.x) — TEK OpenCode girişi. 30.09.2026'da v1 backend'i tümüyle
-// söküldü: npm `opencode-ai` kaldırıldı, global `opencode` = @opencode/cli,
-// 4096 sunucusu v2'nin arka plan servisi, veri kökü gerçek `~/.local/share`.
-// Katalog doğrulaması artık v1'in kataloğuyla DEĞİL, v2'nin kendi `opencode
-// models` CLI'siyle kesişiyor — kanca adaptörün içinde (bkz. cliCatalogIds).
-registerBackend(router, 'opencode2-app', opencode2App, {
-  beforePrompt: (b) => cowork.guardProviderPrompt({ provider: 'opencode2-app', sessionId: b.sessionId }),
-  getModels: (req) => opencode2App.getModels(new URL(req.url, 'http://x').searchParams.get('directory') || ''),
-  defaultModel: () => opencode2App.defaultModel(),
-  extras: [
-    { method: 'GET', pattern: '/thought', handler: (req, res) => {
-      const p = new URL(req.url, 'http://x').searchParams;
-      json(res, 200, opencode2App.getThought(p.get('sessionId') || '', parseInt(p.get('i') || '0', 10)));
-    }},
-    { method: 'POST', pattern: '/approve', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.approve({ sessionId: b.sessionId, allow: b.allow !== false, always: !!b.always });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/model', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.setModel({ sessionId: b.sessionId, model: b.model });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'GET', pattern: '/permission-modes', handler: (req, res) => json(res, 200, { modes: opencode2App.PERMISSION_MODES }) },
-    { method: 'POST', pattern: '/permission-mode', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.setPermissionMode({ sessionId: b.sessionId, permissionMode: b.permissionMode || b.mode });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'GET', pattern: '/agents', handler: async (req, res) => {
-      const r = await opencode2App.listAgents();
-      json(res, r.ok ? 200 : 502, r);
-    }},
-    { method: 'POST', pattern: '/agent', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.setAgent({ sessionId: b.sessionId, agent: b.agent });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Tur sürerken gelen mesaj: v2'de gerçek bir kuyruk var (delivery:"queue").
-    { method: 'POST', pattern: '/follow-up', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.followUp({ sessionId: b.sessionId, text: b.text });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Teşhis: v2 sunucusu ayakta mı, hangi izole kökü kullanıyor.
-    { method: 'GET', pattern: '/info', handler: async (req, res) => {
-      // directory: skill envanteri proje dizinine göre değişiyor (v2 `location`).
-      const dir = new URL(req.url, 'http://x').searchParams.get('directory') || '';
-      json(res, 200, await opencode2App.getInfo(dir));
-    }},
-    // ── v1 ile aynı sözleşme, v2 uçlarıyla (ölçüm notları modülde) ──────────
-    // "Değişiklikler": kullanıcı açınca çekilir, yoklamaya binmez.
-    { method: 'GET', pattern: '/diff', handler: async (req, res) => {
-      const p = new URL(req.url, 'http://x').searchParams;
-      const r = await opencode2App.sessionDiff({ sessionId: p.get('session') || p.get('sessionId') || '' });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Checkpoint listesi — kullanıcı mesajları; kullanıcı açınca çekilir.
-    { method: 'GET', pattern: '/checkpoints', handler: async (req, res) => {
-      const p = new URL(req.url, 'http://x').searchParams;
-      const r = await opencode2App.listCheckpoints({ sessionId: p.get('session') || p.get('sessionId') || '' });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/revert', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.revertToMessage({ sessionId: b.sessionId || b.session, messageID: b.messageID || b.messageId });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/unrevert', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.unrevertSession({ sessionId: b.sessionId || b.session });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Bağlam özetleme — fire-and-forget, sonuç snapshot'la akar.
-    { method: 'POST', pattern: '/compact', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.compact({ sessionId: b.sessionId || b.session });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Özel komutlar: liste 60 sn önbellekli, çalıştırma bir tur koşar.
-    // directory query: komutlar proje dizinine göre kayıtlı (ev dizininde boş);
-    // verilmezse köprü en yeni açık oturumun cwd'sini kullanır.
-    { method: 'GET', pattern: '/commands', handler: async (req, res) => {
-      const dir = new URL(req.url, 'http://x').searchParams.get('directory') || '';
-      json(res, 200, await opencode2App.listCommands(dir));
-    }},
-    { method: 'POST', pattern: '/command', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.runCommand({
-        sessionId: b.sessionId || b.session,
-        command: b.command,
-        arguments: b.arguments ?? b.args,
-      });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // AGENTS.md init — v2'de özel uç yok; prompt turu olarak koşar.
-    { method: 'POST', pattern: '/init', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.initAgentsFile({ sessionId: b.sessionId || b.session });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // Pin/rename — köprü-lokal metadata (v1 ile aynı sözleşme).
-    { method: 'POST', pattern: '/pin', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencode2App.pinThread({ id: b.id });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/unpin', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencode2App.unpinThread({ id: b.id });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/rename', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencode2App.renameThread({ id: b.id, title: b.title });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // ── Steer (26.09.2026 dalga 2): süren tura enjeksiyon — v2'de native, ──
-    // v1'de hiç yoktu. Telefonda "Yönlendir" tuşu bu ucu çağırır
-    // (MidTurnSend.kt: POST /<b>/steer, capability userInputSteer).
-    { method: 'POST', pattern: '/steer', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.steer({ sessionId: b.sessionId || b.session, text: b.text });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // ── Fork (buradan çatalla): orijinale dokunmadan hedef mesajın öncesine ──
-    // kadar kopya çocuk oturum. dropUserTurns sayımı rewind ile aynı; yanıt
-    // {ok, sessionId} — telefonda yeni sekmede açılır (claude ile aynı).
-    { method: 'POST', pattern: '/fork-from', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.forkFromMessage({ sessionId: b.sessionId || b.session, dropUserTurns: b.dropUserTurns });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // ── Oturum talimatları: AGENTS.md'ye dokunmadan oturuma kalıcı kural. ───
-    // Telefon UI'sı henüz yok; REST/web'den kullanılır.
-    { method: 'GET', pattern: '/instructions', handler: async (req, res) => {
-      const p = new URL(req.url, 'http://x').searchParams;
-      const r = await opencode2App.listInstructions({ sessionId: p.get('session') || p.get('sessionId') || '' });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/instructions', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.putInstruction({ sessionId: b.sessionId || b.session, key: b.key, value: b.value });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'DELETE', pattern: '/instructions', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.deleteInstruction({ sessionId: b.sessionId || b.session, key: b.key });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // ── Kayıtlı izin kuralları: "always" birikiminin listesi ve tek tek ────
-    // kaldırılması. Telefon UI'sı henüz yok; REST/web'den kullanılır.
-    { method: 'GET', pattern: '/permissions/saved', handler: async (req, res) => {
-      json(res, 200, await opencode2App.listSavedPermissions());
-    }},
-    { method: 'POST', pattern: '/permissions/saved/delete', handler: async (req, res) => {
-      const b = await body(req);
-      const r = await opencode2App.deleteSavedPermission({ id: b.id });
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    // ── v1 sökülürken buraya TAŞINAN uçlar (30.09.2026) ───────────────────
-    // RunPod pod denetimi: sağlayıcı `runpod` (127.0.0.1:18001 SSH tüneli)
-    // OpenCode config'inde duruyor, pod'u açıp kapatan uç de OpenCode
-    // sekmesinin altında. Sunucu sürümünden bağımsız, runpod modülü işi yapar.
-    { method: 'GET', pattern: '/runpod/status', handler: async (req, res) => {
-      json(res, 200, await runpod.status());
-    }},
-    { method: 'POST', pattern: '/runpod/start', handler: (req, res) => {
-      const r = runpod.start();
-      json(res, r.ok ? 202 : 409, r);
-    }},
-    { method: 'POST', pattern: '/runpod/stop', handler: (req, res) => {
-      const r = runpod.stop();
-      json(res, r.ok ? 202 : 409, r);
-    }},
-    // ── Silinmis oturum kalintilarinin imhasi (30.09.2026) ────────────────
-    // opencode'da oturum silmek icerigi yok etmiyor: freelist sayfalari ve
-    // checkpoint edilmemis -wal cerceveleri mesaj metnini aynen tutuyor.
-    // Telefon "Ayarlar > Gelismis" kartindan tetikler; is CoworkSpaces
-    // altindaki oturum-imha.ps1'de (masaustunden de ayni betik kosuyor).
-    // ?refresh=1 TTL'i atlayip yeniden tarar; tarama 300 MB okudugu icin
-    // varsayilan olarak 60 sn onbelleklenir.
-    { method: 'GET', pattern: '/purge/status', handler: async (req, res) => {
-      const p = new URL(req.url, 'http://x').searchParams;
-      const refresh = p.get('refresh') === '1' || p.get('refresh') === 'true';
-      json(res, 200, await oturumImha.report({ refresh }));
-    }},
-    { method: 'POST', pattern: '/purge/run', handler: async (req, res) => {
-      const b = await body(req);
-      const r = oturumImha.run({
-        eskiDb: !!b.eskiDb,
-        snapshotSil: !!b.snapshot,
-        loguKoru: !!b.loguKoru,
-        kanit: Array.isArray(b.kanit) ? b.kanit : [],
-      });
-      json(res, r.ok ? 202 : 409, r);
-    }},
-    // OpenCode MCP yönetimi: opencode.json `mcp` anahtarını DOSYADAN okuyup
-    // yazar (CLI/sunucu gerekmez), v2 aynı dosyayı okuyor. Değişiklik yeni
-    // sunucu sürecinde geçerli olur — çalışan sunucu config'i yeniden okumaz.
-    { method: 'GET', pattern: '/mcp/servers', handler: (req, res) => {
-      json(res, 200, opencodeMcp.listServers());
-    }},
-    { method: 'POST', pattern: '/mcp/server', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencodeMcp.saveServer(b);
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'POST', pattern: '/mcp/remove', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencodeMcp.removeServer({ name: b.name });
-      json(res, r.ok ? 200 : 404, r);
-    }},
-    { method: 'POST', pattern: '/mcp/toggle', handler: async (req, res) => {
-      const b = await body(req);
-      const r = opencodeMcp.toggleServer({ name: b.name, enabled: !!b.enabled });
-      json(res, r.ok ? 200 : 404, r);
-    }},
-  ],
-});
 registerBackend(router, 'omp', omp, {
   getModels: () => omp.getModels(),
   defaultModel: () => omp.defaultModel(),
@@ -1707,6 +1476,7 @@ registerBackend(router, 'omp', omp, {
     }},
   ],
 });
+
 registerMcp(router, { mcp });
 registerUpdate(router);
 
@@ -1714,8 +1484,6 @@ registerUpdate(router);
 // handles in the session map, so list/kill from there instead of the wrapper scan.
 router.get('/agy/processes', (req, res) => json(res, 200, agy.listLiveProcesses()));
 router.post('/agy/kill-all', (req, res) => json(res, 200, agy.killAllSessions()));
-router.get('/opencode2-app/processes', (req, res) => json(res, 200, opencode2App.listLiveProcesses()));
-router.post('/opencode2-app/kill-all', (req, res) => json(res, 200, opencode2App.killAllSessions()));
 router.get('/codex-app/processes', (req, res) => json(res, 200, codexApp.listLiveProcesses()));
 router.post('/codex-app/kill-all', (req, res) => json(res, 200, codexApp.killAllSessions()));
 router.get('/claude-app/processes', (req, res) => json(res, 200, claudeApp.listLiveProcesses()));
@@ -1727,9 +1495,7 @@ router.post('/omp/kill-all', (req, res) => json(res, 200, omp.killAllSessions())
 // dropUserTurns = hedef kullanıcı mesajından (dahil) sona kadarki kullanıcı-mesajı
 // sayısı. Sondan sayım: telefon ve bridge görünümleri cap yüzünden farklı uzunlukta
 // olsa da hedef→son aralığı iki tarafta aynıdır. claude-app yeni sessionId dönebilir
-// (transcript-fork). opencode-app'te bu ucun kendi mekanizması YOK: hedefi mesaj
-// kimliğine çevirip /opencode-app/revert ile aynı gövdeye düşüyor, böylece iki
-// kapıdan da aynı "geri sarıldı" durumu (ve unrevert şansı) çıkıyor.
+// (transcript-fork).
 router.post('/claude-app/rewind', async (req, res) => {
   const b = await body(req);
   const r = claudeApp.rewindSession({ sessionId: b.sessionId, dropUserTurns: b.dropUserTurns });
@@ -1740,17 +1506,10 @@ router.post('/codex-app/rewind', async (req, res) => {
   const r = await codexApp.rewindSession({ sessionId: b.sessionId, dropUserTurns: b.dropUserTurns });
   json(res, r.ok ? 200 : 400, r);
 });
-router.post('/opencode2-app/rewind', async (req, res) => {
-  const b = await body(req);
-  const r = await opencode2App.rewindSession({ sessionId: b.sessionId, dropUserTurns: b.dropUserTurns });
-  json(res, r.ok ? 200 : 400, r);
-});
-// Compact (opencode bağlamını AI ile özetle) OpenCode backend'inin extras
-// listesinde: `/opencode2-app/compact`. v1'in ayrı top-level ucu söküldü.
 
 // ── Fork (buradan çatalla): POST /<backend>/fork-from { sessionId, dropUserTurns }
 // Rewind ile aynı sayım; farkı orijinal oturumun aynen kalması ve cevaptaki YENİ
-// sessionId'nin telefonda ayrı sekmede açılması. opencode sunucusunda fork ucu yok.
+// sessionId'nin telefonda ayrı sekmede açılması.
 router.post('/claude-app/fork-from', async (req, res) => {
   const b = await body(req);
   const r = claudeApp.forkFromMessage({ sessionId: b.sessionId, dropUserTurns: b.dropUserTurns });
@@ -1820,11 +1579,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ── WebSocket servers ──────────────────────────────────────────────────────
-const wssCodexApp = new WebSocketServer({ noServer: true });
-const wssClaudeApp = new WebSocketServer({ noServer: true });
-const wssOpenCode2App = new WebSocketServer({ noServer: true });
-const wssOmp = new WebSocketServer({ noServer: true });
-const wssAgy = new WebSocketServer({ noServer: true });
+// permessage-deflate (21.10.2026): ws'de varsayılan kapalı. Tam snapshot'lar
+// (yeniden bağlanma, delta geçmişi kirliyse) ve token akışı düz gidiyordu.
+// OkHttp ve tarayıcı eklentiyi kendiliğinden müzakere ediyor; 1 KB altı
+// çerçeveler sıkıştırılmaz.
+const WS_SECENEKLERI = { noServer: true, perMessageDeflate: { threshold: 1024 } };
+const wssCodexApp = new WebSocketServer(WS_SECENEKLERI);
+const wssClaudeApp = new WebSocketServer(WS_SECENEKLERI);
+const wssOmp = new WebSocketServer(WS_SECENEKLERI);
+const wssAgy = new WebSocketServer(WS_SECENEKLERI);
 
 server.on('upgrade', (req, socket, head) => {
   const u = new URL(req.url, 'http://x');
@@ -1832,8 +1595,6 @@ server.on('upgrade', (req, socket, head) => {
     wssCodexApp.handleUpgrade(req, socket, head, sock => wssCodexApp.emit('connection', sock, req));
   } else if (u.pathname === '/claude-app/stream') {
     wssClaudeApp.handleUpgrade(req, socket, head, sock => wssClaudeApp.emit('connection', sock, req));
-  } else if (u.pathname === '/opencode2-app/stream') {
-    wssOpenCode2App.handleUpgrade(req, socket, head, sock => wssOpenCode2App.emit('connection', sock, req));
   } else if (u.pathname === '/omp/stream') {
     wssOmp.handleUpgrade(req, socket, head, sock => wssOmp.emit('connection', sock, req));
   } else if (u.pathname === '/agy/stream') {
@@ -1857,12 +1618,6 @@ wssClaudeApp.on('connection', (sock, req) => {
   claudeApp.subscribe(sid, sock, { since: params.get('since'), delta: params.get('delta') === '1' });
 });
 
-wssOpenCode2App.on('connection', (sock, req) => {
-  if (!auth(req)) { sock.close(1008, 'unauthorized'); return; }
-  const params = new URL(req.url, 'http://x').searchParams;
-  opencode2App.subscribe(params.get('session') || '', sock, { since: params.get('since'), delta: params.get('delta') === '1' });
-});
-
 wssOmp.on('connection', (sock, req) => {
   if (!auth(req)) { sock.close(1008, 'unauthorized'); return; }
   const params = new URL(req.url, 'http://x').searchParams;
@@ -1879,7 +1634,7 @@ wssAgy.on('connection', (sock, req) => {
 
 // ── Startup ───────────────────────────────────────────────────────────────
 if (import.meta.main) {
-  try { codexApp.cleanupTmp(); opencode2App.cleanupTmp(); agy.cleanupTmp(); } catch (e) { console.warn('[server] startup cleanup failed:', e); }
+  try { codexApp.cleanupTmp(); agy.cleanupTmp(); } catch (e) { console.warn('[server] startup cleanup failed:', e); }
 
   // bridge.log rotasyonu (madde 14): açılışta bir kez, sonra her 10 dakikada
   // bir boyut kontrolü. 5 MB üzeri → .1'e taşı, en fazla 3 nesil (~15 MB tavan).
@@ -1896,10 +1651,6 @@ if (import.meta.main) {
       console.warn('[server] log rotation failed:', e?.message || e);
     }
   }, ROTATION_DEFAULTS.intervalMs).unref?.();
-
-  // opencode disk bakımı (6 saatlik sweepDisk) v1 ile birlikte GİTTİ: v2
-  // adaptörünün böyle bir ucu yok, v2 kendi deposunu yönetiyor. Genel oturum
-  // budaması session-prune.mjs'de sürüyor (DISK_SESSION_SOURCES).
 
   server.listen(cfg.port, cfg.host, () => {
     console.log(`Bridge listening on http://${cfg.host}:${cfg.port}  (auth required)`);

@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * Uygulama süreci Android tarafından öldürülse bile saklanan periyodik kontrol.
  *
  * WorkManager işi kendi veritabanında ve JobScheduler'da tutar; zamanı gelince
- * AgentBridge sürecini yalnız bu kısa kontrol için yeniden başlatabilir. Android'in
+ * Telekumanda sürecini yalnız bu kısa kontrol için yeniden başlatabilir. Android'in
  * izin verdiği en kısa periyodik aralık 15 dakikadır; pil optimizasyonları çalışmayı
  * geciktirebilir. Uygulama açıkkenki dakikalık healer bunun hızlı katmanı olarak
  * ayrıca çalışmaya devam eder.

@@ -172,7 +172,7 @@ class FileBrowserDelegate(
 
     // ---------- telefon tarafı ----------
     // Aynı gezgin UI'ı, farklı kaynak. Köprüye hiç gitmez; PhoneFiles saf JVM
-    // olduğu için burada durabiliyor. Kök çözümü (/sdcard/AgentBridge) ve izin
+    // olduğu için burada durabiliyor. Kök çözümü (/sdcard/Telekumanda) ve izin
     // Android'e bağlı, onlar çağıran tarafta (PhoneStorage).
 
     fun loadPhoneDir(path: String) = scope.launch {

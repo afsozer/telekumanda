@@ -11,11 +11,9 @@ import org.junit.Test
  * Codex'in "Değişiklikler" yolu — köprüden ekrana.
  *
  * Bu yol aylarca YARIM durdu: köprü ucu, istemci çağrısı ve delege metodu
- * vardı ama hiçbir arayüz çağırmıyordu. [OpencodeAppActionsDelegateTest]'in
- * diff testleriyle aynı davranış sözleşmesi burada da kilitleniyor, çünkü
- * telefonda ikisini de AYNI Compose gövdesi çiziyor: bir backend'de "hata
- * anında liste korunur" olup diğerinde olmaması, aynı ekranın sekmeye göre
- * farklı davranması demek olurdu.
+ * vardı ama hiçbir arayüz çağırmıyordu. Aşağıdaki testler davranış
+ * sözleşmesini kilitler: "hata anında liste korunur" kuralı ekranın tek
+ * gövdesinde geçerli olmalı.
  */
 class CodexAppDiffDelegateTest {
 
@@ -40,7 +38,7 @@ class CodexAppDiffDelegateTest {
     )
 
     @Test
-    fun diffOpencodeIleAyniSemadanOkunur() {
+    fun diffOrtakSemadanOkunur() {
         val client = FakeBridgeClient().apply {
             jsonResponseProvider = {
                 JSONObject(
@@ -55,8 +53,7 @@ class CodexAppDiffDelegateTest {
         var state = RemoteUiState(codex = CodexUiState(sessionId = "cx-1"))
         delege(client, { state }) { reducer -> state = reducer(state) }.loadDiff()
 
-        // Uç codex'in kendi ucu; şema opencode'unkiyle aynı olduğu için
-        // ayrıştırıcı ortak.
+        // Uç codex'in kendi ucu; şema ortak olduğu için ayrıştırıcı ortak.
         assertEquals("/codex-app/diff?session=cx-1", client.recordedRequests.single().path)
         val diff = state.codex.diff!!
         assertEquals(listOf("src/a.ts", "yeni.md"), diff.files.map { it.path })

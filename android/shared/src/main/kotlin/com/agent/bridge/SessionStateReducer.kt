@@ -19,9 +19,7 @@ object SessionStateReducer {
     }
 
     // A1 savunması yalnız claude-app oturum kimliği anlamlıyken uygulanır; aksi halde
-    // codex/opencode akışlarının id'leri claudeAppSessionId'yi kirletir.
-    // opencode alanları (ajan seçimi gibi) yalnız opencode aktifken yazılır;
-    // aksi halde başka backend'in snapshot'ı opencode state'ini kirletir.
+    // codex/omp akışlarının id'leri claudeAppSessionId'yi kirletir.
     private fun claudeAppActive(state: RemoteUiState): Boolean =
         state.backend == Backend.CLAUDE_APP.id ||
             (state.backend == Backend.COWORK.id && normalizeCoworkProvider(state.coworkProvider) == Backend.CLAUDE_APP.id)
@@ -31,18 +29,15 @@ object SessionStateReducer {
      * yalnız aktif provider'ın state'ine yazar; koşulsuz tek bir provider'a
      * yazmak diğerlerinin model picker'ını boş bırakıyordu.
      *
-     * Bugün yalnız opencode buraya düşüyor (diğer ACP backend'i 1 Ağu 2026'da kaldırıldı).
-     * Dal yapısı korundu: ikinci bir ACP backend'i eklenirse izolasyonu yeniden
-     * kurmak yerine sadece dal eklemek yeter. Bunu doğrulayan test iki backend
-     * gerektirdiği için silindi — yeni backend gelirse geri yazılmalı.
+     * Bugün yalnız OMP buraya düşüyor. Dal
+     * yapısı korundu: yeni bir backend eklenirse yalnız dal eklemek yeter.
      */
-    // Sağlayıcıların izin kipleri ORTAK DEĞİL: Claude'un "auto"su opencode'da
+    // Sağlayıcıların izin kipleri ORTAK DEĞİL: Claude'un "auto"su OMP'de
     // geçersiz ve köprü 400 döndürüyor. applyStreamSnapshot gelen kareyi
     // sahibine bakmadan AKTİF backend'e yazdığı için, sekme değişimi sırasında
-    // gelen geç bir Claude karesi opencode state'ine "auto" yazabiliyordu;
+    // gelen geç bir Claude karesi başka sağlayıcının state'ine "auto" yazabiliyordu;
     // sonraki "oturuma devam et" çağrısı da "invalid permission mode: auto"
     // ile düşüyordu (canlıda ölçüldü, 15 Ağu 2026). Yabancı kipi burada ele.
-    private val OPENCODE_FALLBACK_MODES = setOf("yolo", "ask", "plan")
     private val OMP_FALLBACK_MODES = setOf("yolo", "write", "ask")
 
     private fun acceptMode(value: String?, known: List<PermissionMode>, fallback: Set<String>): String? {
@@ -66,22 +61,6 @@ object SessionStateReducer {
             state.backend
         }
         return when (provider) {
-            Backend.OPENCODE2_APP.id -> state.copy(
-                opencode = state.opencode.copy(
-                    availableModels = availableModels ?: state.opencode.availableModels,
-                    permissionMode = acceptMode(permissionMode, state.opencode.permissionModes, OPENCODE_FALLBACK_MODES)
-                        ?: state.opencode.permissionMode,
-                    permissionModes = permissionModes ?: state.opencode.permissionModes,
-                ),
-            )
-            Backend.OPENCODE2_APP.id -> state.copy(
-                opencode = state.opencode.copy(
-                    availableModels = availableModels ?: state.opencode.availableModels,
-                    permissionMode = acceptMode(permissionMode, state.opencode.permissionModes, OPENCODE_FALLBACK_MODES)
-                        ?: state.opencode.permissionMode,
-                    permissionModes = permissionModes ?: state.opencode.permissionModes,
-                ),
-            )
             Backend.OMP.id -> state.copy(
                 omp = state.omp.copy(
                     availableModels = availableModels ?: state.omp.availableModels,
@@ -159,33 +138,8 @@ object SessionStateReducer {
             ),
             cowork = state.cowork.copy(outputs = snapshot.outputs ?: state.cowork.outputs),
         )
-        // Ajan seçimi / pano / geri sarma / bağlam: AKTİF OpenCode AİLESİNE
-        // yazılır. Eski kapı (`opencodeAktif`) yalnız v1'i tanıyordu; v2
-        // sekmesinde bu alanlar sessizce düşüyor, geri sarma şeridi ve ajan
-        // çipi hiç güncellenmiyordu. Hiçbir OpenCode ailesi aktif değilse
-        // HİÇBİR ŞEY yazılmaz — başka sağlayıcının geç gelen karesi opencode
-        // kutularını süpürmesin (bu blokun asıl varlık sebebi).
-        val ocId = state.aktifOpencodeBackendId()
-        val ocReduced = if (ocId == null) reduced else reduced.withOpencodeFamily(ocId) { f ->
-            f.copy(
-                // "" geçerli bir değer (otomatik), o yüzden null kontrolü.
-                agent = snapshot.agent ?: f.agent,
-                resolvedAgent = snapshot.resolvedAgent ?: f.resolvedAgent,
-                // todos null = karede alan yok -> dokunma. Boş liste gerçek bir
-                // temizlik. contextPct'te üç-durumu `contextPctPresent` taşıyor:
-                // null tek başına "ölçülemiyor" da demek olabiliyor.
-                todos = snapshot.todos ?: f.todos,
-                contextPct = if (snapshot.contextPctPresent) snapshot.contextPct else f.contextPct,
-                // Geri sarma şeridi: alan hiç yoksa (eski köprü) dokunma, alan
-                // var null ise şeridi indir.
-                reverted = if (snapshot.revertedPresent) snapshot.reverted else f.reverted,
-                subagents = snapshot.subagents ?: f.subagents,
-                // Paylaşım linki: "" yayın kalkmış demek.
-                share = snapshot.share ?: f.share,
-            )
-        }
         return reduceBackendOptions(
-            state = ocReduced,
+            state = reduced,
             availableModels = snapshot.availableModels,
             permissionMode = snapshot.permissionMode,
             permissionModes = snapshot.permissionModes,

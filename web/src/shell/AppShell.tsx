@@ -1,4 +1,4 @@
-// Üst düzey gezinme: Sohbet / Ara / Projeler / Görsel / Notlar / Kullanım.
+// Üst düzey gezinme: Sohbet / Ara / Projeler / Notlar / Kullanım.
 //
 // Şerit DİKEY, yatay değil: ekran 1920px geniş ve yatay yer bol, dikey yer ise
 // sohbetin okuma alanı — üst çubuğu alta indirmenin sebebi de oydu. 3,5rem'lik

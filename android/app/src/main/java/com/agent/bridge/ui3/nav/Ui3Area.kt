@@ -20,6 +20,9 @@ import com.agent.bridge.BuildConfig
  * boş; kök onu ayrı ele alır.
  */
 internal enum class Ui3Area(val rota: String, val etiket: String) {
+    // Kovan kabuğunun kökü (7 Kas 2026): dock kalktı, gezinme buradan başlar.
+    // Lite'ta kullanılmaz; Lite tek sohbetle açılır.
+    Ana("home", "Telekumanda"),
     Oturumlar("", "Oturumlar"),
     Sohbet("chat", "Sohbet"),
     // Spotlight dock'ta Operasyon'un YERİNİ aldı (kullanıcı kararı, 17.08.2026):

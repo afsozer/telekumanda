@@ -28,13 +28,11 @@ data class CoworkProviderOption(val id: String, val label: String)
 val COWORK_PROVIDER_OPTIONS = listOf(
     CoworkProviderOption("claude-app", "Claude"),
     CoworkProviderOption("codex-app", "Codex"),
-    CoworkProviderOption("opencode2-app", "OpenCode"),
-    CoworkProviderOption("opencode2-app", "OpenCode"),
     CoworkProviderOption("omp", "Oh My Pi"),
 )
 
 fun normalizeCoworkProvider(provider: String): String = when (provider) {
-    "codex-app", "opencode2-app", "omp" -> provider
+    "codex-app", "omp" -> provider
     else -> "claude-app"
 }
 
@@ -45,7 +43,6 @@ fun isCoworkCodexProvider(provider: String): Boolean =
 
 fun coworkProviderLabel(provider: String): String = when (normalizeCoworkProvider(provider)) {
     "codex-app" -> "Codex"
-    "opencode2-app" -> "OpenCode"
     "omp" -> "Oh My Pi"
     else -> "Claude"
 }
@@ -74,6 +71,6 @@ fun coworkModelProvider(provider: String): String =
 fun coworkApprovalBackend(backend: String?, coworkProvider: String): String =
     when (backend) {
         "cowork" -> normalizeCoworkProvider(coworkProvider)
-        "codex-app", "opencode2-app", "omp" -> backend
+        "codex-app", "omp" -> backend
         else -> "claude-app"
     }

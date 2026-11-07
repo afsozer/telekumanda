@@ -79,7 +79,7 @@ private const val ASGARI_SORGU = 2
  *  1. **Açık oturumlar** — `visibleTabs`, YERELDE süzülür. Köprüye gitmeye gerek
  *     yok; zaten elde ve sorgu boşken palet bir başlatıcı gibi çalışsın.
  *  2. **Eylemler** — çağıranın verdiği komut listesi (yeni oturum, dosyalar,
- *     notlar, projeler, ayarlar…). Etiket ve detayda süzülür.
+ *     görsel üret, notlar, projeler, ayarlar…). Etiket ve detayda süzülür.
  *  3. **Sonuçlar** — köprünün genel araması (`/search/global`): proje, DİSKTEKİ
  *     oturum ve mesaj isabetleri. Yalnız sorgu [ASGARI_SORGU] karakteri geçince
  *     istenir; tek harfe bütün geçmişi taratmak boşuna tur.
@@ -118,7 +118,7 @@ internal fun ColumnScope.Ui3Spotlight(
         onDispose { actions.dismissGlobalSearch() }
     }
 
-    SheetBasligi("SPOTLIGHT", "Oturum, komut ve mesaj — tek yerde")
+    SheetBasligi("Ara", "Oturum, komut ve mesaj — tek yerde")
 
     // ---- arama alanı
     Row(
@@ -181,7 +181,7 @@ internal fun ColumnScope.Ui3Spotlight(
             .padding(bottom = Ui3Tokens.s8),
     ) {
         if (sekmeler.isNotEmpty()) {
-            Baslik("AÇIK OTURUMLAR")
+            Baslik("Açık oturumlar")
             sekmeler.forEach { sekme ->
                 val etiket = sekme.title.ifBlank { BACKEND_LABELS[sekme.backend] ?: sekme.backend }
                 val durum = uiState.tabStatuses[sekme.id]
@@ -207,7 +207,7 @@ internal fun ColumnScope.Ui3Spotlight(
         }
 
         if (secilenEylemler.isNotEmpty()) {
-            Baslik("EYLEMLER")
+            Baslik("Eylemler")
             secilenEylemler.forEach { eylem ->
                 Satir(
                     ikon = eylem.ikon,
@@ -235,7 +235,7 @@ internal fun ColumnScope.Ui3Spotlight(
                 arama.warnings.forEach { Bilgi(it) }
             }
             else -> {
-                Baslik("SONUÇLAR")
+                Baslik("Sonuçlar")
                 // EKSİK ARAMA UYARISI: köprü bir sağlayıcıyı süre bütçesinde
                 // bitiremediyse sonuç listesi yarımdır. Uyarı gösterilmezse
                 // "bulunamadı" ile "bakılamadı" aynı görünür — bu ayrımı

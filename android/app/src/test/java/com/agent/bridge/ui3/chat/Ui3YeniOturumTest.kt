@@ -7,7 +7,6 @@ class Ui3YeniOturumTest {
     @Test
     fun `lite saglayici kartlari kisa aciklama verir`() {
         assertEquals("Uzun sohbetler ve genel görevler", liteSaglayiciAciklamasi("claude-app"))
-        assertEquals("Kodlama ve proje işleri", liteSaglayiciAciklamasi("codex-app"))
         assertEquals("Hızlı, genel amaçlı yardım", liteSaglayiciAciklamasi("agy"))
     }
 

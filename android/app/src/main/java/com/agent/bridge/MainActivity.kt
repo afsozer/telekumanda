@@ -7,8 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -32,8 +32,6 @@ class MainActivity : ComponentActivity() {
     // (API 29+) her odaklanışta ateşlenir — healer için ek tetik.
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
         super.onTopResumedActivityChanged(isTopResumedActivity)
-        // Bildirim susturması için en doğru sinyal bu: bölünmüş ekranda alttaki
-        // pencere RESUMED olsa da "üstte" değildir, bildirimi hak eder.
         if (!BuildConfig.IS_LITE) {
             AppForeground.setForeground(isTopResumedActivity)
             if (isTopResumedActivity) WirelessDebugHealer.heal(this)
@@ -62,20 +60,26 @@ class MainActivity : ComponentActivity() {
             PhoneStorageMigration.migrateIfNeeded(this)
         }
         handleShareIntent(intent)
-        if (!BuildConfig.IS_LITE) {
-            handleApprovalIntent(intent)
-            handleReminderIntent(intent)
-        }
         handleViewFileIntent(intent)
-        // Arka plandan dönüşte (5 dk Instagram sonrası) akış soketi çoğu kez yarı-açık
-        // kalıyor; ON_START'ta soketi anında tazele + konuşmayı bir kez çek ki sohbet
-        // ping/backoff süresi (15-20 sn) beklemeden aksın. İlk açılışta no-op.
+        if (!BuildConfig.IS_LITE) handleReminderIntent(intent)
+        // ON_START: arka planda kapatılan akış soketini since ile yeniden aç,
+        // konuşmayı bir kez çek, sohbet yoklamasını uyandır. İlk açılışta no-op.
+        // ON_STOP: soketi kapat ve yoklamayı uyut — uygulama görünmezken ağ
+        // trafiği yok (21.10.2026: arka planda 10 saatte 247 MB mobil veri).
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
-                viewModel.onAppForeground()
-                // Öne her gelişte dene: ağ değişimi uygulama arka plandayken
-                // olduysa onCreate/callback kaçmış olabilir.
-                if (!BuildConfig.IS_LITE) WirelessDebugHealer.heal(this)
+            when (event) {
+                Lifecycle.Event.ON_START -> {
+                    SohbetYoklamasi.gorunurlukDegisti(true)
+                    viewModel.onAppForeground()
+                    // Öne her gelişte dene: ağ değişimi uygulama arka plandayken
+                    // olduysa onCreate/callback kaçmış olabilir.
+                    if (!BuildConfig.IS_LITE) WirelessDebugHealer.heal(this)
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    SohbetYoklamasi.gorunurlukDegisti(false)
+                    viewModel.onAppBackground()
+                }
+                else -> Unit
             }
         })
         // Tablette ağ değişince kapanan Kablosuz hata ayıklamayı kendi kendine
@@ -95,7 +99,8 @@ class MainActivity : ComponentActivity() {
             run {
                 val uiState by viewModel.uiState.collectAsState()
                 val alertHostState = remember { AlertHostState() }
-                val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+                // Yalnız cihaz-yerel hatırlatmalar için (Hatirlaticilar.kt).
+                val bildirimIzni = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
                 LaunchedEffect(Unit) {
                     viewModel.messages.collect { alertHostState.show(it) }
@@ -106,7 +111,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     viewModel.checkForUpdate(showNoUpdateMessage = false)
                     if (!BuildConfig.IS_LITE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        bildirimIzni.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
 
@@ -141,11 +146,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleShareIntent(intent)
-        if (!BuildConfig.IS_LITE) {
-            handleApprovalIntent(intent)
-            handleReminderIntent(intent)
-        }
         handleViewFileIntent(intent)
+        if (!BuildConfig.IS_LITE) handleReminderIntent(intent)
+    }
+
+    // Hatırlatma bildirimine dokunuldu: notu aç. Extra tüketilir ki yapılandırma
+    // değişiminde (döndürme) aynı not tekrar açılmasın.
+    private fun handleReminderIntent(intent: Intent?) {
+        val noteId = intent?.getStringExtra(Hatirlaticilar.EKSTRA_NOT).orEmpty()
+        if (noteId.isBlank()) return
+        intent?.removeExtra(Hatirlaticilar.EKSTRA_NOT)
+        viewModel.openCoworkNoteById(noteId)
     }
 
     /**
@@ -196,7 +207,7 @@ class MainActivity : ComponentActivity() {
             }
             if (kopya != null) {
                 ac(kopya)
-                viewModel.notifyUser("Özgün dosyaya yazılamıyor; AgentBridge klasörüne kopya açıldı")
+                viewModel.notifyUser("Özgün dosyaya yazılamıyor; Telekumanda klasörüne kopya açıldı")
             } else {
                 viewModel.notifyUser("Dosya açılamadı")
             }
@@ -281,23 +292,5 @@ class MainActivity : ComponentActivity() {
             if (shared.isEmpty()) viewModel.notifyUser("Paylaşılan dosya okunamadı")
             else viewModel.offerSharedFiles(shared)
         }
-    }
-
-    private fun handleReminderIntent(intent: Intent?) {
-        val noteId = intent?.getStringExtra("reminderNoteId").orEmpty()
-        if (noteId.isBlank()) return
-        // Extra tüketilir: yapılandırma değişiminde (döndürme) aynı not tekrar
-        // açılmasın — onay akışıyla aynı desen.
-        intent?.removeExtra("reminderNoteId")
-        viewModel.openCoworkNoteById(noteId)
-    }
-
-    private fun handleApprovalIntent(intent: Intent?) {
-        val backend = intent?.getStringExtra("approvalBackend").orEmpty()
-        val sessionId = intent?.getStringExtra("approvalSessionId").orEmpty()
-        if (backend.isBlank() || sessionId.isBlank()) return
-        intent?.removeExtra("approvalBackend")
-        intent?.removeExtra("approvalSessionId")
-        viewModel.openApprovalSession(backend, sessionId)
     }
 }

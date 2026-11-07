@@ -14,9 +14,9 @@ import org.junit.Test
  * ve yama "iki satır silinip iki satır eklenmiş" gibi görünür. Test o sırayı
  * kilitliyor.
  *
- * İki yama biçimi de sınanıyor (ikisi de canlı ölçüldü, opencode serve
- * 1.18.21): oturum turlarının diff'i jsdiff biçiminde geliyor (`Index: dosya`
- * + `===` çizgisi), git tarafı `diff --git` biçiminde.
+ * İki yama biçimi de sınanıyor (ikisi de canlı ölçüldü): oturum turlarının
+ * diff'i jsdiff biçiminde geliyor (`Index: dosya` + `===` çizgisi), git tarafı
+ * `diff --git` biçiminde.
  */
 class Ui3DegisikliklerTest {
 

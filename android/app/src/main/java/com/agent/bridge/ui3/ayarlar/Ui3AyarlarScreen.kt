@@ -52,7 +52,6 @@ internal object Ui3AyarRota {
     const val SAGLAYICILAR = "settings/providers"
     const val MCP = "settings/mcp"
     const val MCP_EKLE = "settings/mcp/add"
-    const val BILDIRIMLER = "settings/notifications"
     const val GUNCELLEME = "settings/update"
     const val GELISMIS = "settings/advanced"
 }
@@ -61,9 +60,8 @@ internal object Ui3AyarRota {
  * ui3 Ayarlar kökü — ui2'nin `SettingsRootScreen`'iyle AYNI satırlar ve aynı
  * özet metinleri (`settingsSummary`), ui3 malzemesiyle.
  *
- * Alt ekranlar (bağlantı, sağlayıcılar, MCP, bildirimler, güncelleme,
- * gelişmiş) ui2'den olduğu gibi çağrılıyor ve `Ui2Theme` ile sarılıyor —
- * eşleme akışı, pil optimizasyonu izni, OTA indirme, MCP hedefleri gibi
+ * Alt ekranlar (bağlantı, sağlayıcılar, MCP, güncelleme, gelişmiş) ui2'den
+ * olduğu gibi çağrılıyor ve `Ui2Theme` ile sarılıyor — eşleme akışı, OTA indirme, MCP hedefleri gibi
  * davranışları yeniden yazmak sessiz regresyon üretirdi. Kabuk ui3, içerik ui2.
  *
  * "Yeni arayüz (ön izleme)" anahtarı BURADA da duruyor: ui3'ten ui2'ye dönmenin
@@ -90,7 +88,7 @@ internal fun Ui3AyarlarScreen(
             .testTag("ekran_ayarlar"),
         verticalArrangement = Arrangement.spacedBy(Ui3Tokens.s12),
     ) {
-        Bolum("BAĞLANTI VE GÜVENLİK")
+        Bolum("Bağlantı ve güvenlik")
         AyarKarti {
             AyarSatiri(
                 ikon = Icons.Outlined.Link,
@@ -122,7 +120,7 @@ internal fun Ui3AyarlarScreen(
         }
 
         if (!uiState.liteEdition) {
-            Bolum("SAĞLAYICILAR")
+            Bolum("Sağlayıcılar")
             AyarKarti {
             AyarSatiri(
                 ikon = Icons.Outlined.Hub,
@@ -133,19 +131,13 @@ internal fun Ui3AyarlarScreen(
             AyarSatiri(
                 ikon = Icons.Outlined.DeveloperMode,
                 baslik = "MCP sunucuları",
-                detay = "Claude, Codex, OpenCode, OMP ve Antigravity",
+                detay = "Claude, Codex, OMP ve Antigravity",
                 testEtiketi = "ayar_mcp",
             ) { onAc(Ui3AyarRota.MCP) }
             }
 
-            Bolum("UYGULAMA")
+            Bolum("Uygulama")
             AyarKarti {
-            AyarSatiri(
-                ikon = Icons.Outlined.Notifications,
-                baslik = "Bildirimler",
-                detay = if (ozet.notificationsEnabled) "Onay ve tur bildirimleri açık" else "Kapalı",
-                testEtiketi = "ayar_bildirimler",
-            ) { onAc(Ui3AyarRota.BILDIRIMLER) }
             AyarSatiri(
                 ikon = Icons.Outlined.SystemUpdate,
                 baslik = "Güncelleme",
@@ -162,12 +154,12 @@ internal fun Ui3AyarlarScreen(
         }
 
         if (uiState.liteEdition) {
-            Bolum("UYGULAMA")
+            Bolum("Uygulama")
             AyarKarti {
                 AyarSatiri(
                     ikon = Icons.Outlined.SystemUpdate,
                     baslik = "Güncelleme",
-                    detay = "Lite sürümünü kontrol et ve yükle",
+                    detay = "Yeni sürümü kontrol et ve yükle",
                     testEtiketi = "ayar_guncelleme",
                 ) { onAc(Ui3AyarRota.GUNCELLEME) }
             }

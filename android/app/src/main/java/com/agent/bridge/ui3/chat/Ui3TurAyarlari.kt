@@ -12,20 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.DonutLarge
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DataUsage
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Difference
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Hub
-import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PersonOutline
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Schedule
@@ -43,14 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agent.bridge.RemoteUiState
-import com.agent.bridge.backendAgentLabel
-import com.agent.bridge.backendAgentSupported
-import com.agent.bridge.opencodeFamily
-import com.agent.bridge.backendAgentsInitSupported
 import com.agent.bridge.backendCapabilities
 import com.agent.bridge.backendDiffSupported
-import com.agent.bridge.backendRevertSupported
-import com.agent.bridge.backendShareSupported
 import com.agent.bridge.backendEffortLabel
 import com.agent.bridge.backendEffortSupported
 import com.agent.bridge.backendPermissionModeOptions
@@ -71,7 +62,6 @@ internal object Ui3Sheet {
     const val MENU = "menu"
     const val MODEL = "model"
     const val IZIN = "izin"
-    const val AJAN = "ajan"
     const val EFFORT = "effort"
     const val SKILL = "skill"
     const val SAGLAYICI = "saglayici"
@@ -106,36 +96,8 @@ internal object Ui3Sheet {
      * Yalnız değişiklik ucu olan backend'de görünür (bkz. backendDiffSupported).
      */
     const val DEGISIKLIKLER = "degisiklikler"
-    /**
-     * "Geri sar" — uzun otonom koşu yanlış yöne saptığında bir kullanıcı
-     * mesajına dönüp konuşmayı VE dosyaları o ana geri sarma. Yalnız geri
-     * sarma ucu olan backend'de görünür (bkz. backendRevertSupported).
-     */
-    const val GERI_SAR = "geri_sar"
-    /**
-     * "Paylaş" — oturumu herkese açık bir linkte yayınlama. Yalnız paylaşım
-     * ucu olan backend'de görünür (bkz. backendShareSupported). İki kademeli:
-     * onay → link. Onay ATLANAMAZ, çünkü bu uygulamada dış dünyaya veri açan
-     * tek eylem bu.
-     */
-    const val OTURUM_PAYLAS = "oturum_paylas"
-    /**
-     * "AGENTS.md oluştur" — projeyi analiz edip dosyayı yazan tur. Onaylı,
-     * çünkü dokunuş bir tur (ve para) harcıyor.
-     */
-    const val AGENTS_INIT = "agents_init"
-    /**
-     * "Oturum Kuralları" (yalnız v2) — oturum talimatları + kayıtlı izin
-     * kuralları tek sheet'te. Talimat: AGENTS.md'ye dokunmadan bu oturuma
-     * kalıcı kural; izin kuralı: "always" birikiminin envanteri.
-     */
-    const val KURALLAR = "kurallar"
-    /**
-     * Bir alt-ajanın salt-okunur konuşması. MENÜDE SATIRI YOK — kart yığınından
-     * açılıyor (hangi ajan olduğu ancak orada seçilebilir), bu yüzden
-     * `acikSheetAc`'ta da yükleme dalı yok: veriyi karta dokunan çağırıyor.
-     */
-    const val ALT_AJAN = "alt_ajan"
+    // GERI_SAR, OTURUM_PAYLAS, AGENTS_INIT, KURALLAR ve ALT_AJAN sheet'leri
+    // 24.10.2026'da söküldü (hepsi tek bir backend'e özgüydü).
     /** "＋" → ek dosya nereden: telefon (bayt yükle) ya da bilgisayar (yol ver). */
     const val EK_KAYNAK = "ek_kaynak"
     /**
@@ -166,11 +128,9 @@ internal object Ui3Sheet {
 internal fun ColumnScope.Ui3TurAyarlariMenusu(
     uiState: RemoteUiState,
     backendId: String,
-    // Tur sürerken composer şeridi Yenile ve Kullanım'ı gizler (yer darlığı,
-    // Ui3Composer başındaki ölçüm). Kullanıcı tam o sırada ikisine de
-    // erişebilmek istedi (18.08.2026): tur sürerken bu menüde satır olarak
-    // görünürler. Boştayken çizilmezler — şeritteki asıllarının kopyası olurlar.
-    calisiyor: Boolean,
+    // KOVAN KABUĞU (7 Kas 2026): composer şeridi kalktı. Model, yenile,
+    // kullanım, klasör ve bağlam artık daima bu menüde ("＋" composer'da kaldı).
+    modelEtiketi: String,
     yenileniyor: Boolean,
     onYenile: () -> Unit,
     // TUR SÜRERKEN YAZILAN METNİN GİDECEĞİ İKİ YOL (22.08.2026). Eskiden
@@ -189,7 +149,7 @@ internal fun ColumnScope.Ui3TurAyarlariMenusu(
     val yetenekler = backendCapabilities(backendId, uiState.coworkProvider, uiState.backendCatalog)
     val oturum = uiState.backendSession(backendId)
 
-    SheetBasligi("TUR AYARLARI", null)
+    SheetBasligi("Tur ayarları", null)
 
     // EN ÜSTTE: bunlar ayar değil, YAZDIĞIN METNE dair eylemler ve yalnız tur
     // sürerken görünürler. Menü uzun olabildiği için (sağlayıcı, izin, ajan,
@@ -226,6 +186,13 @@ internal fun ColumnScope.Ui3TurAyarlariMenusu(
         )
     }
 
+    AyarSatiri(
+        ikon = Icons.Filled.Memory,
+        etiket = "Model",
+        deger = modelEtiketi,
+        testEtiketi = "menu_model",
+    ) { onAc(Ui3Sheet.MODEL) }
+
     if (backendId == "cowork") {
         AyarSatiri(
             ikon = Icons.Filled.Hub,
@@ -246,15 +213,6 @@ internal fun ColumnScope.Ui3TurAyarlariMenusu(
             degerRengi = if (gevsek) Ui3Colors.attention else Ui3Colors.ink,
             testEtiketi = "menu_izin",
         ) { onAc(Ui3Sheet.IZIN) }
-    }
-
-    if (uiState.backendAgentSupported(backendId)) {
-        AyarSatiri(
-            ikon = Icons.Filled.SmartToy,
-            etiket = "Ajan",
-            deger = uiState.backendAgentLabel(backendId),
-            testEtiketi = "menu_ajan",
-        ) { onAc(Ui3Sheet.AJAN) }
     }
 
     if (uiState.backendEffortSupported(backendId)) {
@@ -302,97 +260,31 @@ internal fun ColumnScope.Ui3TurAyarlariMenusu(
         ) { onAc(Ui3Sheet.DEGISIKLIKLER) }
     }
 
-    // GERİ SAR — "Değişiklikler"in hemen altında, bilerek: ikisi de uzun otonom
-    // koşunun sonunda sorulan sorular ve sıraları da öyle ("ne değişti" →
-    // "beğenmedim, geri al"). Sayı ÖNCEDEN çekilmiyor (aynı gerekçe: liste
-    // isteği oturumun bütün mesaj listesini köprüye okutuyor).
-    //
-    // Geri sarılmış durumda değer sütunu bunu söylüyor: menüyü açan kullanıcı
-    // şeridi kaçırmış olabilir ve ikinci bir geri sarma yapmadan önce bilmeli.
-    if (uiState.backendRevertSupported(backendId)) {
-        val sarilmis = uiState.opencodeFamily(backendId).reverted != null
+    AyarSatiri(
+        ikon = Icons.Filled.Search,
+        etiket = "Sohbette ara",
+        deger = "",
+        testEtiketi = "menu_ara",
+        onTikla = { onAc("ara") },
+    )
+    if (onCalismaKlasoru != null) {
         AyarSatiri(
-            ikon = Icons.AutoMirrored.Filled.Undo,
-            etiket = "Geri sar",
-            deger = if (sarilmis) "geri sarıldı" else "",
-            degerRengi = if (sarilmis) Ui3Colors.attention else Ui3Colors.ink,
-            testEtiketi = "menu_geri_sar",
-        ) { onAc(Ui3Sheet.GERI_SAR) }
-    }
-
-    // AGENTS.md — "Değişiklikler / Geri sar" ikilisinin ardından, bilerek:
-    // onlar koşu SONRASI soruları, bu koşu ÖNCESİ ("ajan bu projeyi tanısın").
-    // Sayı/durum sütunu yok: dosyanın var olup olmadığını bilmek için köprüye
-    // ayrı bir dosya sorusu gerekirdi ve cevabı satırın davranışını değiştirmiyor
-    // (init var olanı da yerinde iyileştiriyor).
-    if (uiState.backendAgentsInitSupported(backendId)) {
-        AyarSatiri(
-            ikon = Icons.Filled.Description,
-            etiket = "AGENTS.md oluştur",
+            ikon = Icons.Filled.FolderOpen,
+            etiket = "Çalışma klasörü",
             deger = "",
-            testEtiketi = "menu_agents_init",
-        ) { onAc(Ui3Sheet.AGENTS_INIT) }
-    }
-
-    // OTURUM KURALLARI (yalnız v2) — talimat + izin. AGENTS.md'nin hemen
-    // altında: ikisi de "ajan bu oturumda nasıl davransın" işi. Sayı rozeti
-    // çekilmiyor (görünüm kapalıyken köprüye sormamak için — diff ile aynı
-    // kural); liste açılınca doluyor.
-    if (backendId == com.agent.bridge.Backend.OPENCODE2_APP.id) {
-        AyarSatiri(
-            ikon = Icons.Filled.Gavel,
-            etiket = "Oturum Kuralları",
-            deger = "",
-            testEtiketi = "menu_kurallar",
-        ) { onAc(Ui3Sheet.KURALLAR) }
-    }
-
-    // PAYLAŞ — menünün bu bölümünde, çünkü tura değil OTURUMA ait
-    // ("Değişiklikler"le aynı gerekçe). Değer sütunu paylaşılmış hâli SÖYLÜYOR
-    // ve kehribar yazılıyor: oturum İNTERNETE açıkken kullanıcı menüyü her
-    // açtığında bunu görmeli, gevşek izin kipiyle aynı mantık.
-    if (uiState.backendShareSupported(backendId)) {
-        val paylasildi = uiState.opencode.share.isNotBlank()
-        AyarSatiri(
-            ikon = if (paylasildi) Icons.Filled.Public else Icons.Filled.IosShare,
-            etiket = if (paylasildi) "Paylaşımı kaldır" else "Paylaş",
-            deger = if (paylasildi) "yayında" else "",
-            degerRengi = if (paylasildi) Ui3Colors.attention else Ui3Colors.ink,
-            testEtiketi = "menu_paylas",
-        ) { onAc(Ui3Sheet.OTURUM_PAYLAS) }
-    }
-
-    // Lite'ta arama şeritte ikon oldu; onun eski yerini çalışma klasörü aldı.
-    // Tam sürümde mevcut yerleşim değişmez.
-    if (uiState.liteEdition) {
-        if (onCalismaKlasoru != null) {
-            AyarSatiri(
-                ikon = Icons.Filled.FolderOpen,
-                etiket = "Çalışma klasörü",
-                deger = "",
-                testEtiketi = "menu_calisma_klasoru",
-                onTikla = onCalismaKlasoru,
-            )
-        }
-    } else {
-        AyarSatiri(
-            ikon = Icons.Filled.Search,
-            etiket = "Sohbette ara",
-            deger = "",
-            testEtiketi = "menu_ara",
-            onTikla = { onAc("ara") },
+            testEtiketi = "menu_calisma_klasoru",
+            onTikla = onCalismaKlasoru,
         )
     }
-
-    if (calisiyor) {
-        AyarSatiri(
-            ikon = Icons.Filled.Refresh,
-            etiket = if (yenileniyor) "Yenileniyor…" else "Yenile",
-            deger = "",
-            testEtiketi = "menu_yenile",
-            // Yenileme sürerken ikinci tetikleme yok — şeritteki tuşla aynı kural.
-            onTikla = { if (!yenileniyor) onYenile() },
-        )
+    AyarSatiri(
+        ikon = Icons.Filled.Refresh,
+        etiket = if (yenileniyor) "Yenileniyor…" else "Yenile",
+        deger = "",
+        testEtiketi = "menu_yenile",
+        // Yenileme sürerken ikinci tetikleme yok.
+        onTikla = { if (!yenileniyor) onYenile() },
+    )
+    if (!uiState.liteEdition) {
         AyarSatiri(
             ikon = Icons.Filled.DataUsage,
             etiket = "Kalan kullanım",
@@ -400,19 +292,14 @@ internal fun ColumnScope.Ui3TurAyarlariMenusu(
             testEtiketi = "menu_kullanim",
             onTikla = { onAc(Ui3Sheet.KULLANIM) },
         )
-        // ÇALIŞMA KLASÖRÜ ARTIK ŞERİTTE (25.08.2026, kullanıcı: "sık
-        // kullanmam gerekiyor, menüye saklanmasın") — 19.08'de buraya konan
-        // satır oradan taşındı. Bu satır Yenile/Kullanım'la aynı yedek: tur
-        // sürerken şerit sıkışıp tuşu düşürebilir, o an buradan erişilir.
-        if (!uiState.liteEdition && onCalismaKlasoru != null) {
-            AyarSatiri(
-                ikon = Icons.Filled.FolderOpen,
-                etiket = "Çalışma klasörü",
-                deger = "",
-                testEtiketi = "menu_calisma_klasoru",
-                onTikla = onCalismaKlasoru,
-            )
-        }
+        // Eskiden adaya dokunarak (yalnız tablette) açılıyordu.
+        AyarSatiri(
+            ikon = Icons.Filled.DonutLarge,
+            etiket = "Bağlam",
+            deger = "",
+            testEtiketi = "menu_baglam",
+            onTikla = { onAc(Ui3Sheet.BAGLAM) },
+        )
     }
 }
 

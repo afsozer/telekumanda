@@ -16,14 +16,10 @@ import java.io.File
  * [com.agent.bridge.DelegateReachabilityTest] bunun delege ayağını kapatıyor;
  * burada menü ayağı kapanıyor.
  *
- * Üç kural:
+ * İki kural:
  *  1. Menüdeki her `onAc(Ui3Sheet.X)` satırının kökte (`Ui3Root.kt`) bir
  *     `Ui3Sheet.X ->` dalı olmalı — yoksa satır BOŞ bir sheet açar.
- *  2. `BackendActions.kt`'deki her yönlendirme kapısı "opencode2-app" dalını
- *     veriyorsa "cowork" dalını da vermeli. Görünürlük yardımcıları
- *     (`backend*Supported`) cowork+opencode'da true diyor, yani satır orada da
- *     ÇİZİLİYOR; cowork dalı eksik olsaydı dokunmak hiçbir şey yapmazdı.
- *  3. Menü satırının görünürlük koşulu ile köşedeki sheet dalının koşulu AYNI
+ *  2. Menü satırının görünürlük koşulu ile köşedeki sheet dalının koşulu AYNI
  *     yardımcıdan gelmeli — ikisi ayrışırsa satır görünürken sheet boş kalır
  *     (ya da tersi).
  */
@@ -41,47 +37,6 @@ class Ui3MenuYonlendirmeTest {
         assertTrue("Menüde hiç sheet açan satır bulunamadı — regex bayatlamış olabilir", kimlikler.isNotEmpty())
         val eksik = kimlikler.filterNot { kok.contains("Ui3Sheet.$it ->") }
         assertEquals("Kökte dalı olmayan sheet kimlikleri: $eksik", emptyList<String>(), eksik)
-    }
-
-    @Test
-    fun opencodeDaliOlanHerKapiCoworkDaliniDaVerir() {
-        val kaynak = oku("android/app/src/main/java/com/agent/bridge/BackendActions.kt")
-        // Yorumlar elenmeli: gerekçe metinlerinde "opencode2-app" tırnak içinde geçiyor.
-        val kod = kaynak.lines().filterNot { it.trimStart().startsWith("//") }.joinToString("\n")
-
-        // Her `fun RemoteViewModel.<ad>` bloğunu bir sonraki tanıma kadar al.
-        val kapilar = Regex("""fun RemoteViewModel\.([A-Za-z0-9_]+)""").findAll(kod).toList()
-        assertTrue("BackendActions.kt'de yönlendirme kapısı bulunamadı", kapilar.isNotEmpty())
-
-        val eksik = mutableListOf<String>()
-        kapilar.forEachIndexed { i, m ->
-            val bas = m.range.first
-            val son = if (i + 1 < kapilar.size) kapilar[i + 1].range.first else kod.length
-            val govde = kod.substring(bas, son)
-            // Dal ÇOK KİMLİKLİ olabilir (`"opencode2-app" ->`);
-            // düz metin araması böyle bir dalı görmez ve testi sessizce
-            // devre dışı bırakırdı (26.09.2026'da tam bu oldu).
-            val opencodeDali = Regex(""""opencode2-app"(?:\s*,\s*"[a-z0-9-]+")*\s*->""").containsMatchIn(govde)
-            if (opencodeDali && !govde.contains("\"cowork\" ->")) {
-                eksik += m.groupValues[1]
-            }
-        }
-        assertEquals("opencode dalı olup cowork dalı olmayan kapılar: $eksik", emptyList<String>(), eksik)
-    }
-
-    @Test
-    fun paylasVeAgentsInitSatirlariKokteAyniKosulaBagli() {
-        val menu = oku("android/app/src/main/java/com/agent/bridge/ui3/chat/Ui3TurAyarlari.kt")
-        val kok = oku("android/app/src/main/java/com/agent/bridge/ui3/nav/Ui3Root.kt")
-
-        // Satır ve sheet dalı AYNI yardımcıyı sınamalı.
-        for (yardimci in listOf("backendShareSupported", "backendAgentsInitSupported")) {
-            assertTrue("$yardimci menü satırında kullanılmıyor", menu.contains("$yardimci(backendId)"))
-            assertTrue("$yardimci kökteki sheet dalında kullanılmıyor", kok.contains("$yardimci(backendId)"))
-        }
-        // Sheet kimlikleri kökte gerçekten bağlı.
-        assertTrue(kok.contains("Ui3Sheet.OTURUM_PAYLAS ->"))
-        assertTrue(kok.contains("Ui3Sheet.AGENTS_INIT ->"))
     }
 
     /**
@@ -112,13 +67,13 @@ class Ui3MenuYonlendirmeTest {
         assertEquals("Menüde görünüp yükleme dalı olmayan kimlikler", emptySet<String>(), gorunur - yuklenen)
         assertEquals("Menüde görünüp okuma dalı olmayan kimlikler", emptySet<String>(), gorunur - okunan)
 
-        // Sheet gövdesi SABİT bir kutu okumamalı: `uiState.opencode.diff` yazmak
+        // Sheet gövdesi SABİT bir kutu okumamalı: `uiState.omp.diff` yazmak
         // codex sekmesinde satırı görünür, sheet'i sonsuza dek boş bırakırdı.
         assertTrue("Kök diff kutusunu backendDiff ile seçmiyor", kok.contains("uiState.backendDiff(backendId)"))
         assertTrue("Kök yükleme bayrağını backendDiffLoading ile seçmiyor", kok.contains("uiState.backendDiffLoading(backendId)"))
         assertTrue(
-            "Kök hâlâ sabit opencode kutusunu okuyor",
-            !kok.contains("diff = uiState.opencode.diff"),
+            "Kök hâlâ sabit bir kutu okuyor",
+            !kok.contains("diff = uiState.omp.diff"),
         )
     }
 
@@ -126,7 +81,7 @@ class Ui3MenuYonlendirmeTest {
      * DEĞİŞİKLİKLER'de kurulan kuralın GERİ SAR / KOMUTLAR / AGENTS.md init /
      * SKILL satırlarına genellenmiş hâli.
      *
-     * 26.09.2026'da opencode2 bu dört kapının HİÇBİRİNDE yoktu: köprüde uçlar
+     * 26.09.2026'da sökülen backend bu dört kapının HİÇBİRİNDE yoktu: köprüde uçlar
      * hazırdı, capability kataloğu `true` diyordu, telefon yönlendirme dalını
      * yazmamıştı — satırlar çizilmiyor, yazılan delege hiç çağrılmıyordu.
      * Görünürlük bir kimliğe `true` diyorsa yükleme/eylem kapılarında o
@@ -137,30 +92,12 @@ class Ui3MenuYonlendirmeTest {
         val secenekler = oku("android/shared/src/main/kotlin/com/agent/bridge/BackendOptions.kt")
         val eylemler = oku("android/app/src/main/java/com/agent/bridge/BackendActions.kt")
 
+        // Geri sar / Komutlar / AGENTS.md init / Ajan kapıları (24.10.2026)
+        // söküldü; kural kalan kapılarda geçerli.
         val kontroller = listOf(
-            Triple(
-                "Geri sar", "fun RemoteUiState.backendRevertSupported",
-                listOf(
-                    "fun RemoteViewModel.loadBackendCheckpoints",
-                    "fun RemoteViewModel.revertBackendToMessage",
-                    "fun RemoteViewModel.unrevertBackend",
-                ),
-            ),
-            Triple(
-                "Komutlar", "fun RemoteUiState.backendCommandsSupported",
-                listOf("fun RemoteViewModel.loadBackendCommands", "fun RemoteViewModel.runBackendCommand"),
-            ),
-            Triple(
-                "AGENTS.md init", "fun RemoteUiState.backendAgentsInitSupported",
-                listOf("fun RemoteViewModel.initBackendAgentsFile"),
-            ),
             Triple(
                 "Skill", "fun RemoteUiState.backendSkillsSupported",
                 listOf("fun RemoteViewModel.loadBackendSkills"),
-            ),
-            Triple(
-                "Ajan", "fun RemoteUiState.backendAgentSupported",
-                listOf("fun RemoteViewModel.loadBackendAgents", "fun RemoteViewModel.setBackendAgent"),
             ),
         )
 
@@ -175,22 +112,6 @@ class Ui3MenuYonlendirmeTest {
                 )
             }
         }
-    }
-
-    /**
-     * Skill / komut / geri sarma kutuları SABİT `opencode` ailesinden
-     * okunmamalı — v2 sekmesinde satır görünür, gövde boş kalırdı (MODEL SEÇ
-     * sheet'inde 26.09.2026'da tam olarak bu yaşandı).
-     */
-    @Test
-    fun opencodeKutulariAileyeGoreOkunuyor() {
-        val kok = oku("android/app/src/main/java/com/agent/bridge/ui3/nav/Ui3Root.kt")
-        val sohbet = oku("android/app/src/main/java/com/agent/bridge/ui3/chat/Ui3ChatScreen.kt")
-        val secenekler = oku("android/shared/src/main/kotlin/com/agent/bridge/BackendOptions.kt")
-
-        assertTrue("Geri sar listesi sabit v1 kutusundan okunuyor", !kok.contains("uiState.opencode.checkpoints"))
-        assertTrue("Geri sarma şeridi sabit v1 kutusundan okunuyor", !sohbet.contains("uiState.opencode.reverted"))
-        assertTrue("Komut kataloğu sabit v1 kutusundan okunuyor", !secenekler.contains("opencode.commands"))
     }
 
     /** Bir fonksiyonun gövdesi: imzadan bir sonraki üst düzey `fun`a kadar. */
@@ -209,8 +130,7 @@ class Ui3MenuYonlendirmeTest {
      * kimlikler geçiyor (`"cowork" -> when(sağlayıcı) { "codex-app" -> ... }`)
      * ve bütün gövde taransaydı üst düzey dalın silinmesi bu testten kaçardı —
      * yani testin yakalamak için var olduğu hata sınıfı görünmez olurdu. Cowork
-     * ayağını [opencodeDaliOlanHerKapiCoworkDaliniDaVerir] ve
-     * BackendOptionsTest davranışsal olarak kapatıyor.
+     * ayağını BackendOptionsTest davranışsal olarak kapatıyor.
      */
     private fun kimlikler(govde: String): Set<String> {
         val ustDuzey = govde.substringBefore("\"cowork\" ->")

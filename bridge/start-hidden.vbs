@@ -1,4 +1,4 @@
-' Telekumanda bridge - launches the auto-restart supervisor with no visible console.
+' AgentBridge Bridge - launches the auto-restart supervisor with no visible console.
 ' run-bridge.cmd relaunches node if it ever exits; all output goes to bridge.log.
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")

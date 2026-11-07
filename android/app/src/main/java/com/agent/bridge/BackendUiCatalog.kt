@@ -14,7 +14,6 @@ internal val BACKEND_CATALOG: List<BackendInfo> = listOf(
     BackendInfo("claude-app", "Claude App", Icons.Default.Terminal),
     BackendInfo("agy", "Antigravity CLI", Icons.Default.Terminal),
     BackendInfo("codex-app", "Codex App", Icons.Default.Code),
-    BackendInfo("opencode2-app", "OpenCode", Icons.Default.Code),
     BackendInfo("omp", "OMP", Icons.Default.Terminal),
     BackendInfo("cowork", "Cowork", Icons.Default.Description),
 )

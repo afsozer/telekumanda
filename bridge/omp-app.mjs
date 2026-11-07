@@ -137,8 +137,8 @@ function scheduleIdleReap(s) {
 // uuid'si adopt başına yenilenir. İki kabuk aynı transkripte bağlanırsa her
 // biri kendi child'ını ve kendi `messages` dizisini taşır: bir cihazda ilerleyen
 // tur diğerine HİÇ ulaşmaz (13.08.2026 kullanıcı şikayeti — canlı köprüde aynı
-// diskId'ye bağlı üç kabuk ölçüldü). Aynı hata codex-app'te findShellByThread,
-// opencode-app'te byOpencodeSid ile daha önce kapatılmıştı.
+// diskId'ye bağlı üç kabuk ölçüldü). Aynı hata codex-app'te findShellByThread
+// ile daha önce kapatılmıştı.
 function transcriptKey(s) { return s?.ompSessionId || s?.sessionFile || ''; }
 function shellsForTranscript(key) {
   const value = String(key || '').trim();
@@ -579,7 +579,7 @@ async function ompWatchdogTick() {
 // OMP canlı kabuğa her açılışta yeni bir bridge-uuid veriyor; kalıcı native
 // kimlik OMP'nin kendi `sessionId`si (disk transcript'inin adı). Cowork kaydının
 // resume edebilmesi için o kimlik netleştiği anda haber verilmeli — codex'in
-// onThreadResolved / opencode'un onSessionResolved kancasının OMP karşılığı.
+// onThreadResolved kancasının OMP karşılığı.
 const sessionResolvedListeners = new Set();
 
 export function onSessionResolved(fn) {
@@ -919,9 +919,9 @@ export function getThought(sessionId, index) { const s = resolveSession(sessionI
 // (`sessions/-agtest/*.jsonl`) ve köprü onu hiç görmüyordu.
 //
 // Diğer backend'lerde böyle bir kör nokta yok, çünkü hepsi backend'in kendi
-// dizinini tarıyor: codex ~/.codex/sessions, opencode ~/.local/share/opencode,
-// claude ~/.claude. OMP tek istisnaydı — "bilgisayardan başlattığım oturum
-// köprüde çıkmıyor" şikâyetinin sebebi buydu.
+// dizinini tarıyor: codex ~/.codex/sessions, claude ~/.claude. OMP tek
+// istisnaydı — "bilgisayardan başlattığım oturum köprüde çıkmıyor"
+// şikâyetinin sebebi buydu.
 const NATIVE_SESSION_ROOT = path.join(OMP_ROOT, 'sessions');
 
 function jsonlIn(dir) {
@@ -1288,29 +1288,26 @@ function modelThinking(m) {
 // kararı (16.08.2026): Go'dan HEPSİ gelsin, Zen'den yalnız BEDAVA olanlar —
 // Zen'deki 62 modelin 55'i ücretli, hepsini almak hem çipi boğar hem Go
 // aboneliğinde bedava olan işi yanlışlıkla paralıya yaptırır.
-// DİKKAT: OMP'de sağlayıcı kimliği `opencode-zen`, opencode CLI'da yalın
-// `opencode` (bkz. opencode-app.mjs ZEN_PROVIDER). Aynı sağlayıcı, farklı ad.
+// DİKKAT: OMP'de sağlayıcı kimliği `opencode-zen`; Zen aboneliğinin modelleri
+// bu sağlayıcı adıyla gelir.
 const OMP_ZEN_PROVIDER = 'opencode-zen';
 // Zen'in bedava modelleri "-free" ekiyle biter; eksiz gelen gizli/rotasyon
-// modelleri bu kümede tutulur (opencode-app.mjs ZEN_FREE_UNSUFFIXED ile aynı).
+// modelleri bu kümede tutulur.
 const OMP_ZEN_FREE_NAME_RE = /-free$/;
 const OMP_ZEN_FREE_UNSUFFIXED = new Set(['big-pickle', 'grok-code']);
 // İKİ İMZA BİRDEN aranır (fiyat 0 VE ad bedava diyor). Tek başına fiyat YETMEZ:
 // OMP'nin kataloğu yeni eklenen modellere fiyat gelene kadar 0 yazıyor —
-// 16.08.2026'da ölçüldü, `muse-spark-1.2` OMP'de 0 görünürken opencode'un
-// (models.dev) kataloğunda 1,25/4,25 USD; Go tarafında da yeni `glm-5.3` ve
+// 16.08.2026'da ölçüldü, `muse-spark-1.2` OMP'de 0 görünürken models.dev
+// kataloğunda 1,25/4,25 USD; Go tarafında da yeni `glm-5.3` ve
 // `hy3-preview` 0 yazıyordu. Salt fiyata bakan bir süzgeç bu modelleri
 // "bedava" sanıp listeye alır ve kullanıcıya para harcatır.
 // Bedelini de biliyoruz: eki olmayan YENİ bir bedava model gözden kaçar.
 // Ucuz taraf bu — kaçırılan model listeye girmez, yanlış giren para yakar.
-// opencode-app.mjs'de bu ikinci imza aranmaz, çünkü oradaki fiyat kaydı
-// canlı /config/providers'tan geliyor ve ölçümde doğru çıktı.
 // NanoGPT BEYAZ liste. OMP, models.yml'de tek model tanımlı olsa bile
 // sağlayıcının canlı /v1/models kataloğunun TAMAMINI birleştiriyor —
 // 24.08.2026'da ölçüldü: nanogpt'den 881 model geldi, çip kullanılamaz oldu.
 // Kullanıcının kararı (24.08): nanogpt'den YALNIZ bu model; diğerleri elendi.
-// Yeni model eklerken önce neden elendiğini sor. opencode'da bu sorun yok —
-// kürate liste.
+// Yeni model eklerken önce neden elendiğini sor.
 const OMP_NANOGPT_PROVIDER = 'nanogpt';
 const OMP_NANOGPT_ALLOWED = new Set(['qwen/qwen3.8-27b-uncensored']);
 export function isAgentBridgeOmpModel(m) {
@@ -1331,7 +1328,7 @@ export function isAgentBridgeOmpModel(m) {
 // içermiyor ve katalogda AYNI ada sahip iki satır oluyor — "deepseek-flash"
 // hem `deepseek/` hem `opencode-go/` altında var, ikisi ayrı hesaba yazıyor.
 // Etiket tek başına hangisini seçtiğini söylemiyordu. Ayıraç `·`, köprünün
-// başka yerinde de kullanılan biçim (bkz. opencode-app.mjs RunPod etiketi).
+// başka yerinde de kullanılan biçim.
 // Android tarafı ayrı bir alan taşımıyor (BackendModel yalnız label/id), o
 // yüzden bilgi etikete gömülüyor — APK değişikliği gerekmiyor.
 // Ad sağlayıcıyla başlasa bile ("deepseek · deepseek-flash") kısaltma YOK:

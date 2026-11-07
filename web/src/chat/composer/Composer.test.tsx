@@ -289,28 +289,28 @@ describe('Composer', () => {
 
 describe('Composer — tur-içi yönlendirme (steer)', () => {
   it('running + canSteer iken steer ucuna gider, düğme Yönlendir olur', async () => {
-    render(<Composer sessionId="o1" backend="opencode2-app" running canSteer />)
+    render(<Composer sessionId="o1" backend="codex-app" running canSteer />)
     expect(screen.getByRole('button', { name: 'Yönlendir' })).toBeInTheDocument()
     type('ara ver, şunu da yap')
     fireEvent.keyDown(area(), { key: 'Enter' })
 
     await waitFor(() => expect(calls).toHaveLength(1))
-    expect(calls[0].url).toBe('/opencode2-app/steer')
+    expect(calls[0].url).toBe('/codex-app/steer')
     expect(calls[0].body).toMatchObject({ sessionId: 'o1', text: 'ara ver, şunu da yap' })
   })
 
   it('running ama canSteer yoksa normal prompt gider (sıraya)', async () => {
-    render(<Composer sessionId="o1" backend="opencode2-app" running />)
+    render(<Composer sessionId="o1" backend="codex-app" running />)
     type('sıraya ekle')
     fireEvent.keyDown(area(), { key: 'Enter' })
 
     await waitFor(() => expect(calls).toHaveLength(1))
-    expect(calls[0].url).toBe('/opencode2-app/prompt')
+    expect(calls[0].url).toBe('/codex-app/prompt')
   })
 
   it('steer hata verirse metin geri konur', async () => {
     queue = [json(400, { ok: false, error: 'tur bulunamadı' })]
-    render(<Composer sessionId="o1" backend="opencode2-app" running canSteer />)
+    render(<Composer sessionId="o1" backend="codex-app" running canSteer />)
     type('yönlendirme denemesi')
     fireEvent.keyDown(area(), { key: 'Enter' })
 
@@ -319,10 +319,10 @@ describe('Composer — tur-içi yönlendirme (steer)', () => {
   })
 
   it('steer başarılıysa kutu temizlenir', async () => {
-    render(<Composer sessionId="o1" backend="opencode2-app" running canSteer />)
+    render(<Composer sessionId="o1" backend="codex-app" running canSteer />)
     type('git')
     fireEvent.keyDown(area(), { key: 'Enter' })
     await waitFor(() => expect(area().value).toBe(''))
-    expect(calls[0].url).toBe('/opencode2-app/steer')
+    expect(calls[0].url).toBe('/codex-app/steer')
   })
 })
