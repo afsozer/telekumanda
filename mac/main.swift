@@ -1,5 +1,5 @@
-// AgentBridge.app — köprü arayüzünü Brave --app sekmesi yerine kendi penceresinde açan yerli sarmalayıcı
-// (AppKit + WKWebView). Adres (token dahil) derlemede Info.plist'e ABAdres olarak gömülür. Derleme: kur.sh
+// Telekumanda.app: köprü arayüzünü kendi penceresinde açan yerli sarmalayıcı (AppKit + WKWebView).
+// Köprü adresi derlemede Info.plist'e ABAdres olarak gömülür, yoksa aşağıdaki varsayılan kullanılır. Derleme: kur.sh
 import Cocoa
 import WebKit
 
@@ -27,11 +27,11 @@ final class Uygulama: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigatio
         pencere = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1320, height: 900),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered, defer: false)
-        pencere.title = "AgentBridge"
+        pencere.title = "Telekumanda"
         pencere.minSize = NSSize(width: 420, height: 480)
         pencere.contentView = web
         pencere.center()
-        pencere.setFrameAutosaveName("agentbridge-ana")
+        pencere.setFrameAutosaveName("telekumanda-ana")
         pencere.isReleasedWhenClosed = false
         pencere.tabbingMode = .disallowed
         pencere.makeKeyAndOrderFront(nil)
@@ -39,7 +39,7 @@ final class Uygulama: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigatio
 
         baslikGozcu = web.observe(\.title) { [weak self] w, _ in
             let t = w.title ?? ""
-            self?.pencere.title = t.isEmpty ? "AgentBridge" : t
+            self?.pencere.title = t.isEmpty ? "Telekumanda" : t
         }
         yukle()
     }
@@ -158,7 +158,12 @@ final class Uygulama: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigatio
 
     // ---------- menü ----------
     @objc func yenile() { web.reload() }
-    @objc func tarayicidaAc() { NSWorkspace.shared.open(adres) }
+    @objc func tarayicidaAc() {  // query ve fragment (token) tarayıcıya taşınmaz
+        var bilesen = URLComponents(url: adres, resolvingAgainstBaseURL: false)
+        bilesen?.query = nil
+        bilesen?.fragment = nil
+        NSWorkspace.shared.open(bilesen?.url ?? adres)
+    }
     @objc func buyut() { web.magnification = min(web.magnification + 0.1, 3) }
     @objc func kucult() { web.magnification = max(web.magnification - 0.1, 0.5) }
     @objc func gercekBoyut() { web.magnification = 1 }
@@ -172,12 +177,12 @@ final class Uygulama: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigatio
         func oge(_ ad: String, _ s: Selector?, _ tus: String = "", hedef: AnyObject? = nil) -> NSMenuItem {
             let o = NSMenuItem(title: ad, action: s, keyEquivalent: tus); o.target = hedef; return o
         }
-        alt("AgentBridge", [
-            oge("AgentBridge Hakkında", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+        alt("Telekumanda", [
+            oge("Telekumanda Hakkında", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
             .separator(),
-            oge("AgentBridge'i Gizle", #selector(NSApplication.hide(_:)), "h"),
+            oge("Telekumanda'yı Gizle", #selector(NSApplication.hide(_:)), "h"),
             .separator(),
-            oge("AgentBridge'den Çık", #selector(NSApplication.terminate(_:)), "q")])
+            oge("Telekumanda'dan Çık", #selector(NSApplication.terminate(_:)), "q")])
         alt("Dosya", [
             oge("Tarayıcıda Aç", #selector(tarayicidaAc), "", hedef: self),
             .separator(),

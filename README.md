@@ -91,6 +91,13 @@ fetches the upcoming list (`GET /reminders`) and sets local alarms, and the brid
 the list over ADB when it changes so alarms are set even if the app is closed. Turn
 progress, approvals and results are followed in the app itself.
 
+## macOS
+
+The `mac/` folder holds a small AppKit + WKWebView wrapper that opens the bridge UI in a
+native window. Run `mac/kur.sh` to build and install it as `/Applications/Telekumanda.app`.
+The bridge address is read from the git-ignored `mac/adres.local` file, and the token is
+entered in the UI on first launch.
+
 ## Android App
 
 The Android app is built with Kotlin, Jetpack Compose, Material 3, OkHttp, and Markwon.
