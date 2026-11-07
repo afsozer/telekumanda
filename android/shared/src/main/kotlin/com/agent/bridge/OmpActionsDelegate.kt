@@ -125,12 +125,14 @@ class OmpActionsDelegate(
             .onFailure { reportError("OMP oturumu devam ettirilemedi", it) }
     }
 
-    fun approve(allow: Boolean, answers: List<ApprovalAnswer> = emptyList()) = scope.launch {
+    // `requestId` null ise o an ekrandaki onay kartının kimliği kullanılır.
+    fun approve(allow: Boolean, answers: List<ApprovalAnswer> = emptyList(), requestId: String? = null) = scope.launch {
         val sid = state().omp.sessionId
         if (sid.isBlank()) return@launch
-        runCatching { client.ompApprove(state().settings, sid, allow, answers) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.ompApprove(state().settings, sid, allow, answers, kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("OMP yanıtı gönderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("OMP yanıtı gönderilemedi", e) } }
     }
 
     fun setPermissionMode(mode: String) = scope.launch {

@@ -19,6 +19,20 @@ import kotlin.coroutines.resumeWithException
 data class BridgeSettings(val baseUrl: String, val token: String)
 data class PairingStartResult(val code: String, val expiresAt: String)
 data class DeviceKeyResult(val deviceId: String, val key: String)
+/**
+ * Köprüye eşleştirilmiş bir cihaz. İptal edilenler listede kalır ([revokedAt]
+ * dolu); ekranda soluk gösterilir, anahtarları artık geçmez.
+ */
+data class BridgeDevice(
+    val id: String,
+    val name: String = "",
+    val createdAt: String = "",
+    val lastSeenAt: String = "",
+    val revokedAt: String = "",
+    val rotatedAt: String = "",
+) {
+    val revoked: Boolean get() = revokedAt.isNotBlank()
+}
 
 data class SystemMetrics(val cpu: Int = 0, val memory: Int = 0, val platform: String = "", val uptime: Long = 0L)
 data class ModuleHealth(val status: String = "", val pid: Int? = null, val sessionCount: Int = 0)

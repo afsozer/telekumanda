@@ -5,6 +5,8 @@ export function buildNotificationFeedState(approval = {}, operations = {}, deliv
     backend: String(approval.backend || ''),
     sessionId: String(approval.sessionId || ''),
     summary: String(approval.summary || ''),
+    // Bekleyen onayın kimliği: bildirimdeki onay tuşu onu gönderir (bayat onay → 409).
+    requestId: approval.requestId === null || approval.requestId === undefined ? '' : String(approval.requestId),
     eventId: String(events[0]?.id || ''),
     events,
     ...delivery,

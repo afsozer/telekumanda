@@ -73,12 +73,12 @@ describe('ApprovalPrompt', () => {
     const [url, init] = fn.mock.calls[0]
     expect(url).toBe('/claude-app/approve')
     expect(init?.method).toBe('POST')
-    expect(bodyOf(init)).toEqual({ sessionId: 's1', allow: true })
+    expect(bodyOf(init)).toEqual({ sessionId: 's1', allow: true, requestId: 'r1' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Reddet' }))
     await waitFor(() => expect(fn).toHaveBeenCalledTimes(2))
     const deny = bodyOf(fn.mock.calls[1][1])
-    expect(deny).toEqual({ sessionId: 's1', allow: false })
+    expect(deny).toEqual({ sessionId: 's1', allow: false, requestId: 'r1' })
     expect('answers' in deny).toBe(false)
   })
 
@@ -99,6 +99,7 @@ describe('ApprovalPrompt', () => {
       sessionId: 's1',
       allow: true,
       answers: [{ id: 'q1', optionId: 'A', label: 'Evet' }],
+      requestId: 'r2',
     })
   })
 

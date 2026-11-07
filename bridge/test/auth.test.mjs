@@ -29,9 +29,9 @@ describe('auth()', () => {
     assert.equal(auth(req), false);
   });
 
-  it('accepts valid token via ?token= query param', () => {
+  it('rejects even a valid token in the ?token= query param (header only)', () => {
     const req = fakeReq(`/health?token=${cfg.authToken}`);
-    assert.equal(auth(req), true);
+    assert.equal(auth(req), false);
   });
 
   it('rejects wrong token via ?token= query param', () => {

@@ -1,17 +1,23 @@
 // Köprü kimlik doğrulaması.
 //
-// Köprü token'ı iki yerden kabul ediyor (server.mjs:134): `Authorization: Bearer`
-// başlığı VEYA `?token=` sorgu parametresi. İkisi de gerekli:
+// Köprü token'ı yalnız `Authorization: Bearer` başlığından kabul ediyor; adrese
+// konan token proxy, tarayıcı geçmişi ve günlüklerde açıkta kalıyordu.
 //
-// - REST çağrıları başlığı kullanır (token adres çubuğuna ve geçmişe düşmez).
-// - WebSocket sorgu parametresini kullanmak ZORUNDA, çünkü tarayıcı WebSocket
-//   el sıkışmasına özel başlık ekleyemez. Köprüde `?token=` desteği olmasaydı
-//   web istemcisi akışa hiç bağlanamazdı.
+// - REST çağrıları başlığı kullanır.
+// - Tarayıcı WebSocket el sıkışmasına başlık ekleyemediği için akış, başlıkla
+//   alınan tek kullanımlık, 30 saniyelik bir biletle açılır (`POST /ws-ticket`,
+//   bkz. api.ts `wsTicket`).
 //
-// İlk açılışta token adresten gelir (`/ui/?token=...`), yerel depoya alınır ve
-// adresten SİLİNİR — yoksa tarayıcı geçmişinde kalıcı olarak dururdu.
+// İlk açılışta token adresin parçasından gelir (`/ui/#token=...`): `#` sonrası
+// sunucuya hiç gönderilmez. Token yerel depoya alınır ve adresten SİLİNİR, yoksa
+// tarayıcı geçmişinde dururdu. Eski `/ui/?token=...` biçimi de okunur ve silinir.
 
 const STORAGE_KEY = 'agentbridge.token'
+
+/** Adres parçasından (`#token=...`) token'ı ayıklar. Saf fonksiyon. */
+export function tokenFromHash(hash: string): string | null {
+  return tokenFromSearch(hash.startsWith('#') ? hash.slice(1) : hash)
+}
 
 /** Sorgu dizesinden token'ı ayıklar. Saf fonksiyon; testte doğrudan çağrılır. */
 export function tokenFromSearch(search: string): string | null {
@@ -65,6 +71,12 @@ export function clearToken(): void {
  * yoksa yerel depodakini kullan.
  */
 export function bootstrapToken(location: Location, history: History): string | null {
+  const fromHash = tokenFromHash(location.hash)
+  if (fromHash) {
+    saveToken(fromHash)
+    history.replaceState(null, '', `${location.pathname}${location.search}`)
+    return fromHash
+  }
   const fromUrl = tokenFromSearch(location.search)
   if (fromUrl) {
     saveToken(fromUrl)

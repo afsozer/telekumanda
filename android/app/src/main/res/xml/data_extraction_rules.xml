@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 31+ yedekleme kuralları: bulut yedeği de cihazdan cihaza aktarım da
+     HİÇBİR şeyi taşımaz. Uygulama verisinde köprü token'ı / cihaz anahtarı
+     (shared_prefs), oturum önbelleği ve indirilenler var; bunların Google
+     yedeğine ya da başka bir telefona kopyalanması anahtarın cihaza özel
+     olmasını boşa çıkarır. Yeni cihaz eşleştirme koduyla kendi anahtarını alır. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

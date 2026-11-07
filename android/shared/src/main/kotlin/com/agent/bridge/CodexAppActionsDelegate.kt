@@ -19,21 +19,24 @@ class CodexAppActionsDelegate(
     private val loadDiskSessions: () -> Unit,
     private val onSessionRenamed: (String, String) -> Unit = { _, _ -> },
 ) {
-    fun approve(allow: Boolean, decision: String = "", scopeName: String = "") = scope.launch {
+    // `requestId` null ise o an ekrandaki onay kartının kimliği kullanılır.
+    fun approve(allow: Boolean, decision: String = "", scopeName: String = "", requestId: String? = null) = scope.launch {
         val sid = state().codexAppSessionId
         if (sid.isBlank()) return@launch
         val effectiveDecision = decision.ifBlank { if (allow) "accept" else "deny" }
-        runCatching { client.codexAppApprove(state().settings, sid, allow, effectiveDecision, scopeName) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.codexAppApprove(state().settings, sid, allow, effectiveDecision, scopeName, requestId = kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Onay gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Onay gonderilemedi", e) } }
     }
 
-    fun answerQuestions(answers: List<ApprovalAnswer>) = scope.launch {
+    fun answerQuestions(answers: List<ApprovalAnswer>, requestId: String? = null) = scope.launch {
         val sid = state().codexAppSessionId
         if (sid.isBlank() || answers.isEmpty()) return@launch
-        runCatching { client.codexAppApprove(state().settings, sid, true, "accept", "", answers) }
+        val kimlik = requestId ?: state().bekleyenOnayKimligi
+        runCatching { client.codexAppApprove(state().settings, sid, true, "accept", "", answers, kimlik) }
             .onSuccess { refreshConversation(false) }
-            .onFailure { reportError("Cevap gonderilemedi", it) }
+            .onFailure { onayHatasiniIsle(it, emit, { refreshConversation(false) }) { e -> reportError("Cevap gonderilemedi", e) } }
     }
 
     // compact() buradan kaldirildi: hicbir yerden cagrilmiyordu (ne dugme ne menu),

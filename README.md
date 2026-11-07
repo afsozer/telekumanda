@@ -1,11 +1,13 @@
 # Telekumanda
 
-Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code, Codex, OpenCode and Antigravity sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23603803.svg)](https://doi.org/10.5281/zenodo.23603803)
+
+Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code, Codex and Antigravity sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
 
 - A Kotlin / Jetpack Compose Android app in `android/`
 - A Node.js bridge server in `bridge/`
 
-The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, OpenCode, Antigravity CLI, MCP management, usage tracking, and OTA update delivery.
+The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, Antigravity CLI, MCP management, usage tracking, and OTA update delivery.
 
 There is also a browser UI in `web/` that the bridge itself serves at `/ui` —
 see "Web UI" below.
@@ -16,7 +18,6 @@ The phone app provides a mobile control surface for multiple agent backends:
 
 - Claude Code CLI (Claude App)
 - Codex CLI (Codex App)
-- OpenCode CLI (OpenCode App)
 - Antigravity CLI (`agy.exe`)
 - Cowork Mode (multi-agent workspace coordination; a presentation layer that
   runs on top of the Claude App endpoints and can drive any provider)
@@ -35,9 +36,9 @@ Each backend is exposed through the same general chat-style UI: select or start 
 ## Cowork Mode & Workspace Templates
 
 Cowork mode allows you to run project-centric native provider sessions that coordination-wise target the same folder path.
-Workspaces live under Claude App's cowork root. Each workspace maintains its provider metadata under the `.cowork/` folder, allowing Claude App, Codex App, OpenCode App, and OMP (Oh My Pi) to resume their own native sessions without interfering with each other's transcripts.
+Workspaces live under Claude App's cowork root. Each workspace maintains its provider metadata under the `.cowork/` folder, allowing Claude App, Codex App, and OMP (Oh My Pi) to resume their own native sessions without interfering with each other's transcripts.
 
-Only Claude App's bridge session id is stable across restarts. The other three mint a fresh bridge uuid every time a shell is opened, so their records also carry the provider's own persistent id — Codex `threadId`, OpenCode `ses_…`, OMP's own session id (surfaced as `diskId` on the live session list). Resume and de-duplication key on that id, not on the bridge uuid; it lands in the record only after the first turn, via each backend's resolved-session callback.
+Only Claude App's bridge session id is stable across restarts. The other two mint a fresh bridge uuid every time a shell is opened, so their records also carry the provider's own persistent id — Codex `threadId`, OMP's own session id (surfaced as `diskId` on the live session list). Resume and de-duplication key on that id, not on the bridge uuid; it lands in the record only after the first turn, via each backend's resolved-session callback.
 
 - A project-level writer lease prevents two providers from modifying the same workspace concurrently. Finished or abandoned leases are released automatically or expire safely.
 - The **Devret** action writes a bounded `.cowork/handoff.md` containing recent conversation context and current deliveries, opens the selected provider in the same workspace, and asks it to continue from that handoff.
@@ -85,16 +86,10 @@ sessions keep running meanwhile.
 
 ## Notifications
 
-Operation events (turn started, needs attention, completed, failed), notes, and
-reminders reach the phone over the app's own connection to the bridge — no Firebase,
-no ADB. The full app runs a foreground monitor service that registers the device
-(`POST /notifications/device` with its installation id and model), long-polls
-`/notifications/poll`, posts each event as a real Android notification, and
-acknowledges it (`/notifications/ack`). Undelivered events are queued per device in
-`bridge/data/notification-delivery.json`, so a bridge restart or a dropped connection
-does not lose them. Turn events go to the device that started the turn; if that is
-unknown, to every registered device. The Lite build has no background notifications.
-Details: `docs/notification-routing.md`.
+The Android app shows only local reminder notifications; turn progress, approvals and
+results are followed in the app itself. The bridge keeps its notification feed
+(`/notifications/poll`, `/notifications/ack`) for other clients. Details:
+`docs/notification-routing.md`.
 
 ## Android App
 
@@ -132,7 +127,7 @@ The bridge is a Node.js server in `bridge/server.mjs`. It exposes REST endpoints
 Main bridge responsibilities:
 
 - Authenticate phone requests with the token from `bridge/config.json`
-- Start and manage CLI-backed sessions for Claude, Codex, OpenCode, and Agy
+- Start and manage CLI-backed sessions for Claude, Codex, and Agy
 - Stream conversation updates over WebSocket
 - List and resume disk sessions
 - Read selected workspace files for the phone UI
@@ -147,7 +142,6 @@ Important WebSocket channels:
 /agy/stream
 /claude-app/stream
 /codex-app/stream
-/opencode2-app/stream
 ```
 
 Important REST areas:
@@ -179,7 +173,6 @@ Important REST areas:
 /agy/*                              (Antigravity CLI actions and thought retrieval)
 /claude-app/*                       (Claude Code app workspaces, MCP, thoughts, quota suggest)
 /codex-app/*                        (Codex app fork, compact, efforts, approve, rewind)
-/opencode2-app/*                    (OpenCode 2 app: steer, fork-from, rewind, diff, checkpoints, revert, instructions, permissions/saved, commands, compact, pin/rename)
 /update/*                           (delivery of OTA Android APK packages)
 ```
 
@@ -191,7 +184,6 @@ already be installed and logged in on the host machine:
 - **Node.js 22 LTS** — required, not optional (see "Running The Bridge")
 - **Claude Code CLI** (`claude`) — for the Claude App and Cowork backends
 - **Codex CLI** (`codex`) — for the Codex App backend
-- **OpenCode CLI** (`opencode`) — for the OpenCode App backend
 - **Antigravity CLI** (`agy.exe`) — for the Agy backend
 - **JDK 17+ and the Android SDK** — only to build the app
 
@@ -210,6 +202,18 @@ the paired phone receives its own device key. Rotating that key immediately
 invalidates the previous one. The bridge stores only SHA-256 key digests and
 returns the clear key once, in the pairing or rotation response.
 
+The same screen lists every paired device and can revoke one
+(`POST /devices/revoke {deviceId}`); revoking or rotating a key also closes that
+device's open streams at once. The Lite build no longer carries a token inside
+the APK: on first launch it asks for a pairing code like the full app. Wrong
+pairing codes are rate limited per address, and a burst of wrong codes from
+many addresses invalidates every open code.
+
+Approvals are bound to the request they answer: clients send the pending
+request's `requestId` with `/<backend>/approve`, and the bridge answers **409**
+if a newer request has replaced it, so a stale notification cannot approve a
+different command. Only an explicit `"allow": true` approves.
+
 The bridge reads its runtime configuration from `bridge/config.json`.
 This file is intentionally ignored by Git because it contains the auth token
 and local machine settings. Copy the template to create it:
@@ -219,11 +223,17 @@ copy bridge\config.example.json bridge\config.json
 ```
 
 Then edit it and replace `authToken` with a long random string of your own.
+The bridge refuses to start if the token is shorter than 24 characters or still
+the template's `CHANGE-ME…` value.
 Settings:
 
 - `host` / `port`: bridge listen address (default `0.0.0.0:8787`)
 - `authToken`: shared bearer token used by the phone
-- `workspaceRoots`: extra roots allowed for remote file lookup (optional)
+- `workspaceRoots`: extra roots searched when a client asks for a file by name
+  (optional). This is a search path, not an access boundary: the file API
+  covers the whole Windows account the bridge runs as (see `SECURITY.md`).
+  UNC and device paths (`\\server\share`, `\\?\`) and NTFS alternate data
+  streams are rejected everywhere.
 - `fileAliases`: short name → absolute path shortcuts for `/file` (optional)
 - `zcodePromptCap5h`: 5-hour prompt cap used by usage display (optional)
 
@@ -321,8 +331,12 @@ npm run build     # production: served by the bridge at /ui
 npm run dev       # development: http://localhost:5173/ui/ , proxies to the bridge
 ```
 
-Token flow: open `/ui/?token=<bridge token>` once; the token is stored in
-`localStorage` and stripped from the address bar.
+Token flow: open `/ui/#token=<bridge token>` once; the part after `#` never
+reaches the server, and the token is stored in `localStorage` and stripped from
+the address bar. The bridge accepts tokens only in the `Authorization` header;
+because browsers cannot set headers on a WebSocket handshake, the web UI opens
+each stream with a single-use ticket valid for 30 seconds (`POST /ws-ticket`,
+`bridge/ws-tickets.mjs`).
 
 > The former Compose Desktop client (`android/desktop/`) was removed on
 > 2026-08-10 — it had fallen far behind the phone app because every screen had
@@ -343,7 +357,6 @@ bridge/web-ui.mjs        Serves web/dist at /ui (before auth; see the note in th
 web/                     Browser UI (React + TypeScript, built with Vite)
 bridge/claude-app.mjs    Claude Code backend (+ claude-app-adapter.mjs)
 bridge/codex-app.mjs     Codex backend (+ codex-app-adapter.mjs)
-bridge/opencode2-app.mjs OpenCode backend (OpenCode 2)
 bridge/agy.mjs           Antigravity CLI (agy.exe) backend, PTY-driven
 bridge/cowork.mjs        Cowork workspaces, leases, handoff
 bridge/projects.mjs      Persistent project envelopes

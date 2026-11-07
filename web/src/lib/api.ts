@@ -138,9 +138,8 @@ export async function apiObjectUrl(path: string, signal?: AbortSignal): Promise<
 }
 
 /**
- * Akış adresi üretir. Token sorguya gömülür — tarayıcı WebSocket el sıkışmasına
- * başlık ekleyemiyor (bkz. token.ts). Köprü istek adreslerini loglamıyor,
- * yani token bridge.log'a düşmez.
+ * Akış adresi üretir. Token adrese GİRMEZ; bağlanmadan hemen önce `wsTicket`
+ * ile alınan tek kullanımlık bilet `withTicket` ile eklenir (bkz. token.ts).
  */
 export function streamUrl(
   path: string,
@@ -152,8 +151,20 @@ export function streamUrl(
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== '') search.set(key, String(value))
   }
-  if (activeToken) search.set('token', activeToken)
   return `${scheme}//${location.host}${path}?${search.toString()}`
+}
+
+/** Akış için tek kullanımlık, kısa ömürlü bilet alır (başlıkla kimlik doğrulanır). */
+export async function wsTicket(signal?: AbortSignal): Promise<string> {
+  const r = await apiPost<{ ticket: string }>('/ws-ticket', undefined, signal)
+  return r.ticket
+}
+
+/** Akış adresine bileti ekler. Saf fonksiyon. */
+export function withTicket(url: string, ticket: string): string {
+  const u = new URL(url)
+  u.searchParams.set('ticket', ticket)
+  return u.toString()
 }
 
 export interface Health {

@@ -6,7 +6,8 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { createRouter, json, body, rawBody } from './router.mjs';
+import { createRouter, json, body, rawBody, BodyTooLargeError, rejectTooLarge, setBodyValidator } from './router.mjs';
+import { PATH_KEYS, UnsafePathError, assertSafePathFields, unsafePathReason } from './path-guard.mjs';
 import { register as registerGeneral } from './routes/general.mjs';
 import { registerBackend, reconcilePromptRequests, promptOriginModel } from './routes/backend.mjs';
 import { warmOpenTabBackends } from './backend-warmth.mjs';
@@ -37,6 +38,7 @@ import { pruneSessions } from './session-prune.mjs';
 import { serveWebUi } from './web-ui.mjs';
 import { createReminders } from './reminders.mjs';
 import { createHatirlaticiAdb } from './hatirlatici-adb.mjs';
+import { createWsTickets } from './ws-tickets.mjs';
 import { ensureDocumentToolPath } from './tool-path.mjs';
 
 // Winget PATH değişikliği mevcut terminale yansımamış olsa da provider child
@@ -44,6 +46,12 @@ import { ensureDocumentToolPath } from './tool-path.mjs';
 ensureDocumentToolPath();
 const CFG_URL = new URL('./config.json', import.meta.url);
 const cfg = JSON.parse(fs.readFileSync(CFG_URL));
+// Boş ya da örnekteki yer tutucu token herkese tam erişim demek: boş token,
+// boş bir `Bearer ` başlığıyla eşleşir. Köprü böyle bir ayarla açılmaz.
+if (typeof cfg.authToken !== 'string' || cfg.authToken.trim().length < 24 || /^CHANGE-ME/i.test(cfg.authToken.trim())) {
+  throw new Error('bridge/config.json: authToken en az 24 karakterlik, size özel rastgele bir dizgi olmalı (örnekteki CHANGE-ME değeri kullanılamaz)');
+}
+const LEGACY_TOKEN_DIGEST = crypto.createHash('sha256').update(cfg.authToken).digest();
 const PROTOCOL_VERSION = 2;
 
 // ── Logger (madde 14) ──────────────────────────────────────────────────────
@@ -123,15 +131,22 @@ export const SLASH = {
 };
 
 const deviceAuth = createDeviceAuth();
+setBodyValidator(assertSafePathFields);
+const wsTickets = createWsTickets();
 
+// Token yalnız `Authorization: Bearer` başlığından okunur. Adrese (`?token=`)
+// konan token proxy, tarayıcı geçmişi ve günlüklerde açıkta kalıyordu; tarayıcı
+// WebSocket'i başlık gönderemediği için onun yolu tek kullanımlık bilet
+// (`POST /ws-ticket`, bkz. ws-tickets.mjs).
 function requestToken(req) {
   const h = req.headers['authorization'] || '';
-  return h.startsWith('Bearer ') ? h.slice(7) : (new URL(req.url, 'http://x')).searchParams.get('token');
+  return h.startsWith('Bearer ') ? h.slice(7) : null;
 }
 
 function authIdentity(req) {
+  if (req.wsIdentity) return req.wsIdentity;
   const token = requestToken(req);
-  if (token === cfg.authToken) return { kind: 'legacy', id: 'legacy' };
+  if (token && crypto.timingSafeEqual(crypto.createHash('sha256').update(token).digest(), LEGACY_TOKEN_DIGEST)) return { kind: 'legacy', id: 'legacy' };
   const device = token ? deviceAuth.authenticate(token) : null;
   return device ? { kind: 'device', ...device } : null;
 }
@@ -506,8 +521,10 @@ export const OPERATION_PUSH_KINDS = ['started', 'attention', 'completed', 'faile
 // `startedAt` kapsul icin eklendi: kapsul kartinin basligi ve chronometer'in
 // baslangici. `startedAt` ISO metindir (operations.mjs:98 `now().toISOString()`),
 // sayi degil — Android metin olarak okuyor, ek donusum gereksiz.
-export function operationPushBody(event) {
-  return {
+// `requestId` yalnız 'attention' olayında ve bekleyen onay biliniyorsa dolar:
+// bildirimdeki onay tuşu onu gönderir, bayat bir bildirim yeni bir isteği onaylayamaz.
+export function operationPushBody(event, requestId = null) {
+  const body = {
     deliveryId: event.id,
     kind: event.kind,
     backend: event.backend,
@@ -517,6 +534,14 @@ export function operationPushBody(event) {
     title: event.title || '',
     startedAt: event.at || '',
   };
+  if (requestId !== null && requestId !== undefined && requestId !== '') body.requestId = String(requestId);
+  return body;
+}
+
+function pendingRequestIdFor(event) {
+  if (event.kind !== 'attention') return null;
+  const p = findAnyPendingApproval();
+  return p && p.backend === event.backend && p.sessionId === event.sessionId ? p.requestId : null;
 }
 
 const operationsTracker = createOperationsTracker({
@@ -537,7 +562,7 @@ const operationsTracker = createOperationsTracker({
     // once OLCULECEK (plan §5, olcum adimi 11), kisma gerekiyorsa ondan sonra
     // eklenecek. Olcmeden kisma koymak kapsulu gecikmeli/yanlis durumda
     // birakma riskini bedava getirirdi.
-    notificationDelivery.send(operationPushBody(event), targets.length > 0 ? { targets } : {});
+    notificationDelivery.send(operationPushBody(event, pendingRequestIdFor(event)), targets.length > 0 ? { targets } : {});
   },
 });
 operationsTracker.start();
@@ -679,9 +704,9 @@ function findAnyPendingApproval() {
 function getNotificationsState() {
   const p = findAnyPendingApproval();
   if (p) {
-    return { pending: true, backend: p.backend, sessionId: p.sessionId, summary: p.summary };
+    return { pending: true, backend: p.backend, sessionId: p.sessionId, requestId: p.requestId ?? null, summary: p.summary };
   }
-  return { pending: false, backend: '', sessionId: '', summary: '' };
+  return { pending: false, backend: '', sessionId: '', requestId: null, summary: '' };
 }
 
 function getNotificationFeedState(deviceId = '') {
@@ -876,18 +901,28 @@ router.get('/search/global', async (req, res) => {
   json(res, result.ok ? 200 : 400, result);
 });
 router.post('/pairing/start', async (req, res) => json(res, 200, deviceAuth.startPairing()));
+router.post('/ws-ticket', async (req, res) => json(res, 200, { ok: true, ...wsTickets.issue(authIdentity(req)) }));
 router.post('/pairing/complete', async (req, res) => {
-  const b = await body(req);
-  const result = deviceAuth.completePairing({ code: b.code, name: b.name });
+  // Kimlik kapısından önce çalışan tek gövdeli uç: küçük tavan.
+  const b = await body(req, { maxBytes: 4096 });
+  const result = deviceAuth.completePairing({ code: b.code, name: b.name, address: req.socket?.remoteAddress || '' });
   json(res, result.ok ? 200 : 400, result);
 });
 router.post('/devices/rotate', async (req, res) => {
   const identity = authIdentity(req);
   if (identity?.kind !== 'device') return json(res, 400, { ok: false, error: 'device key required' });
   const result = deviceAuth.rotate(identity.id);
+  // Eski anahtarla açılmış akışlar da düşsün; istemci yeni anahtarla yeniden bağlanır.
+  if (result.ok) closeSocketsOf(identity.id);
   json(res, result.ok ? 200 : 400, result);
 });
 router.get('/devices', (req, res) => json(res, 200, { ok: true, devices: deviceAuth.list() }));
+router.post('/devices/revoke', async (req, res) => {
+  const b = await body(req);
+  const result = deviceAuth.revoke(String(b.deviceId || ''));
+  if (result.ok) closeSocketsOf(String(b.deviceId));
+  json(res, result.ok ? 200 : 400, result);
+});
 
 router.post('/backends/warm', async (req, res) => {
   const b = await body(req);
@@ -1172,8 +1207,8 @@ registerBackend(router, 'claude-app', claudeApp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = claudeApp.approve({ sessionId: b.sessionId, allow: b.allow !== false, answers: b.answers, updatedInput: b.updatedInput });
-      json(res, r.ok ? 200 : 400, r);
+      const r = claudeApp.approve({ sessionId: b.sessionId, allow: b.allow === true, answers: b.answers, updatedInput: b.updatedInput, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/interrupt', handler: async (req, res) => {
       const b = await body(req);
@@ -1257,8 +1292,8 @@ registerBackend(router, 'codex-app', codexApp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = codexApp.approve({ sessionId: b.sessionId, allow: b.allow !== false, cancel: b.cancel === true, decision: b.decision, scope: b.scope, answers: b.answers, content: b.content });
-      json(res, r.ok ? 200 : 400, r);
+      const r = codexApp.approve({ sessionId: b.sessionId, allow: b.allow === true, cancel: b.cancel === true, decision: b.decision, scope: b.scope, answers: b.answers, content: b.content, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/respond-user-input', handler: async (req, res) => {
       const b = await body(req);
@@ -1416,8 +1451,8 @@ registerBackend(router, 'omp', omp, {
     }},
     { method: 'POST', pattern: '/approve', handler: async (req, res) => {
       const b = await body(req);
-      const r = omp.approve({ sessionId: b.sessionId, allow: b.allow !== false, answers: b.answers });
-      json(res, r.ok ? 200 : 400, r);
+      const r = omp.approve({ sessionId: b.sessionId, allow: b.allow === true, answers: b.answers, requestId: b.requestId });
+      json(res, r.ok ? 200 : (r.stale ? 409 : 400), r);
     }},
     { method: 'POST', pattern: '/model', handler: async (req, res) => {
       const b = await body(req); const r = await omp.setModel({ sessionId: b.sessionId, model: b.model });
@@ -1572,10 +1607,20 @@ const server = http.createServer(async (req, res) => {
   }
   const url = new URL(req.url, 'http://x');
   try {
+    for (const [key, value] of url.searchParams) {
+      const reason = PATH_KEYS.has(key) ? unsafePathReason(value) : null;
+      if (reason) throw new UnsafePathError(reason);
+    }
+    const xDirReason = unsafePathReason(String(req.headers['x-dir'] || ''));
+    if (xDirReason) throw new UnsafePathError(xDirReason);
     const route = router.match(req.method, url.pathname);
     if (route) return await route.handler(req, res);
     return json(res, 404, { error: 'not found' });
-  } catch (e) { return json(res, 500, { error: String(e.message || e) }); }
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return rejectTooLarge(req, res);
+    if (e instanceof UnsafePathError) return json(res, 400, { ok: false, error: e.message });
+    return json(res, 500, { error: String(e.message || e) });
+  }
 });
 
 // ── WebSocket servers ──────────────────────────────────────────────────────
@@ -1589,16 +1634,46 @@ const wssClaudeApp = new WebSocketServer(WS_SECENEKLERI);
 const wssOmp = new WebSocketServer(WS_SECENEKLERI);
 const wssAgy = new WebSocketServer(WS_SECENEKLERI);
 
+// Akış el sıkışması kimliği bağlantı kurulmadan doğrulanır: başlıktaki token
+// (Android) ya da tek kullanımlık bilet (tarayıcı). Bilet burada harcandığı için
+// kimlik isteğe yazılır, bağlantı işleyicilerindeki auth() onu okur.
+function upgradeIdentity(req) {
+  const fromHeader = requestToken(req) ? authIdentity(req) : null;
+  if (fromHeader) return fromHeader;
+  return wsTickets.redeem(new URL(req.url, 'http://x').searchParams.get('ticket'));
+}
+
+// Cihaz kimliğine göre açık akışlar: cihaz iptal edildiğinde ya da anahtarı
+// yenilendiğinde o cihazın akışları hemen kapatılır.
+const socketsByDevice = new Map();
+function trackSocket(sock, identity) {
+  if (identity?.kind !== 'device') return;
+  let set = socketsByDevice.get(identity.id);
+  if (!set) socketsByDevice.set(identity.id, set = new Set());
+  set.add(sock);
+  sock.on('close', () => { set.delete(sock); if (!set.size) socketsByDevice.delete(identity.id); });
+}
+function closeSocketsOf(deviceId) {
+  for (const sock of socketsByDevice.get(deviceId) || []) { try { sock.close(1008, 'device key revoked'); } catch {} }
+}
+
 server.on('upgrade', (req, socket, head) => {
   const u = new URL(req.url, 'http://x');
+  const identity = upgradeIdentity(req);
+  if (!identity) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  req.wsIdentity = identity;
   if (u.pathname === '/codex-app/stream') {
-    wssCodexApp.handleUpgrade(req, socket, head, sock => wssCodexApp.emit('connection', sock, req));
+    wssCodexApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssCodexApp.emit('connection', sock, req); });
   } else if (u.pathname === '/claude-app/stream') {
-    wssClaudeApp.handleUpgrade(req, socket, head, sock => wssClaudeApp.emit('connection', sock, req));
+    wssClaudeApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssClaudeApp.emit('connection', sock, req); });
   } else if (u.pathname === '/omp/stream') {
-    wssOmp.handleUpgrade(req, socket, head, sock => wssOmp.emit('connection', sock, req));
+    wssOmp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssOmp.emit('connection', sock, req); });
   } else if (u.pathname === '/agy/stream') {
-    wssAgy.handleUpgrade(req, socket, head, sock => wssAgy.emit('connection', sock, req));
+    wssAgy.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssAgy.emit('connection', sock, req); });
   } else {
     socket.destroy();
   }

@@ -23,6 +23,14 @@ object UdfParser {
     private const val DOCUMENT_PROPERTIES_ENTRY = "documentproperties.xml"
     private val GENERATED_ENTRIES = setOf(CONTENT_ENTRY, SIGNATURE_ENTRY, DOCUMENT_PROPERTIES_ENTRY)
 
+    // Zip bombası sınırları (DocxLite ile aynı desen). UDF dışarıdan geliyor
+    // (WhatsApp, e-posta, dosya yöneticisi): birkaç KB'lık bir zip açılınca
+    // gigabaytlara şişip uygulamayı belleksiz bırakabilir. Sınır AÇILMIŞ bayta
+    // uygulanır; zip başlığındaki boyut alanına güvenilmez (sahtelenebilir).
+    private const val MAX_ENTRIES = 2_000
+    private const val MAX_ENTRY_BYTES = 20 * 1024 * 1024
+    private const val MAX_TOTAL_BYTES = 80 * 1024 * 1024L
+
     fun readUdf(file: File): UdfDocument {
         return file.inputStream().use { readUdf(it, file.absolutePath) }
     }
@@ -41,15 +49,28 @@ object UdfParser {
         val body = mutableListOf<UdfBodyNode>()
         val blocks = mutableListOf<UdfBlock>()
 
+        var entryCount = 0
+        var totalBytes = 0L
+        fun readEntry(zip: ZipInputStream): ByteArray {
+            val data = readBounded(zip, MAX_ENTRY_BYTES)
+            totalBytes += data.size
+            require(totalBytes <= MAX_TOTAL_BYTES) { "UDF açılmış boyutu çok büyük" }
+            return data
+        }
+
         ZipInputStream(inputStream).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
+                entryCount++
+                require(entryCount <= MAX_ENTRIES) { "UDF çok fazla paket girdisi içeriyor" }
                 val entryName = entry.name
                 when {
                     entryName == CONTENT_ENTRY -> {
                         contentXmlFound = true
+                        // Sınır aşımı içerik hatası sayılıp yutulmasın, hemen kessin.
+                        val contentBytes = readEntry(zip)
                         try {
-                            val xmlDoc = parseXml(zip.readBytes())
+                            val xmlDoc = parseXml(contentBytes)
                             val contentNode = xmlDoc.getElementsByTagName("content").item(0)
                             if (contentNode is Element) {
                                 textContent = getElementText(contentNode)
@@ -104,11 +125,11 @@ object UdfParser {
                         }
                     }
                     entryName == SIGNATURE_ENTRY -> {
-                        signatureBytes = zip.readBytes()
+                        signatureBytes = readEntry(zip)
                         isSigned = true
                     }
                     entryName != DOCUMENT_PROPERTIES_ENTRY && !entry.isDirectory && entryName.isNotBlank() -> {
-                        extraParts.add(UdfPart(entryName, zip.readBytes()))
+                        extraParts.add(UdfPart(entryName, readEntry(zip)))
                     }
                 }
                 entry = zip.nextEntry
@@ -314,9 +335,46 @@ object UdfParser {
     private val RUN_TAGS = setOf("content", "space", "field", "tab")
 
     private fun parseXml(bytes: ByteArray): Document {
+        // Bayt düzeyinde DTD reddi (DocxLite ile aynı): parser özelliklerinin
+        // bir kısmı Android'in XML sağlayıcısında desteklenmiyor ve
+        // secureDocumentBuilderFactory onları sessizce atlıyor. UDF'nin
+        // content.xml'i DTD kullanmaz; DOCTYPE/ENTITY görülürse belge reddedilir.
+        require(!containsXmlToken(bytes, "<!DOCTYPE") && !containsXmlToken(bytes, "<!ENTITY")) {
+            "UDF XML içinde DTD/entity kullanılamaz"
+        }
         val dbFactory = secureDocumentBuilderFactory()
         val dBuilder = dbFactory.newDocumentBuilder()
         return dBuilder.parse(ByteArrayInputStream(bytes))
+    }
+
+    private fun readBounded(input: ZipInputStream, max: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(16 * 1024)
+        var total = 0
+        while (true) {
+            val n = input.read(buffer)
+            if (n < 0) break
+            total += n
+            require(total <= max) { "UDF paket girdisi çok büyük" }
+            out.write(buffer, 0, n)
+        }
+        return out.toByteArray()
+    }
+
+    // ASCII ve UTF-16 (iki bayt sırası) içinde büyük/küçük harf duyarsız arama.
+    private fun containsXmlToken(bytes: ByteArray, token: String): Boolean {
+        val desenler = listOf(Charsets.US_ASCII, Charsets.UTF_16LE, Charsets.UTF_16BE)
+            .map { token.uppercase().toByteArray(it) }
+        return desenler.any { desen ->
+            if (desen.isEmpty() || bytes.size < desen.size) return@any false
+            (0..bytes.size - desen.size).any { i ->
+                desen.indices.all { j ->
+                    val gercek = bytes[i + j].toInt() and 0xff
+                    val katlanmis = if (gercek in 'a'.code..'z'.code) gercek - 32 else gercek
+                    katlanmis == (desen[j].toInt() and 0xff)
+                }
+            }
+        }
     }
 
     /** Builds groupName/fieldName -> value (and fieldName -> value fallback) from <data>. */

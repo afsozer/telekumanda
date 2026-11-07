@@ -107,6 +107,17 @@ describe('setPermissionMode', () => {
 })
 
 describe('approve', () => {
+  it('onaylanan isteğin kimliği gövdeye girer', async () => {
+    const fn = stubFetch(() => jsonResponse({ ok: true }))
+    await approve('codex-app', 's1', true, undefined, 'req-7')
+    expect(bodyOf(fn.mock.calls[0][1])).toEqual({ sessionId: 's1', allow: true, requestId: 'req-7' })
+  })
+
+  it('bayat onay (409) anlaşılır bir hata verir', async () => {
+    stubFetch(() => jsonResponse({ ok: false, error: 'stale approval', stale: true }, 409))
+    await expect(approve('claude-app', 's1', true, undefined, 'eski')).rejects.toThrow(/artık geçerli değil/)
+  })
+
   it('POST /claude-app/approve — gövde { sessionId, allow }', async () => {
     const fn = stubFetch(() => jsonResponse({ ok: true }))
     await approve('claude-app', 's1', true)

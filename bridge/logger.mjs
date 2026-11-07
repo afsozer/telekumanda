@@ -37,7 +37,10 @@ const origConsole = {
 
 export function maskToken(str) {
   if (typeof str !== 'string') return str;
-  return str.replace(/token=([^&\s]+)/g, 'token=***');
+  return str
+    .replace(/(token|ticket)=([^&\s]+)/g, '$1=***')
+    .replace(/(Bearer\s+)[A-Za-z0-9._~+/=-]+/gi, '$1***')
+    .replace(/\b(abk|tkt)_[A-Za-z0-9_-]{16,}/g, '$1_***');
 }
 
 /**

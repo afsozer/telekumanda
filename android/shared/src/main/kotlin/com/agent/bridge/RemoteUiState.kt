@@ -99,6 +99,9 @@ data class DeviceUiState(
     val pairingExpiresAt: String = "",
     val paired: Boolean = false,
     val authLoading: Boolean = false,
+    // Köprüye eşleştirilmiş cihazlar (Ayarlar > Bağlantı > Cihaz güvenliği).
+    val devices: List<BridgeDevice> = emptyList(),
+    val devicesLoading: Boolean = false,
 )
 
 /** Antigravity CLI'ye ait oturum, model ve disk kayıtları. */
@@ -531,6 +534,11 @@ val RemoteUiState.pairingCode get() = device.pairingCode
 val RemoteUiState.pairingExpiresAt get() = device.pairingExpiresAt
 val RemoteUiState.devicePaired get() = device.paired
 val RemoteUiState.deviceAuthLoading get() = device.authLoading
+/**
+ * Lite'ın ilk açılış kapısı: köprü kimliği (cihaz anahtarı) yoksa sohbet
+ * kabuğu yerine eşleştirme ekranı gösterilir. Kimlik APK'ya gömülmüyor.
+ */
+val RemoteUiState.liteEslestirmeGerekli: Boolean get() = liteEdition && settings.token.isBlank()
 val RemoteUiState.agySessionId get() = agy.sessionId
 val RemoteUiState.agyModels get() = agy.models
 val RemoteUiState.agyCwd get() = agy.cwd

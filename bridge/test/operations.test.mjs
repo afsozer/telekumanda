@@ -253,4 +253,8 @@ test('started passes the push filter and carries title/startedAt', async () => {
   const bos = operationPushBody({ id: 'e1', kind: 'completed', backend: 'agy', sessionId: 's2' });
   assert.equal(bos.title, '');
   assert.equal(bos.startedAt, '');
+  assert.equal('requestId' in bos, false);
+  // Onay bekleyen olay, bekleyen isteğin kimliğini taşır.
+  const onay = operationPushBody({ id: 'e2', kind: 'attention', backend: 'codex-app', sessionId: 's3' }, 42);
+  assert.equal(onay.requestId, '42');
 });

@@ -70,7 +70,7 @@ describe('json(), body(), rawBody()', () => {
   it('json sets content-type and calls end with JSON string', () => {
     const res = { headers: null, data: null, writeHead(code, headers) { this.headers = headers; }, end(d) { this.data = d; } };
     json(res, 200, { ok: true });
-    assert.deepEqual(res.headers, { 'content-type': 'application/json' });
+    assert.deepEqual(res.headers, { 'content-type': 'application/json', 'x-content-type-options': 'nosniff' });
     assert.equal(res.data, JSON.stringify({ ok: true }));
   });
 

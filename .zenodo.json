@@ -1,0 +1,28 @@
+{
+  "title": "Telekumanda: remote control for desktop AI coding agents from an Android phone or browser",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Sözer, Alpaslan Fatih"
+    }
+  ],
+  "description": "<p>Telekumanda is a remote control for the AI coding agents running on a desktop computer: Claude Code, Codex and Antigravity sessions are started and followed from an Android phone or a browser, their tool calls are approved, and their results are picked up without sitting at the desk. The repository contains a Kotlin and Jetpack Compose Android app and a Node.js bridge server. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to the agent backends over HTTP and WebSocket; it also handles MCP server management, usage tracking and OTA update delivery. A browser UI is served by the bridge itself.</p><p>Telekumanda, bilgisayarda çalışan yapay zeka kodlama ajanları (Claude Code, Codex ve Antigravity) için bir uzaktan kumandadır: oturumlar Android telefondan ya da tarayıcıdan başlatılır ve izlenir, araç çağrıları onaylanır, sonuçlar masa başında oturmadan alınır. Depoda Kotlin ve Jetpack Compose ile yazılmış Android uygulaması ve bilgisayarda çalışan, istekleri belirteç ya da cihaza özel anahtarla doğrulayan Node.js köprü sunucusu bulunur.</p>",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "remote-control",
+    "android",
+    "kotlin",
+    "jetpack-compose",
+    "nodejs",
+    "mcp"
+  ],
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/afsozer/telekumanda",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

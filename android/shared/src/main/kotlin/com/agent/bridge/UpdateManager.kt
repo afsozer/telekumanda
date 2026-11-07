@@ -16,6 +16,6 @@ import java.io.File
  */
 interface UpdateManager {
     suspend fun checkUpdate(settings: BridgeSettings): UpdateInfo?
-    suspend fun downloadApk(settings: BridgeSettings, apkUrl: String, onProgress: (Float) -> Unit): File
+    suspend fun downloadApk(settings: BridgeSettings, apkUrl: String, sha256: String, onProgress: (Float) -> Unit): File
     fun installApk(file: File): Boolean
 }

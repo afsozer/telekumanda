@@ -76,11 +76,11 @@ describe('açılış', () => {
     expect(url.searchParams.has('since')).toBe(false)
   })
 
-  it('token sorguya girer — tarayıcı WS başlık gönderemiyor', () => {
+  it('token adrese girmez', () => {
     setActiveToken('gizli')
     const h = harness()
     h.stream.open('claude-app', 'o1')
-    expect(new URL(h.last().url).searchParams.get('token')).toBe('gizli')
+    expect(new URL(h.last().url).searchParams.has('token')).toBe(false)
   })
 
   it('açılınca bağlantı durumu bildirilir', () => {

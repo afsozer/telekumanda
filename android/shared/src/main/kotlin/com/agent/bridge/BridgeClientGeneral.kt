@@ -321,6 +321,29 @@ suspend fun BridgeClient.rotateDeviceKey(settings: BridgeSettings): DeviceKeyRes
     return DeviceKeyResult(json.optString("deviceId"), json.optString("key"))
 }
 
+suspend fun BridgeClient.listDevices(settings: BridgeSettings): List<BridgeDevice> {
+    val json = getJson(settings, "/devices")
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Device list failed"))
+    return parseBridgeDevices(json.optJSONArray("devices"))
+}
+
+suspend fun BridgeClient.revokeDevice(settings: BridgeSettings, deviceId: String) {
+    val json = postJson(settings, "/devices/revoke", JSONObject().put("deviceId", deviceId))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Device revoke failed"))
+}
+
+internal fun parseBridgeDevices(array: org.json.JSONArray?): List<BridgeDevice> = buildList {
+    if (array == null) return@buildList
+    for (i in 0 until array.length()) {
+        val item = array.optJSONObject(i) ?: continue
+        val id = item.optString("id")
+        if (id.isBlank()) continue
+        // null alan JSON'da "null" metni olarak okunmasın.
+        fun alan(ad: String) = if (item.isNull(ad)) "" else item.optString(ad)
+        add(BridgeDevice(id, alan("name"), alan("createdAt"), alan("lastSeenAt"), alan("revokedAt"), alan("rotatedAt")))
+    }
+}
+
 /** Paylaşımdan üretilen notun sonucu. */
 data class ShareNoteResult(
     val ok: Boolean,
@@ -482,8 +505,10 @@ suspend fun BridgeClient.bulkSessionAction(
     )
 }
 
-suspend fun BridgeClient.approve(settings: BridgeSettings, backend: String, sessionId: String, allow: Boolean) {
-    val body = JSONObject().put("sessionId", sessionId).put("allow", allow)
+// Bildirim tuşunun yolu. `requestId` bildirimin ÜRETİLDİĞİ andaki onayın
+// kimliği; köprü artık başka bir onay bekliyorsa 409 döner (bkz. OnayIstegi.kt).
+suspend fun BridgeClient.approve(settings: BridgeSettings, backend: String, sessionId: String, allow: Boolean, requestId: String = "") {
+    val body = JSONObject().put("sessionId", sessionId).put("allow", allow).onayKimligiEkle(requestId)
     val path = when (backend.trim().lowercase()) {
         "codex-app" -> "/codex-app/approve"
         "omp" -> "/omp/approve"
@@ -500,11 +525,10 @@ fun BridgeClient.openBackendStream(
     listener: WebSocketListener,
 ): WebSocket {
     val session = URLEncoder.encode(sessionId, "UTF-8")
-    val token = URLEncoder.encode(settings.token, "UTF-8")
     val sincePart = since?.let { "&since=$it" } ?: ""
     val url = settings.baseUrl.trimEnd('/')
         .replaceFirst("https://", "wss://")
-        .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&token=$token&delta=1$sincePart"
+        .replaceFirst("http://", "ws://") + "/$backend/stream?session=$session&delta=1$sincePart"
     val builder = Request.Builder().url(url)
     if (settings.token.isNotBlank()) {
         builder.header("Authorization", "Bearer ${settings.token}")
