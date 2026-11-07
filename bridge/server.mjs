@@ -509,7 +509,7 @@ if (import.meta.main) {
   idleChildTimer.unref?.();
 }
 // Push'lanan operasyon olaylari. 'started' 16.09.2026'da eklendi (kapsul /
-// Android 16 Live Updates, docs/kapsul-live-updates-plani.md §2.1): telefonda
+// Android 16 Live Updates): telefonda
 // kapsulu acan olay bu. Ayrica "onay cozuldu" diye ayri bir olay YOK —
 // `waiting -> running` gecisi de 'started' uretiyor (operations.mjs:149), yani
 // kapsulun ONAY -> TUR donusu de buradan geliyor.

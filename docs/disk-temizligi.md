@@ -14,7 +14,7 @@ ve gerekçelerini toplar.
 | Paylaşılan içeriğin kopyası (`~/.agentbridge/share-notes`) | 3 gün | `noteExtract.retentionDays` | klasör yaşı |
 | Çıkarımın agy artığı (`~/.gemini/agentbridge-screenshot-notes`) | 3 gün | `noteExtract.retentionDays` | klasör yaşı |
 | agy CLI oturumları (`~/.gemini/antigravity-cli`) | 7 gün | `agy.sessionRetentionDays` | klasör yaşı |
-| claude / codex / opencode oturumları | 7 gün | `sessionPrune.retentionDays` | oturum listesi + backend'in kendi silme yolu |
+| claude / codex oturumları | 7 gün | `sessionPrune.retentionDays` | oturum listesi + backend'in kendi silme yolu |
 
 Her biri `0` ile kapatılır. Budama açılıştan 60 sn sonra bir kez, sonra 6
 saatte bir koşar (`sessionPrune.intervalHours`).
@@ -35,13 +35,12 @@ artığı için doğru olan bu, çünkü orada birikenin hepsi oturum değil —
 ve `log/` de var — ve CLI/IDE ayrımı dosya sistemi seviyesinde bir gerçek,
 oturum kaydında değil.
 
-**Oturum listesi** (`session-prune.mjs`) claude/codex/opencode için gerekli,
+**Oturum listesi** (`session-prune.mjs`) claude/codex için gerekli,
 çünkü oradaki "bir oturum" ≠ "bir dosya":
 
 - claude: bir sohbet N dosya (CLI her resume'da geçmişin tamamını yeni uuid'li
   bir dosyaya kopyalıyor)
 - codex: rollout dosyası + `state_5.sqlite` metadata'sı
-- opencode: `opencode.db` içinde session + message + part + event satırları
 
 Neyin silineceğini yalnız ilgili modül biliyor, o yüzden silme her backend'in
 kendi `deleteDiskSession`'ına devrediliyor. `session-prune.mjs` yalnız **kimin**
@@ -50,14 +49,13 @@ silineceğini seçiyor.
 ## İnaktiflik ölçütü
 
 Kullanıcının tanımı: *"gelen son prompt veya son ajan mesajı inaktiflik
-süresinin başladığı andır."* Üç backend'de de liste kaydındaki `mtime` bunu
+süresinin başladığı andır."* İki backend'de de liste kaydındaki `mtime` bunu
 gösteriyor:
 
 - **claude-app** — transcript içindeki son mesajın zamanı (`lastTs`). Ham dosya
   `mtime`'ı değil: CLI eski transcript'lere zaman damgasız bakım satırları
   ekleyip dosya mtime'ını ilerletiyor.
 - **codex-app** — rollout dosyasının son yazılma zamanı.
-- **opencode-app** — `opencode.db`'deki `time_updated`.
 
 ## Muafiyetler
 
@@ -67,7 +65,7 @@ oturumları, sohbet geçmişi değil; bir dava dosyası aylarca sessiz kalıp so
 devam edebilir. Testte üç ayrı tuzak sabitlendi:
 
 - Kökün kendisi de muaf.
-- opencode `directory`'yi `/` ile veriyor, Windows yolları `\` ile — ayırıcı
+- Yollar `/` ya da `\` ayırıcıyla gelebilir; ayırıcı
   normalize edilmezse muafiyet **sessizce kaçar** ve çalışma alanı oturumu
   silinir.
 - `CoworkSpaces-yedek` gibi adı geçen ama altında olmayan klasör muaf DEĞİL;
@@ -103,7 +101,6 @@ tazeyse hiçbir üyesi silinmez; grup eskiyse tüm dosyaları birlikte gider.
 |---|---|---|---|---|---|---|
 | claude-app | 142 grup | 99 (109 dosya) | 12 | 8 | 23 | 0 |
 | codex-app | 141 | 121 | 7 | 0 | 13 | 31 |
-| opencode-app | 57 | 33 | 4 | 0 | 20 | 0 |
 
 Ondan önce elle yapılan tek seferlik temizlik: 94 MB ekran görüntüsü + 97 MB
 çıkarım artığı + 275 MB agy CLI oturumu = 466 MB.
@@ -135,7 +132,6 @@ kuralına bırakıyor.
 |---|---|---|---|
 | claude-app | 142 grup | 43 | 99 (109 dosya) |
 | codex-app | 141 | 20 | 121 |
-| opencode-app | 57 | 24 | 33 |
 
 ### Koşu sırasında çıkan hata: silinen codex oturumu diriliyordu
 
@@ -162,7 +158,7 @@ codex kaydı 83'ten 20'ye indi, bekleyen 0.
 
 ## Kapsam dışı
 
-- **omp** — kullanıcının isteği üç backend'di (claude, codex, opencode).
+- **omp** — kapsam yalnız claude ve codex.
 - **Masaüstü Antigravity IDE home'u** (`~/.gemini/antigravity`) — bu köprüye ait
   değil; budamak kullanıcının editöründeki geçmişi silmek olurdu. Kodda bu
   gerekçe yorumla yazılı ki sonradan "simetri olsun" diye eklenmesin.

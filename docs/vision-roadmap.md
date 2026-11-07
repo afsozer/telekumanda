@@ -33,7 +33,7 @@ teslimatları tek yerden görebilmesidir.
 - [x] Cowork dışındaki oturumlar için de opsiyonel proje zarfı tanımla.
 - [x] Ana ekranda proje → oturumlar → teslimatlar hiyerarşisi sun.
 - [x] Dosya değişiklikleri, komutlar, plan ve çıktıları transcript'ten bağımsız özetle.
-- [x] Projeyle ilişkilendirilen, yalnız açık ikinci onayla Codex/OpenCode global MCP konfigürasyonuna uygulanan MCP profili ve izin politikası ekle.
+- [x] Projeyle ilişkilendirilen, yalnız açık ikinci onayla Codex global MCP konfigürasyonuna uygulanan MCP profili ve izin politikası ekle.
 - [x] Teslimatların yeni/değişti durumunu kalıcı olarak izle.
 
 ## Faz 3 — Güvenlik ve denetlenebilirlik

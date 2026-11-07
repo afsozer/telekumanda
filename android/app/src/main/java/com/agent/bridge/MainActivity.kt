@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
 
                 // TEK KÖK: ui3 (18.08.2026). Buradaki ön izleme anahtarı
                 // (`Ui3Tercih`) ve ui2 köküne düşen dal silindi — ui3 parite
-                // taramasını (bkz. docs/ui3-liquid-glass-plani.md) geçtikten
+                // taramasını geçtikten
                 // sonra iki kabuğu birden ayakta tutmanın karşılığı kalmadı.
                 // ui2'nin GÖVDELERİ duruyor ve ui3 onları ödünç kullanmaya
                 // devam ediyor; giden şey yalnız ikinci kabuk.

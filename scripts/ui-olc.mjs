@@ -6,8 +6,7 @@
 // düğüm nerede, dokunma hedefi kaç dp, cam bölgesi gerçekten bulanık mı, iki
 // ekran görüntüsü arasındaki fark yüzde kaç.
 //
-// Tarayıcı tarafında aynı iş DOM ölçümüyle yapılmıştı (docs/mockups/*.html
-// doğrulaması); bu onun Android karşılığı.
+// Tarayıcı tarafında aynı iş DOM ölçümüyle yapılmıştı; bu onun Android karşılığı.
 //
 // Dış bağımlılık YOK — PNG çözümü Node'un kendi zlib'iyle elde yapılıyor.
 // Bir npm paketi eklemek, ajanın doğrulama adımını "kurulum başarısız" diye

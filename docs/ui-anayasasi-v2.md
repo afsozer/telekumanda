@@ -10,9 +10,6 @@
 >
 > Bu belge v1'in **yalnız tasarım dilini** (bölüm 4) değiştirir ve üç yeni bölüm
 > ekler: malzeme, konşentrik geometri, hareket bütçesi.
->
-> Kaynak tasarım: `docs/mockups/ui5-liquid-glass.html`.
-> Uygulama planı: `docs/ui3-liquid-glass-plani.md`.
 
 ---
 

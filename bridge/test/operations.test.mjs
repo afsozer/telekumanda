@@ -205,7 +205,7 @@ test('operations tracker exposes waiting work before running work', () => {
 
 
 // --- Kapsul (Android 16 Live Updates) push sozlesmesi, 16.09.2026 ---
-// docs/kapsul-live-updates-plani.md §2.1: kapsulu acan olay 'started'; ayrica
+// Kapsulu acan olay 'started'; ayrica
 // "onay cozuldu" diye ayri olay yok, `waiting -> running` de 'started' uretiyor.
 
 test('waiting to running emits started so the capsule can leave approval state', () => {

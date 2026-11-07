@@ -49,25 +49,24 @@ vaka ekle.
 > B2 (kota failover canlı gözlemi) ÇIKARILDI: otomatik failover 10.12'de kaldırıldı,
 > Faz 3'te (10.16) "nazik öneri" (`quotaSuggestion`) modeliyle değiştirildi — kota
 > hatasında otomatik hesap geçişi artık YOK, kullanıcıya kart gösterilir. Detay için
-> `docs/vizyon-roadmap-talimat.md` Faz 3 ve CHANGELOG 10.12/10.16.
+> CHANGELOG 10.12/10.16.
 
 ### B4. Backend-özel MCP yönetimi: ajanların yeni sunucuyu gerçekten gördüğü doğrulanmadı
 
 Durum: MCP ekranı artık backend'e duyarlı (claude→Claude config, agy→Antigravity,
-codex-app→config.toml `codex mcp` CLI'ı ile, opencode-app→opencode.json,
-kaldirilmis backend'lerde buton yok).
-Config CRUD'ları canlı doğrulandı (codex/opencode gerçek listeler okundu; kaldirilmis backend'de
+codex-app→config.toml `codex mcp` CLI'ı ile; kaldırılmış backend'lerde buton yok).
+Config CRUD'ları canlı doğrulandı (codex gerçek listesi okundu; kaldirilmis backend'de
 save/toggle/remove round-trip yapıldı). Görülmeyen tek şey: eklenen sunucunun
 ajanın SONRAKİ oturumunda tool olarak gerçekten belirmesi.
 
 Nasıl doğrulanır: Telefondan (örn.) Codex App'e bir MCP ekle → yeni oturum aç →
 ajana "hangi mcp araçların var" diye sor; aynısını diğer ACP süreçleri (
-gerektirir) ve opencode (serve süreci yeniden başlayınca) için tekrarla.
+gerektirir) için tekrarla.
 
 Sıkıntı çıkarsa: config dosyasında kayıt duruyorsa sorun "ne zaman okunuyor"
 tarafındadır — codex: yeni oturum yetmiyorsa app-server süreci yeniden başlamalı;
 ACP çocuğu bridge tarafından öldürülüp yeniden doğmalı (bridge'in kendisi
-DEĞİL); opencode: serve çocuğu aynı şekilde. Gerekirse ilgili backend'e "MCP
+DEĞİL). Gerekirse ilgili backend'e "MCP
 değişikliği sonrası boşta çocuk süreci yeniden başlat" mantığı eklenir.
 
 ### B3. `since=1` (ilk snapshot seq'i) reconnect'te saf delta canlı kanıtlanamadı
@@ -123,8 +122,6 @@ backend claude-app. Codex'e ileride re-key akışı gelirse alias o zaman core'a
 
 ### C2. Kapsam dışı / opsiyonel notlar
 
-- opencode-app'in aynı çekirdeğe taşınması ayrı iş, bu roadmap'in
-  kapsamı dışında.
 - `RemoteViewModel` hâlâ büyük; backend-spesifik start/poll metodlarının daha
   fazla mekanik bölünmesi mimari temizlik olarak yapılabilir, roadmap borcu değil.
 

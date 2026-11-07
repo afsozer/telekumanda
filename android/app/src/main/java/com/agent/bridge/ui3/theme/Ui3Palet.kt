@@ -29,7 +29,7 @@ import androidx.compose.ui.graphics.SolidColor
  * petrol yeşili + kısık altın; menekşe tamamen çıktı (o ui2'nin kimliği).
  * CAM MALZEMESİ DEĞİŞMEDİ: alfalar, mesh gücü ve geometri aynen duruyor,
  * yalnız tonlar değişti. Her metin rengi iki zeminde (cam kart + düz) WCAG
- * 4.5'in üstünde; tablo `docs/ui3-liquid-glass-plani.md` renk revizyonunda.
+ * 4.5'in üstünde.
  */
 data class Ui3Palet(
     val koyuMu: Boolean,

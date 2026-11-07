@@ -1,7 +1,7 @@
 # AgentBridge Lite güncellemeleri
 
 Lite yalnız Claude ve Antigravity sunar (Codex 24.10.2026'da çıkarıldı).
-Eski Codex ve OpenCode sekmeleri Lite başlangıcında istemcinin sekme kaydından
+Eski Codex sekmeleri Lite başlangıcında istemcinin sekme kaydından
 çıkarılır; köprüdeki oturum silinmez. Normal uygulamanın sağlayıcıları korunur.
 
 Lite açılışta sessiz güncelleme kontrolü yapar. Başlık çubuğundaki güncelleme

@@ -163,11 +163,10 @@ internal fun adaBaglamYuzdesi(
  * testti. Yeniden ölçüldüğünde (`capsule-test/live/SONUC.md`) `ProgressStyle`
  * ve `BigTextStyle` promoted-ongoing bildirimleri Magic Capsule'u açtı.
  * Sistem kapsülü 16.09.2026–21.10.2026 arasında Live Updates yoluyla AYRICA
- * vardı (`docs/kapsul-live-updates-plani.md`); bildirim servisiyle birlikte
+ * vardı; bildirim servisiyle birlikte
  * kaldırıldı (arka plan veri/pil tüketimi). Uygulama içi tek gösterge artık bu
  * ada. MediaSession yolu ise ÇALIŞIYOR olmasına
- * rağmen vazgeçildi (medya yuvasını devralıyordu); ayrıntı:
- * `docs/ui3-liquid-glass-plani.md`, Faz 8.
+ * rağmen vazgeçildi (medya yuvasını devralıyordu).
  *
  * İÇERİK BÖLÜŞÜMÜ bantların genişliğinden geliyor, estetikten değil:
  *  - SOL (≈78dp): nokta + durum metni — asıl bilgi, geniş bant onu kaldırıyor.

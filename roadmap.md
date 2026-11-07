@@ -173,7 +173,7 @@
   maddede yalnızca taşıma, davranış aynen korundu. (2) **Backend delegeleri (11.6) çok sayıda
   callback aldı** — AgyDelegate 13, ClaudeAppDelegate 15, CoworkDelegate 18 constructor parametresi.
   Gerekçe: sendPrompt/refreshConversation/refreshSession/applyConversation/refreshAll shared altyapı
-  (yönerge: VM'de kalır) + sibling backend socket/polling/info-load çağrıları (cowork→codex/opencode/
+  (yönerge: VM'de kalır) + sibling backend socket/polling/info-load çağrıları (cowork→codex/
   claude) callback'lerle soyutlandı. normalizeCoworkProvider top-level olduğu için delege doğrudan
   çağırır (callback gerekmedi). (3) **uploadToBrowserDir (11.3) ve uploadToCoworkWorkspace (11.6c)
   Uri çözmesi VM'de kaldı** — delege yalnızca name+bytes alır (yönerge: Context/Uri arayüz arkasında);
@@ -190,7 +190,7 @@
   applyStreamSnapshot shared infra kullanıyor); delegeler streamManager.open'i callback'ten çağırır.
   Birim testler (madde 13) ayrı madde — bu maddede yalnızca derleme + mevcut 5 Android + 268 köprü
   testi yeşil. Roadmap'in saydığı 3 backend (agy/claude-app/cowork) ayrıldı; codex/codex-app/zcode/
-  chatgpt-planner/opencode-app backend'leri bu maddenin kapsamı dışında (roadmap onları saymıyor).
+  chatgpt-planner backend'leri bu maddenin kapsamı dışında (roadmap onları saymıyor).
 
 ## 12. BridgeClient.kt parçalama (1.953 satır)
 
@@ -205,7 +205,7 @@
 - Test: derleme yeterli; davranış değişikliği yok. Madde 11'deki sahte `BridgeClient` arayüzü bu
   ayrımdan sonra alan-bazlı küçük arayüzlere bölünebilir.
 - Uygulama notu: BridgeClient.kt 2.161 → 427 satır (yalnız çekirdek). 4 extension dosyası
-  oluşturuldu: `BridgeClientBackend.kt` (1177 — agy/claudeApp/cowork/codex/codexApp/opencodeApp/zcode,
+  oluşturuldu: `BridgeClientBackend.kt` (1177 — agy/claudeApp/cowork/codex/codexApp/zcode,
   109 extension), `BridgeClientGeneral.kt` (359 — health/active/file/process/local-llama),
   `BridgeClientMcp.kt` (142 — tüm MCP), `BridgeClientChatGptPlanner.kt` (118). Her dosya ayrı commit
   (toplam 5: 12.0 görünürlük + 12.1–12.4), her commit `gradlew :app:assembleDebug` +

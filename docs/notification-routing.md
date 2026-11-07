@@ -22,7 +22,7 @@ hep açıktır; Lite arka plan bildirimi paketlemez (mevcut davranış).
   cihazlara gider.
 - Operasyon olaylarından push'lanan `kind` değerleri: `started`, `attention`,
   `completed`, `failed` (`server.mjs` `OPERATION_PUSH_KINDS`). `started` kapsülü
-  (Android 16 Live Updates, `docs/kapsul-live-updates-plani.md`) açar, `waiting →
+  (Android 16 Live Updates) açar, `waiting →
   running` geçişinde de üretilir; **sessizdir**, yalnız kapsülü günceller.
 - Operasyon push gövdesi: `deliveryId`, `kind`, `backend`, `backendLabel`,
   `sessionId`, `summary`, `title`, `startedAt` (ISO 8601 metin).

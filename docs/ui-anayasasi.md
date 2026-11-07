@@ -4,7 +4,6 @@
 > belgeye bakılır: uyuyorsa uygulanır; uymuyorsa ya fikir uyarlanır ya da bu
 > belge BİLİNÇLİ bir kararla güncellenir (commit'te gerekçe yazılır). Ekran
 > tek başına yamalanmaz — mevcut UI'nin karmaşasının kök nedeni buydu.
-> Envanter kararları: ui-envanter.md (bölüm 8, karara bağlandı).
 
 ## 1. Navigasyon modeli
 
@@ -45,8 +44,7 @@ Kesin kurallar:
   (bridge kataloğuna alan eklenir), string-switch yazılmaz.
 - Jenerik sheet'ler: model seçici, effort seçici, izin modu seçici, oturum
   bilgisi, hesap seçici. Hepsi tek implementasyon, veri parametrik.
-- Kalan backend seti: claude-app, codex-app, opencode-app, zcode, agy, cowork
-  (chatgpt-planner ve claude-desktop-cowork kaldırıldı — Faz 0.9).
+- Kalan backend seti: claude-app, codex-app, agy, omp, cowork.
 
 ## 4. Tasarım dili
 
@@ -79,8 +77,7 @@ Kesin kurallar:
 - Ekran yatay dolgusu 20; sheet alt gesture boşluğu 36 (mevcut Ds ile uyumlu).
 
 ### 4.5 Terminoloji
-- ui-revizyon-talimati.md Faz A sözlüğü aynen geçerli: sağlayıcı, çalışma alanı,
-  teslimat, proje klasörü, oturum. Kod tanımlayıcıları ve API string'leri asla
+- Sözlük: sağlayıcı, çalışma alanı, teslimat, proje klasörü, oturum. Kod tanımlayıcıları ve API string'leri asla
   çevrilmez.
 
 ## 5. Bileşen kütüphanesi (2a'da kodlanacak set)
