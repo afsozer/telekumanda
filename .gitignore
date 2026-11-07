@@ -131,3 +131,6 @@ CLAUDE.md
 /*.bak-*
 /mesaj.txt
 /split/
+
+# OTA yayin dosyalari (release.mjs / release-lite.mjs uretir)
+bridge/update/
