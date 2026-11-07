@@ -134,3 +134,6 @@ CLAUDE.md
 
 # OTA yayin dosyalari (release.mjs / release-lite.mjs uretir)
 bridge/update/
+
+# Mac sarmalayicisinin adresi (token icerir)
+mac/*.local
