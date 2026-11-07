@@ -16,9 +16,8 @@ export const CONTRACT_VERSION = 1;
 // registerBackend bu fonksiyonların hepsini çağırır; biri eksikse kontrat kırılır.
 export const REQUIRED_METHODS = ['listSessions', 'newSession', 'prompt', 'getConversation', 'stop'];
 
-// Poll tabanlı onay sistemine katılan backend'ler. server.mjs bu listeyi TEK KAYNAK
-// olarak kullanır; her biri getPendingApproval export etmek zorundadır (conformance
-// testiyle doğrulanır).
+// Poll tabanlı onay sistemine katılan backend'ler; her biri getPendingApproval
+// export etmek zorundadır (conformance testiyle doğrulanır).
 export const POLL_APPROVAL_BACKENDS = ['claude-app', 'codex-app', 'omp'];
 
 // Capability şeması: alan → varsayılan. Android BackendCapabilities ile birebir.

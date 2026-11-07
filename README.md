@@ -86,10 +86,10 @@ sessions keep running meanwhile.
 
 ## Notifications
 
-The Android app shows only local reminder notifications; turn progress, approvals and
-results are followed in the app itself. The bridge keeps its notification feed
-(`/notifications/poll`, `/notifications/ack`) for other clients. Details:
-`docs/notification-routing.md`.
+The bridge sends no push notifications. Reminders are the only notifications: the app
+fetches the upcoming list (`GET /reminders`) and sets local alarms, and the bridge pushes
+the list over ADB when it changes so alarms are set even if the app is closed. Turn
+progress, approvals and results are followed in the app itself.
 
 ## Android App
 
@@ -166,8 +166,6 @@ Important REST areas:
 /move                               (move workspace entries)
 /usage                              (retrieve token & token quotas)
 /slash                              (fetch command shortcuts per backend)
-/notifications/device, /ack        (register a device, acknowledge delivered notifications)
-/notifications/poll                 (long-poll background notifications)
 /cowork/*                           (projects, import, matters, session switching)
 /cowork/notes, /cowork/note/*       (text notes, rename, attach, AI actions)
 /agy/*                              (Antigravity CLI actions and thought retrieval)

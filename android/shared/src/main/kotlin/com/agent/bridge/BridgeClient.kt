@@ -504,7 +504,7 @@ data class ProjectDetail(
     val mcpProfile: ProjectMcpProfile = ProjectMcpProfile(),
 )
 
-open class BridgeClient(private val clientEdition: String = "") {
+open class BridgeClient {
     internal val jsonType = "application/json; charset=utf-8".toMediaType()
     internal val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -516,12 +516,6 @@ open class BridgeClient(private val clientEdition: String = "") {
     internal val workerClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(22, TimeUnit.SECONDS)
-        .build()
-
-    // Long poll client for background notifications
-    internal val longPollClient = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
         .build()
 
     // Okuma modu çıkarımı: PDF metin katmanı köprüde ayrıştırılır ve süre SAYFA
@@ -558,9 +552,6 @@ open class BridgeClient(private val clientEdition: String = "") {
     open suspend fun getJson(settings: BridgeSettings, path: String): JSONObject =
         executeJson(buildRequest(settings, path).get().build())
 
-    open suspend fun getJsonLongPoll(settings: BridgeSettings, path: String): JSONObject =
-        executeJsonLongPoll(buildRequest(settings, path).get().build())
-
     open suspend fun postJson(settings: BridgeSettings, path: String, body: JSONObject = JSONObject()): JSONObject =
         executeJson(buildRequest(settings, path).post(body.toString().toRequestBody(jsonType)).build())
 
@@ -572,41 +563,11 @@ open class BridgeClient(private val clientEdition: String = "") {
         if (settings.token.isNotBlank()) {
             builder.header("Authorization", "Bearer ${settings.token}")
         }
-        // Turu HANGİ cihazın başlattığını köprü buradan öğreniyor: iş bitince
-        // bildirim yalnız o cihaza gidiyor (kullanıcı şikayeti 23.08.2026 —
-        // tabletten prompt verirken yandaki telefon da ötüyordu).
-        //
-        // (21.10.2026: Android istemcisi artık bildirim almıyor; başlık köprünün
-        // tur-kaynağı kaydı için duruyor.)
-        //
-        // Neden `Build.MODEL` ve neden HEADER: köprü bildirim kaydında cihazın
-        // modelini de tutuyor, yani model prompt isteğini kayıtlı cihaza
-        // bağlayan ortak alan. Header olması da altı ayrı prompt
-        // çağrı yerine tek tek eklemekten kurtarıyor. Gerekçenin tamamı
-        // köprüdeki `prompt-origin.mjs` başında.
-        if (cihazModeli.isNotBlank()) builder.header("X-Device-Model", cihazModeli)
-        if (clientEdition.isNotBlank()) builder.header("X-AgentBridge-Edition", clientEdition)
         return builder
-    }
-
-    // NEDEN YANSIMA (reflection): bu modül SAF JVM kitaplığı — Android SDK'sına
-    // derlenmiyor (`:shared:compileKotlin`, `compileDebugKotlin` değil), yani
-    // `android.os.Build` derleme zamanında YOK. Çalışma zamanında ise cihazda
-    // her zaman var (boot classpath). Tek bir statik alan okunuyor ve `lazy`
-    // olduğu için süreç başına bir kez. JVM testlerinde sınıf bulunamaz ve boş
-    // döner — köprü de boş modeli "bilmiyorum" diye okuyup eski davranışa düşer.
-    protected open val cihazModeli: String by lazy {
-        runCatching {
-            (Class.forName("android.os.Build").getField("MODEL").get(null) as? String).orEmpty().trim()
-        }.getOrDefault("")
     }
 
     open suspend fun executeJson(request: Request): JSONObject = withContext(Dispatchers.IO) {
         client.newCall(request).await().use { it.readJsonOrThrow() }
-    }
-
-    open suspend fun executeJsonLongPoll(request: Request): JSONObject = withContext(Dispatchers.IO) {
-        longPollClient.newCall(request).await().use { it.readJsonOrThrow() }
     }
 
     open suspend fun executeJsonAi(request: Request): JSONObject = withContext(Dispatchers.IO) {

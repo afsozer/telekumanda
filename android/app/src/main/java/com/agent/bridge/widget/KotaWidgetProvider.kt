@@ -90,7 +90,7 @@ class KotaWidgetWorker(appContext: Context, params: WorkerParameters) : Coroutin
         } else {
             val settings = BridgeSettings(baseUrl, prefs.getString("token", null).orEmpty())
             try {
-                val json = BridgeClient(if (BuildConfig.IS_LITE) "lite" else "")
+                val json = BridgeClient()
                     .getJson(settings, if (force) "/usage?force=1" else "/usage")
                 KotaWidgetStore.saveResponse(ctx, json)
             } catch (e: Exception) {

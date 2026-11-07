@@ -1,16 +1,9 @@
 import { json, body } from '../router.mjs';
 import { createPromptRequests } from '../prompt-requests.mjs';
-import { createPromptOrigin } from '../prompt-origin.mjs';
 
 const promptRequests = createPromptRequests();
 export function reconcilePromptRequests(modules) { return promptRequests.reconcileAll(modules); }
 
-// Turu baslatan cihaz — bitis bildirimi yalniz oraya gitsin diye. Gerekce ve
-// neden model adiyla eslestigi prompt-origin.mjs basinda.
-const promptOrigin = createPromptOrigin();
-export function promptOriginModel(backend, sessionId, diskId = '') {
-  return promptOrigin.lookup(backend, sessionId, diskId);
-}
 
 export function registerBackend(router, name, mod, opts = {}) {
   const pfx = '/' + name;
@@ -33,12 +26,6 @@ export function registerBackend(router, name, mod, opts = {}) {
 
   router.post(pfx + '/prompt', async (req, res) => {
     const b = await body(req);
-    // Kaynak cihaz HEADER'DAN okunur: istemci onu `buildRequest` icinde her
-    // istege koyuyor, yani alti ayri prompt cagri yerinin hicbirine dokunmak
-    // gerekmedi. Basliksiz istek (web arayuzu, curl, eski surum) kayit
-    // birakmaz ve bildirim eski davranisa duser.
-    const liteNoPush = req.headers?.['x-agentbridge-edition'] === 'lite';
-    promptOrigin.remember(name, b.sessionId, liteNoPush ? '__agentbridge_lite_no_push__' : req.headers?.['x-device-model']);
     const started = promptRequests.begin({ requestId: b.requestId, backend: name, sessionId: b.sessionId, text: String(b.text || '') }, mod.getConversation);
     if (!started.ok) return json(res, 400, started);
     if (started.duplicate && started.record.status === 'delivered') return json(res, 200, { ok: true, duplicate: true, requestId: b.requestId });

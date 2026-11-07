@@ -156,7 +156,7 @@ export function createOperationsTracker({
       }
     }
     // Silinen/kaybolan canlı oturum artık listSessions'ta görünmez. Önceki
-    // örnekten düşüşünü bitiş olayı olarak yayınla ki telefondaki kapsül kapansın.
+    // örnekten düşüşünü bitiş olayı olarak yayınla ki iş listesinde açık kalmasın.
     for (const [id, before] of previous) {
       if (failedBackends.has(before.backend)) {
         current.set(id, before);

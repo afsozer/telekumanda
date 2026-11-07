@@ -204,11 +204,9 @@ test('operations tracker exposes waiting work before running work', () => {
 });
 
 
-// --- Kapsul (Android 16 Live Updates) push sozlesmesi, 16.09.2026 ---
-// Kapsulu acan olay 'started'; ayrica
 // "onay cozuldu" diye ayri olay yok, `waiting -> running` de 'started' uretiyor.
 
-test('waiting to running emits started so the capsule can leave approval state', () => {
+test('waiting to running emits started', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'operations-capsule-'));
   const session = { id: 's1', status: 'running', awaitingApproval: true, title: 'Kapsül işi', lastText: 'Onay bekliyor' };
   const tracker = createOperationsTracker({
@@ -222,39 +220,9 @@ test('waiting to running emits started so the capsule can leave approval state',
     const snapshot = tracker.sample();
     assert.deepEqual(snapshot.events.map(e => e.kind), ['started', 'attention']);
     const started = snapshot.events[0];
-    // Kapsulun govdesi bu iki alandan besleniyor: kart basligi ve chronometer.
     assert.equal(started.title, 'Kapsül işi');
     assert.equal(Number.isFinite(Date.parse(started.at)), true);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test('started passes the push filter and carries title/startedAt', async () => {
-  const { OPERATION_PUSH_KINDS, operationPushBody } = await import('../server.mjs');
-  // Eski surumde 'started' SUZGECTEN DUSUYORDU; kapsul onsuz hic acilmaz.
-  assert.deepEqual(OPERATION_PUSH_KINDS, ['started', 'attention', 'completed', 'failed']);
-  const body = operationPushBody({
-    id: '2026-09-16T10:00:00.000Z-claude-app-s1-started',
-    kind: 'started',
-    backend: 'claude-app',
-    backendLabel: 'Claude',
-    sessionId: 's1',
-    summary: 'Kapsül işi',
-    title: 'Kapsül işi',
-    at: '2026-09-16T10:00:00.000Z',
-  });
-  assert.equal(body.kind, 'started');
-  assert.equal(body.title, 'Kapsül işi');
-  // ISO metin oldugu gibi gider: Android alani metin olarak okuyor.
-  assert.equal(body.startedAt, '2026-09-16T10:00:00.000Z');
-  assert.equal(body.deliveryId, '2026-09-16T10:00:00.000Z-claude-app-s1-started');
-  // Alanlari olmayan olay `undefined` sizdirmamali (extras metne cevriliyor).
-  const bos = operationPushBody({ id: 'e1', kind: 'completed', backend: 'agy', sessionId: 's2' });
-  assert.equal(bos.title, '');
-  assert.equal(bos.startedAt, '');
-  assert.equal('requestId' in bos, false);
-  // Onay bekleyen olay, bekleyen isteğin kimliğini taşır.
-  const onay = operationPushBody({ id: 'e2', kind: 'attention', backend: 'codex-app', sessionId: 's3' }, 42);
-  assert.equal(onay.requestId, '42');
 });

@@ -17,7 +17,6 @@ import path from 'node:path';
 import { createScreenshotExtract } from '../screenshot-extract.mjs';
 import { createReminders } from '../reminders.mjs';
 
-const PHONE = '100.100.100.1:5555';
 
 function tmp() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notpipe-'));
@@ -59,11 +58,8 @@ async function paylasimdanNot(localPath, extract, reminders) {
 }
 
 describe('paylasimdan not boru hatti', () => {
-  it('paylasilan icerik -> hatirlatici notu -> vakti gelince bildirim', async () => {
+  it('paylasilan icerik -> hatirlatici notu -> vakti gelince sent', async () => {
     const { shareDir, notesDir } = tmp();
-    const sent = [];
-    const send = async (extras, opts) => { sent.push({ extras, opts }); return [{ serial: PHONE, ok: true }]; };
-
     const extract = modeliKur(
       shareDir,
       '{"tur":"hatirlatici","baslik":"Duruşma","tarih_saat":"2026-08-12T14:00:00+03:00",'
@@ -71,7 +67,7 @@ describe('paylasimdan not boru hatti', () => {
         + '"metin":"Duruşma günü\\n12.08.2026 saat 14:00","etiketler":["duruşma","iş mahkemesi"]}',
     );
     const reminders = createReminders({
-      notesDir, send, targets: [PHONE],
+      notesDir,
       now: () => new Date('2026-08-12T13:00:00+03:00'), // henuz vakti gelmedi
       log: () => {},
     });
@@ -88,25 +84,18 @@ describe('paylasimdan not boru hatti', () => {
     assert.equal(found[0].at.toISOString(), new Date('2026-08-12T14:00:00+03:00').toISOString());
     assert.equal(found[0].source, path.basename(dosya));
 
-    // Uc SENKRON cevap veriyor: "kuruldu" diye ayrica bildirim ATMAZ. Tarayici
-    // atardi, cunku orada isi baslatan bir kullanici hareketi yoktu.
-    assert.deepEqual(sent, [], 'not olustururken bildirim gitmemeli');
-
-    // Vakti gelmeden tick gondermez.
+    // Vakti gelmeden tick isaretlemez.
     assert.equal((await reminders.tick()).sent, 0);
-    assert.equal(sent.length, 0);
 
-    // Vakti gelince gonderir ve bir daha gondermez.
+    // Vakti gelince bir kez sent yapar (alarmi cihaz calar).
     const due = createReminders({
-      notesDir, send, targets: [PHONE],
+      notesDir,
       now: () => new Date('2026-08-12T14:00:01+03:00'),
       log: () => {},
     });
     assert.equal((await due.tick()).sent, 1);
-    assert.equal(sent.length, 1);
-    assert.equal(sent[0].extras.kind, 'reminder');
     assert.equal(due.scan()[0].state, 'sent');
-    assert.equal((await due.tick()).sent, 0, 'sent olan tekrar gonderilmemeli');
+    assert.equal((await due.tick()).sent, 0, 'sent olan tekrar sayilmamali');
 
     // Govde arama icin yazildi: ekrandaki metin ve etiketler notta duruyor.
     const md = fs.readFileSync(found[0].path, 'utf8');
@@ -121,8 +110,6 @@ describe('paylasimdan not boru hatti', () => {
   // extract tarihi dusurur, dolayisiyla reminders onu hic gormez.
   it('bilgi kaydi gecmis tarihli olsa da bildirim calmaz', async () => {
     const { shareDir, notesDir } = tmp();
-    const sent = [];
-    const send = async (extras, opts) => { sent.push({ extras, opts }); return [{ serial: PHONE, ok: true }]; };
     const extract = modeliKur(
       shareDir,
       '{"tur":"bilgi","baslik":"AKINSOFT Wolvox sözleşmesi","tarih_saat":"2026-07-22T00:00:00+03:00",'
@@ -130,7 +117,7 @@ describe('paylasimdan not boru hatti', () => {
         + '"metin":"Toplam Tutarı: 4.492,80 TL","etiketler":["sözleşme"]}',
     );
     const reminders = createReminders({
-      notesDir, send, targets: [PHONE],
+      notesDir,
       now: () => new Date('2026-08-07T16:00:00+03:00'), // sozlesme tarihinden SONRA
       log: () => {},
     });
@@ -145,7 +132,6 @@ describe('paylasimdan not boru hatti', () => {
     assert.doesNotMatch(md, /^reminder_at:/m);
     assert.doesNotMatch(md, /^reminder_state:/m, 'tarihsiz notta hayalet pending kalmamali');
     assert.match(md, /22\.07\.2026/, 'tarih govdede kaybolmamali');
-    assert.deepEqual(sent, []);
   });
 
   // Tarayicidaki kural TERSINE dondu: orada "yok" cevabi kaydi dusururdu,
@@ -153,7 +139,7 @@ describe('paylasimdan not boru hatti', () => {
   it('model "yok" dese bile not olusur', async () => {
     const { shareDir, notesDir } = tmp();
     const extract = modeliKur(shareDir, '{"tur":"yok","baslik":"LoL Katarina","metin":"skor tablosu"}');
-    const reminders = createReminders({ notesDir, send: async () => [], targets: [PHONE], log: () => {} });
+    const reminders = createReminders({ notesDir, log: () => {} });
 
     const sonuc = await paylasimdanNot(paylasilan(shareDir), extract, reminders);
     assert.ok(sonuc, 'kullanici istedigi icin not yazilmali');
@@ -164,7 +150,7 @@ describe('paylasimdan not boru hatti', () => {
   it('basliksiz kayittan not cikmaz', async () => {
     const { shareDir, notesDir } = tmp();
     const extract = modeliKur(shareDir, '{"tur":"bilgi","baslik":"","metin":"bir sey"}');
-    const reminders = createReminders({ notesDir, send: async () => [], targets: [PHONE], log: () => {} });
+    const reminders = createReminders({ notesDir, log: () => {} });
 
     assert.equal(await paylasimdanNot(paylasilan(shareDir), extract, reminders), null);
     assert.ok(!fs.existsSync(notesDir) || fs.readdirSync(notesDir).length === 0);
@@ -172,20 +158,17 @@ describe('paylasimdan not boru hatti', () => {
 
   it('tarihsiz kayit not olur ama zamanlayiciya girmez', async () => {
     const { shareDir, notesDir } = tmp();
-    const sent = [];
-    const send = async (e, o) => { sent.push({ e, o }); return [{ serial: PHONE, ok: true }]; };
     const extract = modeliKur(
       shareDir,
       '{"tur":"bilgi","baslik":"Fatura öde","tarih_saat":null,"alinti":null,'
         + '"aciklama":"su faturası","metin":"Son ödeme: gişeden","etiketler":["fatura"]}',
     );
-    const reminders = createReminders({ notesDir, send, targets: [PHONE], log: () => {} });
+    const reminders = createReminders({ notesDir, log: () => {} });
 
     assert.ok(await paylasimdanNot(paylasilan(shareDir), extract, reminders));
 
     assert.deepEqual(reminders.scan(), [], 'reminder_at yok, zamanlayiciya girmemeli');
     assert.equal(fs.readdirSync(notesDir).length, 1, 'not yine de yazilmali');
-    assert.deepEqual(sent, []);
   });
 
   // Paylasilan sey metin de olabilir: uzanti .txt olsa da yol degismemeli.
@@ -196,7 +179,7 @@ describe('paylasimdan not boru hatti', () => {
       '{"tur":"bilgi","baslik":"Kaynak bağlantısı","tarih_saat":null,"alinti":null,'
         + '"aciklama":"tarayıcıdan paylaşıldı","metin":"https://example.org/x","etiketler":[]}',
     );
-    const reminders = createReminders({ notesDir, send: async () => [], targets: [PHONE], log: () => {} });
+    const reminders = createReminders({ notesDir, log: () => {} });
 
     const sonuc = await paylasimdanNot(
       paylasilan(shareDir, 'paylasilan-metin.txt'), extract, reminders,

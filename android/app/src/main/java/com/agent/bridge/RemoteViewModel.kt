@@ -258,7 +258,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         defaultUrl = if (BuildConfig.IS_LITE) BuildConfig.LITE_BRIDGE_URL else DEFAULT_URL,
         liteEdition = BuildConfig.IS_LITE,
     )
-    private val client = BridgeClient(if (BuildConfig.IS_LITE) "lite" else "")
+    private val client = BridgeClient()
     private val updateManager = AndroidUpdateManager(application.applicationContext)
     private val downloadRepo = AndroidDownloadRepo(application.applicationContext)
     private val offlineConversationCache = OfflineConversationCache(application.applicationContext)

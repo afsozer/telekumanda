@@ -10,18 +10,6 @@ android/build/
 android/*/build/
 android/local.properties
 
-# capsule-test: Honor kapsul spike'i (ayri, atilabilir bir uygulama). Kaynagi
-# repoda kalsin — Faz 8 spike'i onun uzerine kuruluyor — derleme ciktilari 14 MB
-# ve local.properties makineye ozel SDK yolu tasiyor.
-capsule-test/.gradle/
-capsule-test/build/
-capsule-test/app/build/
-capsule-test/local.properties
-# Spike sirasinda cihazdan cekilen kanitlar: ekran goruntuleri ve
-# `dumpsys notification` dokumleri. Dokumler telefondaki BUTUN uygulamalarin
-# bildirim icerigini tasiyor (1,5 MB, her biri) — kisisel, repoya girmez.
-capsule-test/*.png
-capsule-test/notif*.txt
 *.apk
 *.aab
 *.ap_

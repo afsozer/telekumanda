@@ -3,18 +3,12 @@
 // zamanlama bilgisini taşır. Ayrı veritabanı YOKTUR — notun kendisi tek kaynak,
 // böylece mevcut "Notlarım" arayüzünde görünür ve elle düzenlenebilir.
 //
-// - 21.10.2026: köprü artık bildirim göndermiyor (Android bildirim servisi
-//   pil/veri yüzünden söküldü). Cihaz `upcoming()` listesinden kendi alarmını
-//   kurar; `send` verilmezse tick yalnız durumu `sent`e çeker. Aşağıdaki
-//   `send` yolu testler ve olası başka bir kanal için duruyor.
-// - tick() vakti gelmiş `pending` kayıtları `send` ile cihaza bildirir; en az
-//   bir cihaz `ok:true` döndüyse `sent`, yoksa `attempts++` (maxAttempts sonrası
-//   `failed` + log). Bridge kapalıyken vakti geçenler açılışta gecikmeli olarak
-//   yine gönderilir.
-// - send imzası: `async (extras, opts) => Array<{deviceId, ok, pending?}>`
-//   (notification-delivery.mjs). `pending` = kuyrukta, uygulama onayı bekliyor.
-// - send ve now dışa enjekte edilir; modül ağ/cihaz kullanmaz (testlerde sahte
-//   send ile sürülür, geçici klasörde çalışır).
+// - Köprü bildirim göndermez: cihaz `upcoming()` listesinden kendi alarmını
+//   kurar (liste uygulama açılışında çekilir, değişince ADB ile itilir).
+// - tick() vakti gelmiş `pending` kayıtları `sent` olarak işaretler. Bridge
+//   kapalıyken vakti geçenler açılışta işaretlenir.
+// - now dışa enjekte edilir; modül ağ/cihaz kullanmaz (testler geçici klasörde
+//   çalışır).
 import fs from 'node:fs';
 import path from 'node:path';
 import { slugifyNoteName } from './note-slug.mjs';
@@ -99,13 +93,6 @@ export function createReminders({
   // mdPath → cowork not kimliği. Bildirime konur; uygulama dokunulduğunda
   // ilgili notu açar. Verilmezse derin bağlantı olmadan gönderilir.
   noteIdOf = null,
-  // Verilmezse (21.10.2026'dan beri server.mjs böyle kurar) köprü hiçbir şey
-  // GÖNDERMEZ: hatırlatmayı cihaz kendi alarmıyla çalar (`upcoming()` listesi
-  // uygulama açılışında çekilir, değişince ADB ile itilir). tick o zaman
-  // vakti gelen kaydı yalnız `sent` olarak işaretler — "zamanı geldi".
-  send = null,
-  targets = [],
-  maxAttempts = 10,
   log = () => {},
   now = () => new Date(),
 } = {}) {
@@ -258,10 +245,8 @@ export function createReminders({
   }
 
   // ── tick ──────────────────────────────────────────────────────────────────
-  // Vakti gelmiş pending kayıtları gönderir. Asla throw etmez; her kayıt için
-  // en az bir cihaz ok dediyse sent, yoksa attempts++ (maxAttempts sonrası
-  // failed). Vakti geçmişler de gönderilir — bridge kapalıyken kaçanlar
-  // açılışta gecikmeli olarak yine gitsin.
+  // Vakti gelmiş pending kayıtları `sent` yapar ("zamanı geldi"); alarmı cihaz
+  // çalar. Asla throw etmez. Vakti geçmişler de işaretlenir.
   async function tick() {
     const result = { sent: 0, failed: 0, skipped: 0 };
     try {
@@ -269,56 +254,8 @@ export function createReminders({
       const nowMs = now().getTime();
       const due = all.filter((r) => r.state === 'pending' && r.at.getTime() <= nowMs);
       result.skipped = all.length - due.length;
-
-      if (typeof send !== 'function') {
-        for (const rec of due) {
-          if (writeMeta(rec.path, 'sent', rec.attempts)) result.sent += 1;
-        }
-        return result;
-      }
-
       for (const rec of due) {
-        let outcomes = [];
-        let threw = false;
-        try {
-          let noteId = '';
-          if (typeof noteIdOf === 'function') {
-            try { noteId = String(noteIdOf(rec.path) || ''); } catch { noteId = ''; }
-          }
-          outcomes = await send(
-            {
-              // `reminder` kendi bildirim tipi (APK 11.47+). Eski sürümler
-              // bilinmeyen kind'ı sessizce düşürür — bu yüzden APK bridge'den
-              // ÖNCE kurulmalı.
-              kind: 'reminder',
-              deliveryId: `reminder:${noteId || rec.path}:${rec.at.toISOString()}`,
-              noteId,
-              title: rec.title.slice(0, 300),
-              summary: firstLineOf(rec.path).slice(0, 300),
-            },
-            { targets },
-          );
-        } catch (err) {
-          threw = true;
-          log(`reminders: ${path.basename(rec.path)} gonderim hatasi: ${String(err?.message || err).slice(0, 160)}`);
-        }
-        const ok = !threw && Array.isArray(outcomes) && outcomes.some((o) => o && o.ok === true);
-        if (ok) {
-          result.sent += 1;
-          writeMeta(rec.path, 'sent', rec.attempts);
-        } else if (!threw && outcomes.some(o => o?.pending === true)) {
-          // Kuyrukta bekleyen (uygulama henüz onaylamadı) başarısız deneme sayılmaz.
-          result.skipped += 1;
-        } else {
-          result.failed += 1;
-          const attempts = rec.attempts + 1;
-          if (attempts >= maxAttempts) {
-            log(`reminders: ${path.basename(rec.path)} ${maxAttempts} deneme sonrasi failed`);
-            writeMeta(rec.path, 'failed', attempts);
-          } else {
-            writeMeta(rec.path, 'pending', attempts);
-          }
-        }
+        if (writeMeta(rec.path, 'sent', rec.attempts)) result.sent += 1;
       }
     } catch (err) {
       // tick asla throw etmez — beklenmedik hata log'a düşer, sayaçlar olduğu gibi döner.

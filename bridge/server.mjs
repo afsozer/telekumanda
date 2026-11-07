@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws';
 import { createRouter, json, body, rawBody, BodyTooLargeError, rejectTooLarge, setBodyValidator } from './router.mjs';
 import { PATH_KEYS, UnsafePathError, assertSafePathFields, unsafePathReason } from './path-guard.mjs';
 import { register as registerGeneral } from './routes/general.mjs';
-import { registerBackend, reconcilePromptRequests, promptOriginModel } from './routes/backend.mjs';
+import { registerBackend, reconcilePromptRequests } from './routes/backend.mjs';
 import { warmOpenTabBackends } from './backend-warmth.mjs';
 import { register as registerMcp } from './routes/mcp.mjs';
 import { register as registerUpdate } from './routes/update.mjs';
@@ -29,9 +29,7 @@ import { createOperationsTracker } from './operations.mjs';
 import { createProjectsStore, archiveProjectOutputs, cleanupOutputsArchive } from './projects.mjs';
 import { globalSearch } from './search.mjs';
 import { createDeviceAuth } from './device-auth.mjs';
-import { buildCatalog, verifyAdapter, POLL_APPROVAL_BACKENDS } from './backend-contract.mjs';
-import { buildNotificationFeedState, notificationFeedChanged } from './notification-feed.mjs';
-import { createNotificationDelivery } from './notification-delivery.mjs';
+import { buildCatalog, verifyAdapter } from './backend-contract.mjs';
 import { createScreenshotExtract, DEFAULT_SCREENSHOT_MODEL, EXTRACT_APP_DATA_DIR } from './screenshot-extract.mjs';
 import { pruneAll } from './disk-prune.mjs';
 import { pruneSessions } from './session-prune.mjs';
@@ -432,27 +430,6 @@ async function pruneStaleSessions() {
   }
 }
 
-const notificationNotePaths = new Map();
-// Bildirimlerin tek kanali uygulamanin long-poll baglantisi (docs/notification-routing.md).
-const notificationDelivery = createNotificationDelivery({
-  filePath: path.join(BRIDGE_DIR, 'data', 'notification-delivery.json'),
-  isValid: (extras) => {
-    if (!['note', 'reminder'].includes(extras.kind) || !extras.noteId) return true;
-    let notePath = notificationNotePaths.get(extras.noteId);
-    if (!notePath) {
-      notePath = cowork.listNotes().notes.find(n => n.id === extras.noteId)?.mdPath;
-      if (notePath) notificationNotePaths.set(extras.noteId, notePath);
-    }
-    if (!notePath || !fs.existsSync(notePath)) return false;
-    if (extras.kind === 'note') return true;
-    let md;
-    try { md = fs.readFileSync(notePath, 'utf8'); } catch { return false; }
-    const at = /^reminder_at:\s*(.+)$/m.exec(md)?.[1];
-    const time = new Date(at || '');
-    return Number.isFinite(time.getTime()) && extras.deliveryId === `reminder:${extras.noteId}:${time.toISOString()}`;
-  },
-});
-
 // Hatirlatici kaydi = `_genel-notlar/` altinda normal bir markdown notu; ayri
 // veritabani yok, boylece mevcut Notlarim arayuzunde gorunur ve duzenlenir.
 const reminders = createReminders({
@@ -508,62 +485,9 @@ if (import.meta.main) {
   const idleChildTimer = setInterval(reapIdleClaudeChildren, IDLE_CHILD_INTERVAL_MS);
   idleChildTimer.unref?.();
 }
-// Push'lanan operasyon olaylari. 'started' 16.09.2026'da eklendi (kapsul /
-// Android 16 Live Updates): telefonda
-// kapsulu acan olay bu. Ayrica "onay cozuldu" diye ayri bir olay YOK —
-// `waiting -> running` gecisi de 'started' uretiyor (operations.mjs:149), yani
-// kapsulun ONAY -> TUR donusu de buradan geliyor.
-// 'started' telefonda SESSIZ: golgeye satir atmaz, yalniz kapsulu gunceller.
-export const OPERATION_PUSH_KINDS = ['started', 'attention', 'completed', 'failed'];
-
-// Bildirim kuyruguna (pushEvents) giden govde. Ayri fonksiyon cunku sozlesme
-// testten kilitlenebilsin (bridge/test/operations.test.mjs). `title` ve
-// `startedAt` kapsul icin eklendi: kapsul kartinin basligi ve chronometer'in
-// baslangici. `startedAt` ISO metindir (operations.mjs:98 `now().toISOString()`),
-// sayi degil — Android metin olarak okuyor, ek donusum gereksiz.
-// `requestId` yalnız 'attention' olayında ve bekleyen onay biliniyorsa dolar:
-// bildirimdeki onay tuşu onu gönderir, bayat bir bildirim yeni bir isteği onaylayamaz.
-export function operationPushBody(event, requestId = null) {
-  const body = {
-    deliveryId: event.id,
-    kind: event.kind,
-    backend: event.backend,
-    backendLabel: event.backendLabel,
-    sessionId: event.sessionId,
-    summary: event.summary,
-    title: event.title || '',
-    startedAt: event.at || '',
-  };
-  if (requestId !== null && requestId !== undefined && requestId !== '') body.requestId = String(requestId);
-  return body;
-}
-
-function pendingRequestIdFor(event) {
-  if (event.kind !== 'attention') return null;
-  const p = findAnyPendingApproval();
-  return p && p.backend === event.backend && p.sessionId === event.sessionId ? p.requestId : null;
-}
-
 const operationsTracker = createOperationsTracker({
   modules: OPERATIONS_MODULES,
   labels: MODULE_LABELS,
-  onEvent: (event) => {
-    if (!OPERATION_PUSH_KINDS.includes(event.kind)) return;
-    // Bildirim TURU BASLATAN cihaza gider. Eskiden hedefsizdi, yani her
-    // cihaza: kullanici tabletten prompt verirken yandaki telefon da otuyordu
-    // (sikayet 23.08.2026). Kaynak bilinmiyorsa (basliksiz istemci, web
-    // arayuzu, kopru yeniden basladi) eski davranis korunur - susturmak
-    // fazladan otmekten daha zararli olurdu.
-    const model = promptOriginModel(event.backend, event.sessionId, event.diskId);
-    if (model === '__agentbridge_lite_no_push__') return;
-    const targets = model ? notificationDelivery.deviceIdsForModel(model) : [];
-    // KISMA (throttle) YOK — bilincli karar 16.09.2026 (plan §2.1-2). Her onay
-    // turu bir 'attention' + bir 'started' push'u demek. Ilk surum sade tutuldu; pil etkisi
-    // once OLCULECEK (plan §5, olcum adimi 11), kisma gerekiyorsa ondan sonra
-    // eklenecek. Olcmeden kisma koymak kapsulu gecikmeli/yanlis durumda
-    // birakma riskini bedava getirirdi.
-    notificationDelivery.send(operationPushBody(event, pendingRequestIdFor(event)), targets.length > 0 ? { targets } : {});
-  },
 });
 operationsTracker.start();
 const projectsStore = createProjectsStore({
@@ -689,91 +613,8 @@ const BACKEND_MODULES = {
   'cowork': cowork,
 };
 
-function findAnyPendingApproval() {
-  // Poll onay listesi kontrattan gelir (backend-contract.mjs); burada tekrar edilmez.
-  for (const name of POLL_APPROVAL_BACKENDS) {
-    const mod = BACKEND_MODULES[name];
-    if (typeof mod?.getPendingApproval === 'function') {
-      const p = mod.getPendingApproval();
-      if (p) return p;
-    }
-  }
-  return null;
-}
-
-function getNotificationsState() {
-  const p = findAnyPendingApproval();
-  if (p) {
-    return { pending: true, backend: p.backend, sessionId: p.sessionId, requestId: p.requestId ?? null, summary: p.summary };
-  }
-  return { pending: false, backend: '', sessionId: '', requestId: null, summary: '' };
-}
-
-function getNotificationFeedState(deviceId = '') {
-  return buildNotificationFeedState(getNotificationsState(), operationsTracker.snapshot(40), notificationDelivery.snapshot(deviceId));
-}
-
-const waitingPolls = [];
-const _notificationsInterval = setInterval(() => {
-  if (waitingPolls.length === 0) return;
-  for (let i = waitingPolls.length - 1; i >= 0; i--) {
-    const item = waitingPolls[i];
-    const current = getNotificationFeedState(item.deviceId);
-    if (notificationFeedChanged(current, item)) {
-      clearTimeout(item.timeout);
-      waitingPolls.splice(i, 1);
-      try { json(item.res, 200, current); } catch {}
-    }
-  }
-}, 500);
-if (_notificationsInterval.unref) _notificationsInterval.unref();
-
 // ── Route registration ──────────────────────────────────────────────────────
 const router = createRouter();
-
-router.post('/notifications/device', async (req, res) => {
-  const b = await body(req);
-  // Model, "turu baslatan cihaz" eslemesi icin (prompt-origin.mjs); istemci
-  // onu zaten her istekte X-Device-Model basligiyla yolluyor.
-  const model = typeof b.model === 'string' && b.model ? b.model : String(req.headers?.['x-device-model'] || '');
-  const result = notificationDelivery.configure({ deviceId: b.deviceId, model });
-  json(res, result.ok ? 200 : 400, result);
-});
-router.post('/notifications/ack', async (req, res) => {
-  const b = await body(req);
-  const result = notificationDelivery.acknowledge(b.deviceId, b.ids);
-  json(res, result.ok ? 200 : 400, result);
-});
-
-router.get('/notifications/poll', (req, res) => {
-  const u = new URL(req.url, 'http://x');
-  const lastPending = u.searchParams.get('pending') === 'true';
-  const lastSessionId = u.searchParams.get('sessionId') || '';
-  const lastEventId = u.searchParams.get('eventId') || '';
-  const deviceId = u.searchParams.get('deviceId') || '';
-
-  operationsTracker.sample();
-  const current = getNotificationFeedState(deviceId);
-  const cursor = { pending: lastPending, sessionId: lastSessionId, eventId: lastEventId };
-  if (notificationFeedChanged(current, cursor)) {
-    return json(res, 200, current);
-  }
-
-  const timeout = setTimeout(() => {
-    const idx = waitingPolls.indexOf(pollObj);
-    if (idx !== -1) waitingPolls.splice(idx, 1);
-    json(res, 200, getNotificationFeedState(deviceId));
-  }, 30000);
-
-  const pollObj = { res, timeout, deviceId, pending: lastPending, sessionId: lastSessionId, eventId: lastEventId };
-  waitingPolls.push(pollObj);
-
-  req.on('close', () => {
-    clearTimeout(timeout);
-    const idx = waitingPolls.indexOf(pollObj);
-    if (idx !== -1) waitingPolls.splice(idx, 1);
-  });
-});
 
 // Versiyonlu backend yetenek kataloğu (Faz 4). Android kontrolleri buradan üretir;
 // `conformance`, kayıtlı modüllerin sözleşmeye uyumunu canlı raporlar (teşhis amaçlı).

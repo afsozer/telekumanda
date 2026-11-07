@@ -22,12 +22,6 @@ open class FakeBridgeClient : BridgeClient() {
         return jsonResponseProvider(req)
     }
 
-    override suspend fun getJsonLongPoll(settings: BridgeSettings, path: String): JSONObject {
-        val req = FakeRequest("GET_LONG_POLL", path)
-        recordedRequests.add(req)
-        return jsonResponseProvider(req)
-    }
-
     override suspend fun postJson(settings: BridgeSettings, path: String, body: JSONObject): JSONObject {
         val req = FakeRequest("POST", path, body)
         recordedRequests.add(req)
@@ -47,14 +41,6 @@ open class FakeBridgeClient : BridgeClient() {
     }
 
     override suspend fun executeJson(request: Request): JSONObject {
-        val path = request.url.encodedPath
-        val method = request.method
-        val req = FakeRequest(method, path)
-        recordedRequests.add(req)
-        return jsonResponseProvider(req)
-    }
-
-    override suspend fun executeJsonLongPoll(request: Request): JSONObject {
         val path = request.url.encodedPath
         val method = request.method
         val req = FakeRequest(method, path)
