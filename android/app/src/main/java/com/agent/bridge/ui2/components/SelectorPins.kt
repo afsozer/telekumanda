@@ -48,8 +48,7 @@ object SelectorPinBridge {
     }
 }
 
-// Sabitlemeler kapsam başına ayrı tutulur: her backend'in kendi model listesi
-// var, görsel üreticininki bambaşka bir katalog.
+// Sabitlemeler kapsam başına ayrı tutulur: her backend'in kendi model listesi var.
 class SelectorPinStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

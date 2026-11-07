@@ -103,7 +103,6 @@ import com.agent.bridge.coworkRootPath
 import com.agent.bridge.coworkBrowserScope
 import com.agent.bridge.filterHidden
 import com.agent.bridge.isUnderDrive
-import com.agent.bridge.seedFromGeneratedName
 import com.agent.bridge.formatByteCount
 import com.agent.bridge.isImageFile
 import com.agent.bridge.isUdfFile
@@ -138,7 +137,7 @@ fun HubFilesScreen(
     onBack: () -> Unit,
     onOpenViewer: () -> Unit,
     // Bos = ev dizini (Merkez > Dosyalar'in davranisi). Dolu gelirse gezgin
-    // dogrudan o klasorde acilir — "Görsel üret > Üretilenler" bunu kullanir.
+    // dogrudan o klasorde acilir (sohbetten dosya acilisi bunu kullanir).
     // Kopru tarafinda yol kisiti yok (confinementRoot bos), mutlak yol serbest.
     initialPath: String = "",
     // Doluysa gezgin TELEFON sekmesinde ve bu klasörde açılır ("Mobil cihaz"
@@ -372,8 +371,6 @@ data class FileBrowserOps(
  */
 data class FilePickerMode(
     val onConfirm: (List<DirEntry>) -> Unit,
-    // Görsel üreticide tek kaynak isteniyor: ikinci seçim öncekini düşürür.
-    val single: Boolean = false,
 )
 
 // rootLock: verilirse gezinme bu kökün altına KİLİTLENİR (cowork gezgini) — üst
@@ -454,7 +451,6 @@ private fun FilesPane(
                 count = selected.size,
                 fileCount = files.size,
                 allSelected = files.isNotEmpty() && selected.containsAll(files.map { it.path }),
-                single = picker!!.single,
                 onSelectAll = { selected = selectAllToggle(selected, files.map { it.path }) },
                 onClear = { selected = emptySet() },
                 onConfirm = {
@@ -627,11 +623,7 @@ private fun FilesPane(
                         showThumbnail = ops.localFiles,
                         onOpen = {
                             if (picking) {
-                                selected = if (picker!!.single) {
-                                    if (entry.path in selected) emptySet() else setOf(entry.path)
-                                } else {
-                                    toggleSelection(selected, entry.path)
-                                }
+                                selected = toggleSelection(selected, entry.path)
                             } else if (selectionMode) {
                                 selected = toggleSelection(selected, entry.path)
                             } else {
@@ -677,18 +669,6 @@ private fun FilesPane(
                         contextEntry = null
                     }) {
                         Icon(Icons.Default.ContentCopy, null); Text("Yolu kopyala")
-                    }
-                    // Yalnız üretilmiş görsel/videolarda: seed dosya adında
-                    // duruyor, oradan okunuyor. Aynı kareyi tekrar üretmek için
-                    // Görsel üret ekranındaki Seed alanına yapıştırılır.
-                    seedFromGeneratedName(entry.name)?.let { seed ->
-                        TextButton(onClick = {
-                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(seed))
-                            actions.notifyUser("Seed kopyalandı: $seed")
-                            contextEntry = null
-                        }) {
-                            Icon(Icons.Default.ContentCopy, null); Text("Seed'i kopyala")
-                        }
                     }
                     TextButton(onClick = { editMode = "rename"; editText = entry.name }) { Icon(Icons.Default.DriveFileRenameOutline, null); Text("Yeniden adlandır") }
                     TextButton(onClick = { editMode = "move"; editText = ops.base }) { Icon(Icons.Default.Folder, null); Text("Taşı") }
@@ -740,8 +720,7 @@ private fun FilesPane(
 }
 
 /**
- * "Bilgisayardan dosya seç" ekranı. Sohbet ekleri ve görsel üreticinin kaynak
- * görseli buradan geçer.
+ * "Bilgisayardan dosya seç" ekranı. Sohbet ekleri buradan geçer.
  *
  * PC/telefon anahtarı YOK: bu ekrana zaten "bilgisayardan" denerek gelindi,
  * ikinci bir yerde aynı soruyu sormak kafa karıştırır. Telefon seçilirse
@@ -753,7 +732,6 @@ fun PcFilePickerScreen(
     actions: RemoteViewModel,
     onBack: () -> Unit,
     onPicked: (List<DirEntry>) -> Unit,
-    single: Boolean = false,
 ) {
     val ops = rememberPcOps(uiState, actions, coworkOnly = false)
     // Ziyaret başına tek yükleme: seçiciden dönüp tekrar açınca kaldığın klasör
@@ -766,7 +744,7 @@ fun PcFilePickerScreen(
     }
     Column(Modifier.fillMaxSize().background(Ui2.colors.bg)) {
         ScreenHeader(
-            title = if (single) "Bilgisayardan görsel seç" else "Bilgisayardan dosya seç",
+            title = "Bilgisayardan dosya seç",
             subtitle = shortDisplayPath(ops.base),
             onBack = onBack,
         )
@@ -774,7 +752,7 @@ fun PcFilePickerScreen(
             ops = ops,
             actions = actions,
             onFileTap = {},
-            picker = FilePickerMode(onConfirm = onPicked, single = single),
+            picker = FilePickerMode(onConfirm = onPicked),
         )
     }
 }
@@ -904,7 +882,6 @@ private fun PickerBar(
     count: Int,
     fileCount: Int,
     allSelected: Boolean,
-    single: Boolean,
     onSelectAll: () -> Unit,
     onClear: () -> Unit,
     onConfirm: () -> Unit,
@@ -920,15 +897,13 @@ private fun PickerBar(
         Text(
             when {
                 count > 0 -> selectionTitle(count)
-                single -> "Bir dosya seç"
                 else -> "Dosyaları seç"
             },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleSmall,
             color = Ui2.colors.ink,
         )
-        // Tek seçimlik kipte "tümünü seç" çelişkili olurdu.
-        if (!single && fileCount > 0) {
+        if (fileCount > 0) {
             IconButton(onClick = onSelectAll) {
                 Icon(
                     if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,

@@ -114,10 +114,6 @@ fun NewSessionScreen(
                 }
             }
 
-            // "Görsel üret" buradan MERKEZ'e taşındı: oturum açmayan, backend
-            // olmayan bir araç, "yeni oturum" listesinde durması kafa
-            // karıştırıyordu. Yeni yeri HubRootScreen, rota "hub/gorsel".
-
             // Başlat butonu — plan 8.6: klasör seçicinin üstünde kalır
             Button(
                 onClick = {

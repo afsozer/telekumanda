@@ -79,7 +79,7 @@ private const val ASGARI_SORGU = 2
  *  1. **Açık oturumlar** — `visibleTabs`, YERELDE süzülür. Köprüye gitmeye gerek
  *     yok; zaten elde ve sorgu boşken palet bir başlatıcı gibi çalışsın.
  *  2. **Eylemler** — çağıranın verdiği komut listesi (yeni oturum, dosyalar,
- *     görsel üret, notlar, projeler, ayarlar…). Etiket ve detayda süzülür.
+ *     notlar, projeler, ayarlar…). Etiket ve detayda süzülür.
  *  3. **Sonuçlar** — köprünün genel araması (`/search/global`): proje, DİSKTEKİ
  *     oturum ve mesaj isabetleri. Yalnız sorgu [ASGARI_SORGU] karakteri geçince
  *     istenir; tek harfe bütün geçmişi taratmak boşuna tur.
