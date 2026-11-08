@@ -38,6 +38,7 @@ import { createReminders } from './reminders.mjs';
 import { createHatirlaticiAdb } from './hatirlatici-adb.mjs';
 import { createWsTickets } from './ws-tickets.mjs';
 import { ensureDocumentToolPath } from './tool-path.mjs';
+import { cleanupSupervisorCopies } from './supervisor-copies.mjs';
 
 // Winget PATH değişikliği mevcut terminale yansımamış olsa da provider child
 // süreçleri PDF render/extract araçlarını görsün.
@@ -1562,6 +1563,9 @@ if (import.meta.main) {
     // Hiçbir yerden link verilmeyen sayfa; adresi burada yazılmazsa
     // kullanıcı bilmediği bir yolu tahmin etmek zorunda kalıyor.
     console.log(`  Web UI            http://localhost:${cfg.port}/ui/`);
+    // Port artık bizde: ebeveyn süpervizörün dışındaki %TEMP% kopyaları ölüdür.
+    const { removed } = cleanupSupervisorCopies();
+    if (removed.length) console.log(`[server] eski supervizor kopyasi silindi: ${removed.length}`);
   });
   // Disk oturum taramasi soguk halde ~7s surer (Windows dosya-acilis maliyeti);
   // ilk telefon istegi timeout yememesi icin acilista arka planda isit.
