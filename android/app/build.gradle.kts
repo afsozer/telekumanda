@@ -33,8 +33,8 @@ android {
         applicationId = "com.agent.bridge"
         minSdk = 26
         targetSdk = 34
-        versionCode = 447
-        versionName = "11.125"
+        versionCode = 448
+        versionName = "11.126"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "IS_LITE", "false")
         buildConfigField("String", "LITE_BRIDGE_URL", "".asBuildConfigString())
