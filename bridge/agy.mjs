@@ -388,14 +388,19 @@ function izinIstegi(params) {
     return { outcome: { outcome: 'selected', optionId: reddet?.id } };
   }
   const tc = params.toolCall || {};
+  // ŞEKİL, istemcideki mevcut onay kartı sözleşmesi (ApprovalInfo / parseApproval):
+  // requestId / kind / tool / summary / description / options[{id,label,description}].
+  // ACP alanlarını buraya çeviriyoruz ki telefon ve web tarafında agy'ye özel
+  // hiçbir kod gerekmesin — kart olduğu gibi çizilir.
   s.pendingApproval = {
-    toolCallId: tc.toolCallId || '',
-    tool: tc.name || '',
-    title: tc.title || tc.name || 'Onay',
+    requestId: tc.toolCallId || '',
     kind: tc.kind || '',
-    detail: aracDetayi(tc),
-    options: secenekler,
-    // Telefondaki eski onay kartı iki seçenekli: evet/hayır eşlemesi hazır gelsin.
+    tool: tc.name || '',
+    summary: tc.title || tc.name || 'Onay',
+    description: aracDetayi(tc).slice(0, 4000),
+    options: secenekler.map((o) => ({ id: o.id, label: o.name, description: o.kind })),
+    // Telefondaki iki tuşlu kart (izin ver / reddet) için hazır eşleme; respond()
+    // de bunları kullanır.
     allowId: (secenekler.find((o) => o.kind.includes('allow')) || secenekler[0])?.id || '',
     denyId: (secenekler.find((o) => o.kind.includes('reject')) || secenekler[1])?.id || '',
   };

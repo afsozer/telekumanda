@@ -101,6 +101,14 @@ describe('agy ACP backend', () => {
 
     const snap = __agyTest.snapshot(s);
     assert.equal(snap.awaitingApproval, true);
+    // Sekil, istemcideki ApprovalInfo sozlesmesi: requestId/kind/tool/summary/
+    // description/options[{id,label,description}]. Agy'ye ozel alan YOK.
+    assert.equal(snap.approval.requestId, 'c1');
+    assert.equal(snap.approval.tool, 'write_file');
+    assert.equal(snap.approval.summary, 'File not.txt');
+    assert.equal(snap.approval.kind, 'edit');
+    assert.deepEqual(snap.approval.options.map(o => o.id), ['allow', 'deny']);
+    assert.deepEqual(snap.approval.options.map(o => o.label), ['Allow', 'Deny']);
     assert.equal(snap.approval.allowId, 'allow');
     assert.equal(snap.approval.denyId, 'deny');
     // pendingPrompt eski telefon onay kartinin okudugu alan; ayni nesne.

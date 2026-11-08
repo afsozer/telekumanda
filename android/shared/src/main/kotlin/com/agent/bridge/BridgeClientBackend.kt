@@ -1123,6 +1123,109 @@ suspend fun BridgeClient.backendSessionDiff(settings: BridgeSettings, base: Stri
     }
 
 // --- OMP native RPC backend ---
+// ── Antigravity (agy) — ACP tabanli backend ─────────────────────────────────
+// Uclar bridge/agy.mjs'e bagli. Onaylar PROTOKOLDEN geliyor: /agy/approve
+// cagrisi ajanin bekleyen session/request_permission istegini cozer, yani tur
+// cevap verilene kadar koprude bekler.
+
+suspend fun BridgeClient.agyModels(settings: BridgeSettings): ModelsResult<BackendModel> {
+    val json = getJson(settings, "/agy/models")
+    return ModelsResult(parseBackendModels(json.optJSONArray("models")), json.optString("defaultModel"))
+}
+
+suspend fun BridgeClient.agyNew(settings: BridgeSettings, cwd: String, model: String, permissionMode: String = ""): String {
+    val body = JSONObject().put("cwd", cwd).put("model", model)
+    if (permissionMode.isNotBlank()) body.put("permissionMode", permissionMode)
+    val json = postJson(settings, "/agy/new", body)
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Antigravity oturumu acilamadi"))
+    return json.optString("sessionId")
+}
+
+suspend fun BridgeClient.agyPrompt(settings: BridgeSettings, sessionId: String, text: String, model: String?, permissionMode: String = "") {
+    val body = JSONObject().put("sessionId", sessionId).put("text", text).put("requestId", java.util.UUID.randomUUID().toString())
+    if (!model.isNullOrBlank()) body.put("model", model)
+    if (permissionMode.isNotBlank()) body.put("permissionMode", permissionMode)
+    val json = postJson(settings, "/agy/prompt", body)
+    if (!json.optBoolean("ok", true)) throw IOException(json.optString("error", "Antigravity istemi gonderilemedi"))
+}
+
+suspend fun BridgeClient.agyConversation(settings: BridgeSettings, sessionId: String): ConversationResult {
+    val session = URLEncoder.encode(sessionId, "UTF-8")
+    val json = getJson(settings, "/agy/conversation?sessionId=$session")
+    return ConversationResult(
+        text = json.optString("text"), messages = parseMessages(json), running = json.optBoolean("running"),
+        awaitingApproval = json.optBoolean("awaitingApproval"), approval = parseApproval(json.optJSONObject("approval")),
+        awaitingFirstOutput = json.optBoolean("awaitingFirstOutput"), contextTokens = json.optInt("contextTokens"),
+        contextWindow = json.optInt("contextWindow"), permissionMode = json.optString("permissionMode"),
+    )
+}
+
+suspend fun BridgeClient.agyThought(settings: BridgeSettings, sessionId: String, index: Int): String {
+    val sid = URLEncoder.encode(sessionId, "UTF-8")
+    return getJson(settings, "/agy/thought?sessionId=$sid&i=$index").optString("text")
+}
+
+suspend fun BridgeClient.agyStop(settings: BridgeSettings, sessionId: String) {
+    postJson(settings, "/agy/stop", JSONObject().put("sessionId", sessionId))
+}
+
+suspend fun BridgeClient.agyDiskSessions(settings: BridgeSettings): List<AppDiskSession> {
+    val array = getJson(settings, "/agy/disk-sessions").optJSONArray("sessions") ?: return emptyList()
+    return buildList {
+        for (i in 0 until array.length()) {
+            val item = array.optJSONObject(i) ?: continue
+            add(AppDiskSession(
+                item.optString("id"), item.optString("cwd"), item.optString("title"),
+                item.optString("lastText"), item.optInt("turns"), item.optLong("mtime"),
+            ))
+        }
+    }
+}
+
+suspend fun BridgeClient.agyAdopt(settings: BridgeSettings, id: String, cwd: String): String {
+    val json = postJson(settings, "/agy/adopt", JSONObject().put("id", id).put("cwd", cwd))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Oturum devralinamadi"))
+    return json.optString("sessionId")
+}
+
+/** ACP izin istegine cevap. Tur bu cevap gelene kadar koprude BEKLIYOR. */
+suspend fun BridgeClient.agyApprove(settings: BridgeSettings, sessionId: String, allow: Boolean) {
+    val json = postJson(settings, "/agy/approve", JSONObject().put("sessionId", sessionId).put("allow", allow))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Onay iletilemedi"))
+}
+
+suspend fun BridgeClient.agySetModel(settings: BridgeSettings, sessionId: String, model: String): String {
+    val json = postJson(settings, "/agy/model", JSONObject().put("sessionId", sessionId).put("model", model))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Model degistirilemedi"))
+    return json.optString("model", model)
+}
+
+suspend fun BridgeClient.agySetPermissionMode(settings: BridgeSettings, sessionId: String, mode: String): String {
+    val json = postJson(settings, "/agy/permission-mode", JSONObject().put("sessionId", sessionId).put("permissionMode", mode))
+    if (!json.optBoolean("ok")) throw IOException(json.optString("error", "Izin kipi degistirilemedi"))
+    return json.optString("permissionMode", mode)
+}
+
+suspend fun BridgeClient.agyPermissionModes(settings: BridgeSettings): List<PermissionMode> {
+    val array = getJson(settings, "/agy/permission-modes").optJSONArray("modes") ?: return emptyList()
+    return buildList {
+        for (i in 0 until array.length()) {
+            val item = array.optJSONObject(i) ?: continue
+            add(PermissionMode(item.optString("id"), item.optString("name"), item.optString("description")))
+        }
+    }
+}
+
+fun BridgeClient.openAgyStream(settings: BridgeSettings, sessionId: String, listener: WebSocketListener): WebSocket {
+    val session = URLEncoder.encode(sessionId, "UTF-8")
+    val wsUrl = normalizeBase(settings.baseUrl)
+        .replaceFirst("https://", "wss://")
+        .replaceFirst("http://", "ws://") + "/agy/stream?session=$session"
+    val builder = Request.Builder().url(wsUrl)
+    if (settings.token.isNotBlank()) builder.header("Authorization", "Bearer ${settings.token}")
+    return client.newWebSocket(builder.build(), listener)
+}
+
 suspend fun BridgeClient.ompModels(settings: BridgeSettings): ModelsResult<BackendModel> {
     val json = getJson(settings, "/omp/models")
     return ModelsResult(parseBackendModels(json.optJSONArray("models")), json.optString("defaultModel"))
@@ -1287,6 +1390,7 @@ suspend fun BridgeClient.ompSetEffort(settings: BridgeSettings, sessionId: Strin
 suspend fun BridgeClient.turDurdur(settings: BridgeSettings, backend: String, sessionId: String) {
     if (sessionId.isBlank()) return
     when (backend) {
+        "agy" -> agyStop(settings, sessionId)
         "claude-app" -> claudeAppInterrupt(settings, sessionId)
         "codex-app" -> codexAppStop(settings, sessionId)
         "omp" -> ompStop(settings, sessionId)

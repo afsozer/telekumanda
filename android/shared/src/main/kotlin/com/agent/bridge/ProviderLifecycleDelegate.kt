@@ -6,7 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Codex/OMP provider oturumlarının giriş, çıkış ve polling yaşam döngüsü. */
+/** Codex/OMP/Antigravity provider oturumlarının giriş, çıkış ve polling yaşam döngüsü. */
 class ProviderLifecycleDelegate(
     private val client: BridgeClient,
     private val scope: CoroutineScope,
@@ -27,6 +27,7 @@ class ProviderLifecycleDelegate(
 ) {
     private var codexPollJob: Job? = null
     private var ompPollJob: Job? = null
+    private var agyPollJob: Job? = null
 
     fun cancelCoworkSiblingPolling() {
         codexPollJob?.cancel(); codexPollJob = null
@@ -35,6 +36,7 @@ class ProviderLifecycleDelegate(
 
     fun cancelAllPolling() {
         cancelCoworkSiblingPolling()
+        agyPollJob?.cancel(); agyPollJob = null
     }
 
     // Model kataloğunu yükler. enterCodex dışında model çipi açılırken de çağrılır
@@ -259,6 +261,149 @@ class ProviderLifecycleDelegate(
         refreshAll()
     }
 
+
+    // ── Antigravity (agy) — ACP backend'i ───────────────────────────────────
+    // Ayri bir AgyDelegate YOK: eski PTY'li kurulumda 252 satirlik kendi delegesi
+    // vardi, cunku disk oturumlari, trust promptu ve kendi akisi ozeldi. ACP'de
+    // agy diger provider'larla ayni iskelete oturuyor (oturum ac / listele /
+    // devral / yokla / cik), bu yuzden burada yasiyor.
+
+    fun loadAgyModels(): Job = scope.launch {
+        runCatching { client.agyModels(state().settings) }
+            .onSuccess { result -> update {
+                val default = result.defaultModel.ifBlank { it.agy.defaultModel }
+                it.copy(agy = it.agy.copy(availableModels = result.models, defaultModel = default, model = it.agy.model.ifBlank { default }))
+            } }
+            .onFailure { reportError("Antigravity modelleri yuklenemedi", it) }
+    }
+
+    fun loadAgyPermissionModes(): Job = scope.launch {
+        runCatching { client.agyPermissionModes(state().settings) }
+            .onSuccess { modes -> update { it.copy(agy = it.agy.copy(permissionModes = modes)) } }
+            .onFailure { /* kip listesi kritik degil: secici gizli kalir */ }
+    }
+
+    fun enterAgy() = scope.launch {
+        clearThoughts()
+        val warm = prefill.warm(
+            "${Backend.AGY.id}:${Backend.AGY.id}",
+            state().pendingBindSessionId.takeIf { state().pendingBindBackend == Backend.AGY.id }.orEmpty(),
+        )
+        update { it.copy(
+            backend = Backend.AGY.id, wsConnected = false,
+            agy = it.agy.copy(setupPending = true, diskLoading = true),
+            currentSession = if (warm != null) "Antigravity" else "",
+            messagesList = warm?.messages ?: emptyList(), transcript = warm?.transcript ?: "",
+            staleConversation = warm != null, running = false, awaitingApproval = false, awaitingFirstOutput = false,
+        ) }
+        loadAgyModels().join(); loadAgyPermissionModes(); loadWorkerDirs("")
+        val current = state()
+        val pendingSid = current.pendingBindSessionId.takeIf { current.pendingBindBackend == Backend.AGY.id }.orEmpty()
+        if (pendingSid.isNotBlank()) update { it.copy(pendingBindBackend = "", pendingBindSessionId = "") }
+        if (pendingSid.isNotBlank()) {
+            val target = runCatching { client.listBackendSessions(current.settings, Backend.AGY.id) }.getOrDefault(emptyList()).firstOrNull { it.id == pendingSid }
+            if (target != null) {
+                update { it.copy(
+                    backend = Backend.AGY.id,
+                    agy = it.agy.copy(sessionId = target.id, cwd = target.cwd.ifBlank { it.agy.cwd }, model = target.model.ifBlank { it.agy.model }, setupPending = false, diskLoading = false),
+                    currentSession = "Antigravity", model = "Antigravity · ${target.model}",
+                ) }
+                openSocket(Backend.AGY.id, target.id); startAgyPolling(); refreshConversation(false)
+                syncActiveTab(Backend.AGY.id, "", target.id, generateTabTitle(Backend.AGY.id, "", target.cwd, target.model))
+                return@launch
+            }
+        }
+        update { it.copy(staleConversation = false) }
+        scope.launch {
+            runCatching { client.agyDiskSessions(state().settings) }
+                .onSuccess { list -> update { it.copy(agy = it.agy.copy(diskSessions = list, diskLoading = false, setupPending = false)) } }
+                .onFailure { update { it.copy(agy = it.agy.copy(diskLoading = false, setupPending = false)) } }
+        }
+    }
+
+    fun cancelAgySetup() = update { it.copy(agy = it.agy.copy(setupPending = false)) }
+
+    fun loadAgyDiskSessions() = scope.launch {
+        update { it.copy(agy = it.agy.copy(diskLoading = true)) }
+        runCatching { client.agyDiskSessions(state().settings) }
+            .onSuccess { list -> update { it.copy(agy = it.agy.copy(diskSessions = list, diskLoading = false)) } }
+            .onFailure { update { it.copy(agy = it.agy.copy(diskLoading = false)) } }
+    }
+
+    fun startAgy(cwd: String, model: String) = scope.launch {
+        val current = state()
+        val secilen = model.ifBlank { current.agy.model.ifBlank { current.agy.defaultModel } }
+        runCatching { client.agyNew(current.settings, cwd, secilen, current.agy.permissionMode) }
+            .onSuccess { sid ->
+                update { it.copy(
+                    agy = it.agy.copy(sessionId = sid, cwd = cwd, model = secilen, setupPending = false),
+                    currentSession = "Antigravity", model = "Antigravity · $secilen",
+                    messagesList = emptyList(), transcript = "", staleConversation = false,
+                ) }
+                openSocket(Backend.AGY.id, sid); startAgyPolling(); refreshConversation(false)
+                syncActiveTab(Backend.AGY.id, "", sid, generateTabTitle(Backend.AGY.id, "", cwd, secilen))
+                refreshSession()
+            }
+            .onFailure { reportError("Antigravity oturumu acilamadi", it) }
+    }
+
+    fun resumeAgy(session: AppDiskSession) = scope.launch {
+        runCatching { client.agyAdopt(state().settings, session.id, session.cwd) }
+            .onSuccess { sid ->
+                update { it.copy(
+                    backend = Backend.AGY.id,
+                    agy = it.agy.copy(sessionId = sid, cwd = session.cwd, setupPending = false, diskLoading = false),
+                    currentSession = "Antigravity", messagesList = emptyList(), transcript = "", staleConversation = false,
+                ) }
+                openSocket(Backend.AGY.id, sid); startAgyPolling(); refreshConversation(false)
+                syncActiveTab(Backend.AGY.id, "", sid, generateTabTitle(Backend.AGY.id, "", session.cwd, state().agy.model))
+                refreshSession()
+            }
+            .onFailure { reportError("Oturum devralinamadi", it) }
+    }
+
+    fun setAgyModel(id: String) {
+        val sid = state().agy.sessionId
+        update { it.copy(agy = it.agy.copy(model = id)) }
+        if (sid.isBlank()) return
+        scope.launch {
+            runCatching { client.agySetModel(state().settings, sid, id) }
+                .onFailure { reportError("Model degistirilemedi", it) }
+        }
+    }
+
+    fun setAgyPermissionMode(mode: String) {
+        val sid = state().agy.sessionId
+        update { it.copy(agy = it.agy.copy(permissionMode = mode)) }
+        if (sid.isBlank()) return
+        scope.launch {
+            runCatching { client.agySetPermissionMode(state().settings, sid, mode) }
+                .onFailure { reportError("Izin kipi degistirilemedi", it) }
+        }
+    }
+
+    fun startAgyPolling() {
+        agyPollJob?.cancel()
+        agyPollJob = scope.launch {
+            while (isActive && state().backend == Backend.AGY.id) {
+                if (!SohbetYoklamasi.siradakiTur { state().wsConnected }) continue
+                val current = state(); val sid = current.agy.sessionId
+                if (sid.isBlank()) continue
+                runCatching { client.agyConversation(current.settings, sid) }.onSuccess {
+                    if (state().backend == Backend.AGY.id) {
+                        if (it.messages.isEmpty() && state().messagesList.isNotEmpty()) refreshSession() else applyConversation(it)
+                    }
+                }
+            }
+        }
+    }
+
+    fun exitAgy() = scope.launch {
+        agyPollJob?.cancel(); agyPollJob = null; closeSocket()
+        val sid = state().agy.sessionId
+        update { it.copy(backend = null, agy = it.agy.copy(sessionId = "", lastSessionId = sid, cwd = ""), messagesList = emptyList(), transcript = "", running = false, awaitingApproval = false, contextTokens = 0, contextWindow = 0) }
+        refreshAll()
+    }
 
     // Codex varsayılan modeli: köprü (config.toml) söyler, uygulama SABİT tutmaz.
     // Henüz gelmediyse boş gider; köprü kendi varsayılanını uygular.

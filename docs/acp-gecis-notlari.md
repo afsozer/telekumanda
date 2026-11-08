@@ -150,3 +150,37 @@ Köprü tarafı bitti. Kalan: **Android ve web istemcilerini yeniden bağlamak**
 (backend kataloğu `/backends`'ten geldiği için kontroller kendiliğinden
 çizilir, ama `Backend.AGY`, delege, oturum ekranları ve MCP hedef eşlemesi
 silinmişti). Bu turda yapılmadı.
+
+
+## İstemciler bağlandı (08.11.2026, üçüncü tur)
+
+Android ve web yeniden bağlandı; iş bitti.
+
+**Android'de ayrı bir AgyDelegate YAZILMADI.** Eski kurulumda 252 satırlık kendi
+delegesi vardı çünkü disk oturumları, trust promptu ve PTY akışı agy'ye özeldi.
+ACP'de agy diğer provider'larla aynı iskelete oturuyor, bu yüzden yaşam döngüsü
+`ProviderLifecycleDelegate` içine girdi (enterAgy / startAgy / resumeAgy /
+startAgyPolling / exitAgy / setAgyModel / setAgyPermissionMode). Durum kutusu
+`AgyUiState`, jenerik tablolara (model seçici, izin kipi seçici, oturum
+çekmecesi, sekme etiketi, monogram, çevrimdışı anahtar) birer dal eklendi.
+
+**Onay kartı için istemcide agy'ye özel kod YOK.** Köprü, ACP izin isteğini
+istemcinin zaten ayrıştırdığı `ApprovalInfo` şekline çeviriyor
+(`requestId`/`kind`/`tool`/`summary`/`description`/`options`), kart olduğu gibi
+çiziliyor. `POST /agy/approve {allow}` bekleyen protokol isteğini çözüyor.
+
+### Rota testinin yakaladığı gerçek hata
+
+`bridge/test/agy-routes.test.mjs` yazılırken ilk koşuda çıktı:
+**`registerBackend`'in `/new` ucu `newSession`'ı await etmiyordu.** Diğer
+backend'lerde senkron olduğu için yıllarca görünmemiş; agy'de async olduğu için
+`r.ok` undefined kalıyor ve uç HER istekte 400 dönüyordu. Yani modül testi ve
+canlı ölçüm yeşilken telefondan oturum açmak imkânsız olurdu. Düzeltildi
+(`await mod.newSession(...)`, senkron modüllerde zararsız).
+
+Ders: modül testi + canlı ajan ölçümü rota katmanını ATLIYOR. Uçları port
+açmadan süren test o boşluğu kapatıyor.
+
+### Lite
+
+Lite yine Claude + Antigravity sunuyor (söküm turunda Claude'a inmişti).

@@ -19,7 +19,12 @@ export function registerBackend(router, name, mod, opts = {}) {
 
   router.post(pfx + '/new', async (req, res) => {
     const b = await body(req);
-    const r = mod.newSession({ cwd: b.cwd, model: b.model, permissionMode: b.permissionMode, effort: b.effort, cowork: b.cowork });
+    // AWAIT ŞART: claude/codex/omp'de newSession senkron olduğu için eksikliği
+    // yıllarca görünmedi; agy (ACP) el sıkışma yüzünden async ve await'siz hâlde
+    // `r` bir Promise oluyor, `r.ok` undefined kalıyor ve uç HER ZAMAN 400
+    // dönüyordu (08.11.2026, agy-routes testi yakaladı). Senkron modüllerde
+    // await zararsız.
+    const r = await mod.newSession({ cwd: b.cwd, model: b.model, permissionMode: b.permissionMode, effort: b.effort, cowork: b.cowork });
     json(res, r.ok ? 200 : 400, r);
   });
 

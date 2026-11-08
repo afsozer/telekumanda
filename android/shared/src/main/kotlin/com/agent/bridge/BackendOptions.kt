@@ -6,6 +6,7 @@ data class BackendOption(val id: String, val label: String, val detail: String =
 
 
 fun RemoteUiState.backendModelOptions(id: String): List<BackendOption> = when (id) {
+    "agy" -> agyModels.map { BackendOption(it.id, it.label) }
     "claude-app" -> claudeModels.map { BackendOption(it.id, it.label) }
     "codex-app" -> codexModels.map { BackendOption(it.id, it.label) }
     "omp" -> omp.availableModels.map { BackendOption(it.id, it.label) }
@@ -15,6 +16,8 @@ fun RemoteUiState.backendModelOptions(id: String): List<BackendOption> = when (i
 }
 
 fun RemoteUiState.backendPermissionModeOptions(id: String): List<BackendOption> = when (id) {
+    // ACP kipleri: default / accept-edits / plan (kopru /agy/permission-modes).
+    "agy" -> agy.permissionModes.map { BackendOption(it.id, it.name.ifBlank { it.id }, it.description) }
     "claude-app" -> {
         val modes = claudeAppInfo?.permissionModes?.ifEmpty { null } ?: listOf("", "auto", "plan", "acceptEdits", "bypassPermissions")
         modes.map { BackendOption(it, permissionModeLabel(it)) }

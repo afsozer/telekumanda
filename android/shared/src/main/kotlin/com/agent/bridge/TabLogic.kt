@@ -18,6 +18,7 @@ fun generateTabTitle(backend: String, provider: String, cwd: String, model: Stri
     val folder = cwd.substringAfterLast('/').substringAfterLast('\\')
     val shortFolder = if (folder.isNotBlank()) folder else {
         when (backend) {
+            "agy" -> "Antigravity"
             "claude-app" -> "Claude"
             "codex-app" -> "Codex"
             "cowork" -> "Cowork"

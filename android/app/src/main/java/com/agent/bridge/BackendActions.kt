@@ -15,6 +15,7 @@ fun RemoteViewModel.exitBackend(id: String) {
         "claude-app" -> exitClaudeAppMode()
         "codex-app" -> exitCodexAppMode()
         "omp" -> exitOmpMode()
+        "agy" -> exitAgyMode()
         "cowork" -> exitClaudeAppMode()
     }
 }
@@ -24,6 +25,7 @@ fun RemoteViewModel.setBackendModel(id: String, model: String) {
         "claude-app" -> setClaudeAppModel(model)
         "codex-app" -> setCodexAppModel(model)
         "omp" -> setOmpModel(model)
+        "agy" -> setAgyModel(model)
         "cowork" -> setCoworkModel(model)
     }
 }
@@ -125,6 +127,7 @@ fun RemoteViewModel.loadBackendDiskSessions(id: String) {
         "claude-app" -> loadClaudeAppDiskSessions()
         "codex-app" -> loadCodexAppDiskSessions()
         "omp" -> loadOmpDiskSessions()
+        "agy" -> loadAgyDiskSessions()
         // Cowork'te "aktif repo" = AÇIK OTURUMUN workspace'i. Parametresiz
         // `loadCoworkSessions()` ise Cowork EKRANININ seçimine bakar; oturumu
         // sekmeden ya da birleşik listeden açan kullanıcıda o seçim boştur ve

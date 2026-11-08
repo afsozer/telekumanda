@@ -19,6 +19,16 @@ data class BackendSessionState(
 // Aktif cowork saglayicisini claude/codex/omp uclusune indirger;
 // normalizeCoworkProvider zaten mevcut — kullan, yeniden yazma.
 fun RemoteUiState.backendSession(id: String): BackendSessionState = when (id) {
+    "agy" -> BackendSessionState(
+        sessionId = agySessionId,
+        lastSessionId = agy.lastSessionId,
+        cwd = agyCwd,
+        model = agyModel,
+        defaultModel = agy.defaultModel,
+        permissionMode = agyPermissionMode,
+        setupPending = agySetupPending,
+        diskLoading = agyDiskLoading,
+    )
     "claude-app" -> BackendSessionState(
         sessionId = claudeAppSessionId,
         lastSessionId = lastClaudeAppSessionId,

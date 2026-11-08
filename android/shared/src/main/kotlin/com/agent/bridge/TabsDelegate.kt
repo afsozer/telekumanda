@@ -14,6 +14,7 @@ class TabsDelegate(
     private val emit: suspend (String) -> Unit,
     private val client: BridgeClient,
     private val goToLanding: () -> Unit,
+    private val enterAgyMode: () -> Unit = {},
     private val enterClaudeAppMode: () -> Unit,
     private val enterCodexAppMode: () -> Unit,
     private val enterOmpMode: () -> Unit = {},
@@ -299,6 +300,12 @@ class TabsDelegate(
                     omp = state.omp.copy(lastSessionId = tab.sessionId),
                     pendingBindBackend = "omp", pendingBindSessionId = tab.sessionId,
                 )
+                // agy de aynı kuralda: pendingBind yazılmazsa sekmeye dokunmak
+                // oturumu geri getirmez, kurulum ekranına düşer.
+                "agy" -> state.copy(
+                    agy = state.agy.copy(lastSessionId = tab.sessionId),
+                    pendingBindBackend = "agy", pendingBindSessionId = tab.sessionId,
+                )
                 else -> state
             }
         }
@@ -309,6 +316,7 @@ class TabsDelegate(
             "claude-app" -> enterClaudeAppMode()
             "codex-app" -> enterCodexAppMode()
             "omp" -> enterOmpMode()
+            "agy" -> enterAgyMode()
             "cowork" -> enterCoworkMode()
         }
     }

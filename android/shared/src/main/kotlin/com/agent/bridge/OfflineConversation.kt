@@ -14,6 +14,7 @@ internal fun offlineConversationKey(state: RemoteUiState): OfflineConversationKe
     val backend = state.backend ?: return null
     val provider = if (backend == "cowork") normalizeCoworkProvider(state.coworkProvider) else backend
     val sessionId = when (provider) {
+        "agy" -> state.agySessionId
         "claude-app" -> state.claudeAppSessionId
         "codex-app" -> state.codexAppSessionId
         "omp" -> state.ompSessionId

@@ -104,6 +104,29 @@ data class DeviceUiState(
     val devicesLoading: Boolean = false,
 )
 
+/**
+ * Antigravity (agy) oturum durumu — ACP backend'i.
+ *
+ * Alanlar OmpUiState ile aynı iskelette (sessionId/cwd/model/disk listesi/izin
+ * kipi); ayrı tip, çünkü varsayılanları ve seçenek kaynakları farklı. `info` ve
+ * `variant` yok: ACP düşünme seviyesini (`session/set_config_option`) henüz
+ * eşleyemedik, model ve kip ayrı metodlarla değişiyor.
+ */
+@androidx.compose.runtime.Immutable
+data class AgyUiState(
+    val sessionId: String = "",
+    val lastSessionId: String = "",
+    val cwd: String = "",
+    val model: String = "",
+    val defaultModel: String = "",
+    val setupPending: Boolean = false,
+    val diskSessions: List<AppDiskSession> = emptyList(),
+    val diskLoading: Boolean = false,
+    val availableModels: List<BackendModel> = emptyList(),
+    val permissionMode: String = "default",
+    val permissionModes: List<PermissionMode> = emptyList(),
+)
+
 /** Cowork workspace, sağlayıcı, teslimat ve içe aktarma durumu. */
 @androidx.compose.runtime.Immutable
 data class CoworkUiState(
@@ -406,11 +429,12 @@ data class RemoteUiState(
     val backendProcessCounts: Map<String, Int> = emptyMap(),
     val truncateAfterIndex: Int? = null,
     val messagePageSize: Int = 100,
+    val agy: AgyUiState = AgyUiState(),
     val omp: OmpUiState = OmpUiState(),
     // Dosya gezgini + indirilenler, ayrı aile olarak taşındı.
     val files: FilesUiState = FilesUiState(),
-    val visibleBackends: Set<String> = setOf("claude-app", "codex-app", "omp", "cowork"),
-    val backendOrder: List<String> = listOf("claude-app","codex-app","omp","cowork"),
+    val visibleBackends: Set<String> = setOf("claude-app", "agy", "codex-app", "omp", "cowork"),
+    val backendOrder: List<String> = listOf("claude-app","agy","codex-app","omp","cowork"),
     val search: SearchUiState = SearchUiState(),
     val chatSearch: ChatSearchState = ChatSearchState(),
     val projectDelete: ProjectDeleteUiState = ProjectDeleteUiState(),
@@ -539,6 +563,14 @@ val RemoteUiState.coworkImportLoading get() = cowork.importLoading
 val RemoteUiState.coworkRootPath get() = cowork.rootPath
 val RemoteUiState.coworkFilesStart get() = cowork.filesStart
 val RemoteUiState.coworkFilesOpenDir get() = cowork.filesOpenDir
+val RemoteUiState.agySessionId get() = agy.sessionId
+val RemoteUiState.agyModels get() = agy.availableModels
+val RemoteUiState.agyCwd get() = agy.cwd
+val RemoteUiState.agyModel get() = agy.model
+val RemoteUiState.agySetupPending get() = agy.setupPending
+val RemoteUiState.agyDiskSessions get() = agy.diskSessions
+val RemoteUiState.agyDiskLoading get() = agy.diskLoading
+val RemoteUiState.agyPermissionMode get() = agy.permissionMode
 val RemoteUiState.ompSessionId get() = omp.sessionId
 val RemoteUiState.ompCwd get() = omp.cwd
 val RemoteUiState.ompModel get() = omp.model

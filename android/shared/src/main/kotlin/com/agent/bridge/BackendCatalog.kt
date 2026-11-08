@@ -36,6 +36,9 @@ enum class Backend(
     val capabilities: BackendCapabilities = BackendCapabilities(),
 ) {
     CLAUDE_APP("claude-app"),
+    // ACP ile baglandi (08.11.2026): onay ve izin kipi VAR, context yok —
+    // protokol usage toplami veriyor ama pencere boyutu bildirmiyor.
+    AGY("agy", capabilities = BackendCapabilities(approvals = true, permissionModes = true, context = false)),
     // Codex'in steer'i VAR ama /follow-up'i yok; ustelik telefonda kendi eski
     // "steer kipi" yolunu kullaniyor (CodexAppActionsDelegate), ortak tur-ici
     // composer'i DEGIL — userInputQueue=false onu ortak kipin disinda tutar.
@@ -83,6 +86,7 @@ fun backendCapabilities(
 // kullanır). İkonlu UI kataloğu (BACKEND_CATALOG/BACKEND_ICONS) app modülündedir.
 val BACKEND_LABELS: Map<String, String> = mapOf(
     "claude-app" to "Claude App",
+    "agy" to "Antigravity",
     "codex-app" to "Codex App",
     "omp" to "OMP",
     "cowork" to "Cowork",
@@ -92,6 +96,7 @@ val BACKEND_LABELS: Map<String, String> = mapOf(
 // beşi yan yana sığmıyor. Bilinmeyen id'de uzun etikete, o da yoksa id'ye düşer.
 val BACKEND_SHORT_LABELS: Map<String, String> = mapOf(
     "claude-app" to "Claude",
+    "agy" to "Antigravity",
     "codex-app" to "Codex",
     "omp" to "OMP",
     "cowork" to "Cowork",
@@ -109,6 +114,7 @@ internal fun mcpTargetFor(backend: String?, coworkProvider: String): String? = w
         "omp" -> "omp"
         else -> MCP_TARGET_CLAUDE
     }
+    "agy" -> MCP_TARGET_ANTIGRAVITY
     "codex-app", "omp" -> backend
     else -> null
 }

@@ -83,6 +83,7 @@ class ConversationDelegate(
             }
             Backend.CODEX_APP.id -> if (current.codex.sessionId.isNotBlank()) load { client.codexAppConversation(current.settings, current.codex.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
             Backend.OMP.id -> if (current.omp.sessionId.isNotBlank()) load { client.ompConversation(current.settings, current.omp.sessionId) }
+            Backend.AGY.id -> if (current.agy.sessionId.isNotBlank()) load { client.agyConversation(current.settings, current.agy.sessionId) }
             Backend.CLAUDE_APP.id -> if (current.claude.sessionId.isNotBlank()) load { client.claudeAppConversation(current.settings, current.claude.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
         }
     }
@@ -155,7 +156,7 @@ class ConversationDelegate(
                 return@launch
             }
         }
-        val optimistic = initial.backend in setOf(Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OMP.id)
+        val optimistic = initial.backend in setOf(Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OMP.id, Backend.AGY.id)
         val clearComposerNow = shouldClearComposerOptimistically(initial)
         update {
             val next = it.copy(sending = true, running = it.running || optimistic, truncateAfterIndex = null)
@@ -179,6 +180,7 @@ class ConversationDelegate(
             }
             Backend.CODEX_APP.id -> if (current.codex.sessionId.isBlank()) missing("Codex App session yok") else runCatching { client.codexAppPrompt(current.settings, current.codex.sessionId, text, current.codex.model) }
             Backend.OMP.id -> if (current.omp.sessionId.isBlank()) missing("OMP session yok") else runCatching { client.ompPrompt(current.settings, current.omp.sessionId, text, current.omp.model, current.omp.permissionMode, current.omp.variant) }
+            Backend.AGY.id -> if (current.agy.sessionId.isBlank()) missing("Antigravity oturumu yok") else runCatching { client.agyPrompt(current.settings, current.agy.sessionId, text, current.agy.model, current.agy.permissionMode) }
             else -> Result.success(Unit)
         }
         if (result.exceptionOrNull() === MissingSessionException) return@launch
@@ -356,7 +358,7 @@ class ConversationDelegate(
     /**
      * Sohbet içi arama için TÜM geçmişi belleğe yükler (plan §16: son yüklü sayfayla
      * sınırlama yok). claude/codex sayfalı sağlayıcılarda `before` ile geriye doğru
-     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (omp) transcript'i
+     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (omp/agy) transcript'i
      * zaten tek seferde döndürdüğü için ek iş yapılmaz.
      *
      * Çağrandan ÖNCE hedef oturumun açılıp konuşmasının yüklendiği (messagesList dolu)
@@ -371,7 +373,7 @@ class ConversationDelegate(
             val current = state()
             val count = current.messagesList.size
             if (count >= cap) return FullHistoryLoadResult.Truncated(count)
-            // Sayfalanamayan sağlayıcı (omp) tam transcript'i zaten yükledi.
+            // Sayfalanamayan sağlayıcı (omp/agy) tam transcript'i zaten yükledi.
             val target = ConversationPaging.target(current) ?: return FullHistoryLoadResult.Complete
             val firstBefore = current.messagesList.firstOrNull()?.rowId
             val page = runCatching {

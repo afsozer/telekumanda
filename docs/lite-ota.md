@@ -1,7 +1,7 @@
 # AgentBridge Lite güncellemeleri
 
-Lite yalnız Claude sunar (Codex 24.10.2026'da, Antigravity 08.11.2026'da
-çıkarıldı).
+Lite Claude ve Antigravity sunar (Codex 24.10.2026'da çıkarıldı; Antigravity
+08.11.2026'da PTY'den ACP'ye taşındı, kısa süre kapsam dışı kaldı).
 Eski Codex sekmeleri Lite başlangıcında istemcinin sekme kaydından
 çıkarılır; köprüdeki oturum silinmez. Normal uygulamanın sağlayıcıları korunur.
 

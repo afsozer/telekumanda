@@ -56,7 +56,8 @@ vaka ekle.
 Durum: MCP ekranı artık backend'e duyarlı (claude→Claude config,
 codex-app→config.toml `codex mcp` CLI'ı ile; kaldırılmış backend'lerde buton yok).
 Antigravity MCP kaydı köprüde (`bridge/mcp.mjs`) ve Ayarlar > MCP ekranında
-duruyor; agy backend'i 08.11.2026'da söküldü, ACP ile yeniden bağlanacak.
+duruyor; agy backend'i 08.11.2026'da ACP'ye taşındı ve `mcpTargetFor`
+eşlemesi geri bağlandı.
 Config CRUD'ları canlı doğrulandı (codex gerçek listesi okundu; kaldirilmis backend'de
 save/toggle/remove round-trip yapıldı). Görülmeyen tek şey: eklenen sunucunun
 ajanın SONRAKİ oturumunda tool olarak gerçekten belirmesi.

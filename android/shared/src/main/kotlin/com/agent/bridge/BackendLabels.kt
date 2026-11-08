@@ -36,6 +36,7 @@ fun permissionModeIsPermissive(mode: String): Boolean = when (mode) {
  * oturum listesi de aynı monogramı çizdiği için buraya taşındı.
  */
 fun providerMonogram(backendId: String): String = when (backendId) {
+    "agy" -> "A"
     "claude-app" -> "C"
     "codex-app" -> "X"
     "omp" -> "P"

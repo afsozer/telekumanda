@@ -131,7 +131,7 @@ internal fun Ui3AyarlarScreen(
             AyarSatiri(
                 ikon = Icons.Outlined.DeveloperMode,
                 baslik = "MCP sunucuları",
-                detay = "Claude, Codex ve OMP",
+                detay = "Claude, Antigravity, Codex ve OMP",
                 testEtiketi = "ayar_mcp",
             ) { onAc(Ui3AyarRota.MCP) }
             }

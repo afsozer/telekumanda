@@ -10,7 +10,7 @@ import java.util.UUID
 // goremez, test gorur). Kayitli tercihte bu listede olmayan bir kimlik varsa
 // asagidaki suzgec onu eler.
 internal val BACKEND_DEFAULT_ORDER = listOf(
-    "claude-app", "codex-app", "omp", "cowork",
+    "claude-app", "agy", "codex-app", "omp", "cowork",
 )
 internal val BACKEND_LITE_ORDER = LITE_BACKEND_ORDER
 

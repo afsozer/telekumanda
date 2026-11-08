@@ -86,7 +86,7 @@ fun SettingsRootScreen(
                 }, {
                 SettingsLinkRow(
                     title = "MCP sunucuları",
-                    detail = "Claude, Codex ve OMP",
+                    detail = "Claude, Antigravity, Codex ve OMP",
                     icon = Icons.Outlined.DeveloperMode,
                     onClick = onOpenMcp,
                 )

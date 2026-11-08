@@ -72,6 +72,10 @@ export const FALLBACK_BACKENDS: BackendInfo[] = [
   { id: 'codex-app', apiBackend: 'codex-app', label: 'Codex', adapterBacked: true,
     capabilities: { ...DEFAULT_CAPABILITIES, ...APP_AGENT, plan: true, efforts: true,
       sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
+  // Antigravity ACP backend'i: onay ve izin kipi protokolden geliyor, ama
+  // baglam penceresi bildirilmiyor (usage toplami var, pencere yok).
+  { id: 'agy', apiBackend: 'agy', label: 'Antigravity', adapterBacked: true,
+    capabilities: { ...DEFAULT_CAPABILITIES, approvals: true, permissionModes: true, context: false } },
 ]
 
 /**

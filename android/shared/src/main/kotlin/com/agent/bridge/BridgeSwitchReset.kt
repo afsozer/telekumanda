@@ -24,6 +24,7 @@ fun RemoteUiState.clearedForBridgeSwitch(): RemoteUiState = copy(
     ),
     claude = claude.copy(diskSessions = emptyList(), diskLoading = false, info = null),
     codex = codex.copy(diskSessions = emptyList(), diskLoading = false, info = null),
+    agy = agy.copy(diskSessions = emptyList(), diskLoading = false),
     omp = omp.copy(diskSessions = emptyList(), diskLoading = false, info = null),
     cowork = cowork.copy(
         outputs = emptyList(),

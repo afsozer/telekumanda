@@ -130,5 +130,12 @@ describe('gömülü yedek tablo', () => {
     // /interrupt yalnız claude-app’te.
     expect(caps('claude-app').interrupt).toBe(true)
     expect(caps('codex-app').interrupt).toBe(false)
+    // agy (ACP): onay ve izin kipi VAR; caba/kesme yok, baglam penceresi
+    // bildirilmiyor (usage toplami geliyor ama pencere boyutu yok).
+    expect(caps('agy').approvals).toBe(true)
+    expect(caps('agy').permissionModes).toBe(true)
+    expect(caps('agy').context).toBe(false)
+    expect(caps('agy').efforts).toBe(false)
+    expect(caps('agy').interrupt).toBe(false)
   })
 })

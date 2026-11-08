@@ -410,6 +410,15 @@ current design are in `docs/acp-gecis-notlari.md`; the load-bearing ones:
   (otherwise `node --test` took 100 s instead of 5 s) and ref'd again while a
   request is in flight (otherwise Node exits mid-request). Idle children are
   reaped after 5 minutes; an exit hook kills them so no orphan `agy.exe` is left.
+- **Approval cards reuse the existing client contract.** The bridge maps the
+  ACP permission request onto the `ApprovalInfo` shape the phone and the web UI
+  already parse (`requestId` / `kind` / `tool` / `summary` / `description` /
+  `options`), so neither client needed agy-specific approval code.
+- **`registerBackend`'s `/new` route awaits `newSession` since 08.11.2026.**
+  It did not before: every other backend creates sessions synchronously, so a
+  missing `await` was invisible until an async (ACP) backend arrived, where the
+  route returned 400 for every session. `bridge/test/agy-routes.test.mjs` drives
+  the registered routes in-process to keep that class of bug caught.
 - **Not yet mapped.** `session/set_config_option` (thinking level) rejects every
   parameter name tried so far; model and mode are set with `session/set_model`
   and `session/set_mode`, which work.

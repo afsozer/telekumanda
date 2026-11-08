@@ -291,6 +291,7 @@ internal fun Ui3YeniOturum(
 
 internal fun liteSaglayiciAciklamasi(id: String): String = when (id) {
     "claude-app" -> "Uzun sohbetler ve genel görevler"
+    "agy" -> "Hızlı, genel amaçlı yardım"
     else -> "Yeni bir oturum başlat"
 }
 

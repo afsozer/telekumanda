@@ -7,20 +7,22 @@ import kotlinx.coroutines.Dispatchers
 import org.json.JSONObject
 
 class LiteProvidersTest {
-    // 24.10.2026: Codex lite'tan çıkarıldı (kullanıcı isteği), 08.11.2026: agy
-    // backend'i tamamen söküldü. Lite yalnız Claude sunar.
+    // 24.10.2026: Codex lite'tan çıkarıldı (kullanıcı isteği). 08.11.2026: agy
+    // PTY backend'i söküldü ve ACP ile yeniden bağlandı; Lite yine Claude +
+    // Antigravity sunuyor.
     @Test
-    fun liteYalnizClaudeSunar() {
-        assertEquals(listOf("claude-app"), LITE_BACKEND_ORDER)
+    fun liteClaudeVeAntigravitySunar() {
+        assertEquals(listOf("claude-app", "agy"), LITE_BACKEND_ORDER)
         val lite = RemoteUiState(liteEdition = true)
         assertFalse(lite.supportsEditionBackend("codex-app"))
         assertFalse(lite.supportsEditionBackend("omp"))
         assertTrue(lite.supportsEditionBackend("claude-app"))
+        assertTrue(lite.supportsEditionBackend("agy"))
     }
 
     @Test
     fun staleVisibilityAndCatalogCannotBringLiteProvidersBack() {
-        val oldOrder = listOf("claude-app", "codex-app", "omp", "cowork")
+        val oldOrder = listOf("claude-app", "codex-app", "agy", "omp", "cowork")
         val state = RemoteUiState(liteEdition = true, backendOrder = oldOrder, visibleBackends = oldOrder.toSet())
         assertEquals(LITE_BACKEND_ORDER, state.availableBackendIds())
         // Tam sürümde kullanıcı ayarı aynen geçerlidir.

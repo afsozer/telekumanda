@@ -22,6 +22,10 @@ fun RemoteViewModel.resumeBackendDiskSession(backend: String, sessionId: String)
             val session = state.ompDiskSessions.find { it.id == sessionId }
             if (session != null) resumeOmpDiskSession(session)
         }
+        "agy" -> {
+            val session = state.agyDiskSessions.find { it.id == sessionId }
+            if (session != null) resumeAgyDiskSession(session)
+        }
         "cowork" -> {
             val session = state.coworkSessions.find { it.sessionId == sessionId }
             if (session != null) resumeCoworkSession(session)
@@ -64,6 +68,7 @@ fun RemoteViewModel.startBackendSession(backend: String, cwd: String) {
         "claude-app" -> startClaudeAppSession(cwd, model)
         "codex-app" -> startCodexAppSession(cwd, model)
         "omp" -> startOmpSession(cwd, model)
+        "agy" -> startAgySession(cwd, model)
         // cwd = seçilen workspace yolu; boşsa otomatik yeni çalışma alanı oluşturulur.
         // (Global selectedCoworkWorkspace kullanılmaz — her başlatmada dolduğu için
         // "yeni oturum" ekranından hep eski workspace'e dönülüyordu.)

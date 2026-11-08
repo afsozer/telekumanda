@@ -29,6 +29,7 @@ class SessionRefreshDelegate(
                     Backend.CLAUDE_APP.id -> client.claudeAppAdopt(current.settings, sid, cwd, cowork = provider.isNotBlank())
                     Backend.CODEX_APP.id -> client.codexAppAdopt(current.settings, sid, cwd)
                     Backend.OMP.id -> client.ompAdopt(current.settings, sid, cwd)
+                    Backend.AGY.id -> client.agyAdopt(current.settings, sid, cwd)
                     else -> sid
                 }
             }
@@ -39,6 +40,7 @@ class SessionRefreshDelegate(
                         Backend.CLAUDE_APP.id -> reset.copy(claude = reset.claude.copy(sessionId = newSid))
                         Backend.CODEX_APP.id -> reset.copy(codex = reset.codex.copy(sessionId = newSid))
                         Backend.OMP.id -> reset.copy(omp = reset.omp.copy(sessionId = newSid))
+                        Backend.AGY.id -> reset.copy(agy = reset.agy.copy(sessionId = newSid))
                         else -> reset
                     }
                 }
@@ -47,6 +49,7 @@ class SessionRefreshDelegate(
         }
         when (current.backend) {
             Backend.CLAUDE_APP.id -> if (current.claude.sessionId.isNotBlank()) { adopt(Backend.CLAUDE_APP.id, "", current.claude.sessionId, current.claude.cwd); return@launch }
+            Backend.AGY.id -> if (current.agy.sessionId.isNotBlank()) { adopt(Backend.AGY.id, "", current.agy.sessionId, current.agy.cwd); return@launch }
             Backend.COWORK.id -> {
                 val provider = normalizeCoworkProvider(current.cowork.provider)
                 val sid = when (provider) {
