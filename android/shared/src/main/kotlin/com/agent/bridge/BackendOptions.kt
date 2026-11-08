@@ -146,6 +146,9 @@ fun RemoteUiState.backendSkillGroups(id: String): Map<String, String> = emptyMap
 fun RemoteUiState.backendSkillsSupported(id: String): Boolean = when (id) {
     // omp: skill envanteri RPC'nin get_available_commands çıktısından geliyor
     // (12 Ağu 2026); liste dolduğu hâlde çip gate'e takılıp görünmez kalıyordu.
+    // agy'de Agent Skills ENVANTERI yok (ACP boyle bir uc vermiyor); slash
+    // komutlari ayri yoldan, jenerik /slash ucuyla geliyor. Bu kapiyi acmak
+    // menude calismayan bir satir cizerdi — Ui3MenuYonlendirmeTest yakaladi.
     "claude-app", "codex-app", "omp" -> true
     "cowork" -> true
     else -> false

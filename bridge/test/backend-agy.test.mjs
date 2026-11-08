@@ -232,6 +232,14 @@ describe('agy ACP backend', () => {
     assert.equal(p.count, 0);
   });
 
+  // Global arama her modulde searchDiskSessions arar ve olmayani SESSIZCE
+  // atlar; export dustugunde agy aramada hic gorunmuyordu.
+  it('searchDiskSessions export EDILMIS ve bos sorguda bos doner', async () => {
+    assert.equal(typeof agy.searchDiskSessions, 'function');
+    assert.deepEqual(await agy.searchDiskSessions({ query: '' }), []);
+    assert.deepEqual(await agy.searchDiskSessions({ query: 'x', deadline: 1 }), []);
+  });
+
   it('killAllSessions oturum haritasini bosaltir', () => {
     yeni('a'); yeni('b');
     const r = agy.killAllSessions();

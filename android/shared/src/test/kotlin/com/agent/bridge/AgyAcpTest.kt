@@ -112,6 +112,16 @@ class AgyAcpTest {
     }
 
     @Test
+    fun composerIyimserTemizlenirVeKomutCipiAcik() {
+        // prompt ucu turu baslatip HEMEN donuyor; listede olmazsa yazi kutuda
+        // kaliyor ve kullanici mesaji gitmedi sanip tekrar gonderiyor.
+        assertTrue(shouldClearComposerOptimistically(RemoteUiState(backend = "agy")))
+        // Agent Skills envanteri YOK: ACP boyle bir uc vermiyor, slash komutlari
+        // jenerik /slash yolundan geliyor. Kapi acilirsa menude olu satir olur.
+        assertFalse(RemoteUiState().backendSkillsSupported("agy"))
+    }
+
+    @Test
     fun agyVarsayilanOlarakGorunurVeSiraliDir() {
         val state = RemoteUiState()
         assertTrue("agy" in state.visibleBackends)

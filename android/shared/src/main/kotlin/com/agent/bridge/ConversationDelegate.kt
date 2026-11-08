@@ -29,7 +29,7 @@ internal data class PendingComposerDraft(
 // ilk prompt'ta ACP session/new acildigi icin bu bekleme 10+ saniye surebiliyor
 // ve kullanici mesaji gitmedi sanip tekrar gonderiyordu (canli goruldu).
 internal fun shouldClearComposerOptimistically(state: RemoteUiState): Boolean = when (state.backend) {
-    Backend.CODEX_APP.id, Backend.OMP.id -> true
+    Backend.CODEX_APP.id, Backend.OMP.id, Backend.AGY.id -> true
     Backend.COWORK.id -> normalizeCoworkProvider(state.cowork.provider) in
         setOf(Backend.CODEX_APP.id, Backend.OMP.id)
     else -> false

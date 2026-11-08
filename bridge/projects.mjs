@@ -130,10 +130,13 @@ function unwrapList(value, key) {
 }
 
 const SECURITY_PROFILES = new Set(['safe', 'standard', 'full', 'custom']);
+// agy (ACP) kipleri: default / accept-edits / plan. "Her seyi atla" karsiligi
+// YOK — en gevsek kip accept-edits (calisma alanindaki duzenlemeleri sormadan
+// uygular, komutlari yine sorar), bu yuzden `full` oraya esliyor.
 const PERMISSION_MODES = {
-  safe: { 'claude-app': 'plan', 'codex-app': 'untrusted' },
-  standard: { 'claude-app': 'default', 'codex-app': 'ask' },
-  full: { 'claude-app': 'bypassPermissions', 'codex-app': 'yolo' },
+  safe: { 'claude-app': 'plan', 'codex-app': 'untrusted', 'agy': 'plan' },
+  standard: { 'claude-app': 'default', 'codex-app': 'ask', 'agy': 'default' },
+  full: { 'claude-app': 'bypassPermissions', 'codex-app': 'yolo', 'agy': 'accept-edits' },
 };
 
 const DEFAULT_PROJECTS_STATE_DIR = process.env.NODE_TEST_CONTEXT

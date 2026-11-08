@@ -668,6 +668,37 @@ export async function adoptSession({ id, cwd }) {
   }
 }
 
+// Global arama (GET /search) her modulde `searchDiskSessions` arar ve
+// olmayani SESSIZCE atlar — eski PTY'li surumde vardi, ACP'ye gecince dusmus ve
+// agy oturumlari aramada hic gorunmuyordu (08.11.2026 eksik taramasi).
+//
+// KAPSAM SINIRI acik: ACP yalnizca baslik + tarih veriyor (`session/list`),
+// icerik vermiyor. Eski kod bunun icin diskteki transcript'leri tarardi; o yola
+// bilincli donmuyoruz (ACP'ye gecisin tum anlami oydu). Dolayisiyla burada
+// BASLIK eslesmesi yapilir; icerik aramasi yok.
+export async function searchDiskSessions({ query, limit = 40, deadline = 0 } = {}) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return [];
+  if (deadline && Date.now() > deadline) return [];
+  const liste = await listDiskSessions();
+  if (!liste.ok) return [];
+  const sonuc = [];
+  for (const s of liste.sessions) {
+    if (sonuc.length >= limit) break;
+    const baslik = String(s.title || '');
+    if (!baslik.toLowerCase().includes(q)) continue;
+    sonuc.push({
+      sessionId: s.id,
+      title: baslik,
+      cwd: s.cwd || '',
+      mtime: s.mtime || 0,
+      // Icerik taranmadigi icin snippet baslik: uydurma parca gostermeyelim.
+      snippet: baslik,
+    });
+  }
+  return sonuc;
+}
+
 export function getSlashCommands(sessionId) {
   if (sessionId) {
     const s = sessions.get(sessionId);
