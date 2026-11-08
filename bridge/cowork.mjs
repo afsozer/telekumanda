@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { zipDirectoryContents } from './zip-dir.mjs';
 import { slugifyNoteName } from './note-slug.mjs';
 import * as claudeApp from './claude-app.mjs';
 import * as codexApp from './codex-app.mjs';
@@ -1118,46 +1118,19 @@ export function importIntoProject({ projectPath, sources } = {}) {
   return { ok: true, copied, errors };
 }
 
-// Workspace'i zip'e paketler (PowerShell Compress-Archive — Windows'a özgü, ek
-// bağımlılık istemez). Zip bridge tmp'ye yazılır; telefon mevcut /download ucuyla
-// indirir. .cowork metadata klasörü arşive girmez.
-export function archiveProject({ projectPath } = {}) {
+// Workspace'i zip'e paketler; zip bridge tmp'ye yazılır, telefon mevcut
+// /download ucuyla indirir. .cowork metadata klasörü arşive girmez.
+export async function archiveProject({ projectPath } = {}) {
   const checked = assertProjectPath(projectPath);
-  if (!checked.ok) return Promise.resolve(checked);
+  if (!checked.ok) return checked;
   const name = path.basename(checked.path);
   const stamp = safeStamp();
   const tmpDir = path.join(process.cwd(), 'bridge', 'tmp');
   fs.mkdirSync(tmpDir, { recursive: true });
   const zipPath = path.join(tmpDir, `${name}-${stamp}.zip`);
-  // Compress-Archive glob'u: workspace içeriği (kök klasörün kendisi değil).
-  // .cowork'u dışarıda bırakmak için içerikleri filtreleyerek geçiriyoruz.
-  // Yollar betiğe gömülmez, ortam değişkeniyle geçer: PowerShell ‘ ’ gibi Unicode
-  // tırnakları da tek tırnak sayar; adında bu işaret olan klasör ("Ahmet’in dosyası")
-  // hem arşivlemeyi bozuyor hem -Command dizgisinden kaçmaya izin veriyordu.
-  const ps = [
-    '$ErrorActionPreference = "Stop";',
-    "$items = Get-ChildItem -LiteralPath $env:TK_ARCHIVE_SRC -Force | Where-Object { $_.Name -ne '.cowork' };",
-    `if (-not $items) { throw 'workspace bos' };`,
-    'Compress-Archive -LiteralPath ($items | ForEach-Object { $_.FullName }) -DestinationPath $env:TK_ARCHIVE_DST -Force;',
-  ].join(' ');
-  return new Promise((resolve) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {
-      windowsHide: true,
-      env: { ...process.env, TK_ARCHIVE_SRC: checked.path, TK_ARCHIVE_DST: zipPath },
-    });
-    let err = '';
-    child.stderr.on('data', d => { err += d; });
-    const timer = setTimeout(() => { try { child.kill(); } catch {} resolve({ ok: false, error: 'zip timeout' }); }, 120_000);
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0 && fs.existsSync(zipPath)) {
-        resolve({ ok: true, path: zipPath, name: `${name}.zip`, size: fs.statSync(zipPath).size });
-      } else {
-        resolve({ ok: false, error: (err || `powershell exit ${code}`).trim().slice(0, 300) });
-      }
-    });
-    child.on('error', (e) => { clearTimeout(timer); resolve({ ok: false, error: e.message }); });
-  });
+  const r = await zipDirectoryContents({ srcDir: checked.path, zipPath, exclude: ['.cowork'], emptyError: 'workspace bos' });
+  if (!r.ok) return r;
+  return { ok: true, path: zipPath, name: `${name}.zip`, size: r.size };
 }
 
 // Sağlayıcının kendi kaydını (canlı child + transcript/db + bellek kopyası) düşür.

@@ -144,7 +144,10 @@ describe('adapter conformance (real modules)', () => {
       const result = await mod.listDiskSessions({});
       assert.equal(typeof result, 'object', `${id}: nesne dönmeli`);
       assert.ok(!Array.isArray(result), `${id}: çıplak dizi değil, {ok, sessions} dönmeli`);
-      assert.equal(result.ok, true, `${id}: ok=true bekleniyor`);
+      // Sağlayıcının CLI'si bu makinede kurulu olmayabilir (agy yalnız Windows'ta);
+      // o zaman da şekil aynı kalmalı: {ok:false, error, sessions: []}.
+      assert.equal(typeof result.ok, 'boolean', `${id}: ok alanı boolean olmalı`);
+      if (!result.ok) assert.equal(typeof result.error, 'string', `${id}: ok=false iken error metni olmalı`);
       assert.ok(Array.isArray(result.sessions), `${id}: sessions dizi olmalı`);
     }
   });

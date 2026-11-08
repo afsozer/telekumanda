@@ -7,6 +7,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { createRouter } from '../router.mjs';
 import { register } from '../routes/general.mjs';
+import './helpers/test-config.mjs';
 import { resolveWorkspacePath } from '../server.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dl-'));

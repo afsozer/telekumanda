@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TEST_CONFIG_PATH } from './helpers/test-config.mjs';
 import { auth } from '../server.mjs';
 import { maskToken } from '../logger.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf-8'));
+const cfg = JSON.parse(fs.readFileSync(TEST_CONFIG_PATH, 'utf-8'));
 
 function fakeReq(url, headers = {}) {
   return { url, headers };

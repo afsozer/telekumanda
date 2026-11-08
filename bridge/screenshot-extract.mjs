@@ -100,7 +100,8 @@ export function createScreenshotExtract({
   // Paket eki OPSIYONEL: bazi kayitlarda yok (Screenshot_20260807_110354.jpg)
   // ve sondaki `_` sart kosulursa bu adlar bosuna mtime'a dusuyordu.
   function parseCapturedAt(fileNameOrPath) {
-    const name = path.basename(String(fileNameOrPath || ''));
+    // win32.basename hem \ hem / ayırır: Windows yolu Mac'te de doğru ad verir.
+    const name = path.win32.basename(String(fileNameOrPath || ''));
     const m = /^Screenshot_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(?:[_.]|$)/.exec(name);
     if (!m) return null;
     const [, y, mo, d, h, mi, s] = m;

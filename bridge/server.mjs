@@ -42,8 +42,9 @@ import { ensureDocumentToolPath } from './tool-path.mjs';
 // Winget PATH değişikliği mevcut terminale yansımamış olsa da provider child
 // süreçleri PDF render/extract araçlarını görsün.
 ensureDocumentToolPath();
-const CFG_URL = new URL('./config.json', import.meta.url);
-const cfg = JSON.parse(fs.readFileSync(CFG_URL));
+// TELEKUMANDA_CONFIG başka bir ayar dosyası gösterebilir (testler geçici kopya kullanır).
+const CFG_PATH = process.env.TELEKUMANDA_CONFIG || fileURLToPath(new URL('./config.json', import.meta.url));
+const cfg = JSON.parse(fs.readFileSync(CFG_PATH));
 // Boş ya da örnekteki yer tutucu token herkese tam erişim demek: boş token,
 // boş bir `Bearer ` başlığıyla eşleşir. Köprü böyle bir ayarla açılmaz.
 if (typeof cfg.authToken !== 'string' || cfg.authToken.trim().length < 24 || /^CHANGE-ME/i.test(cfg.authToken.trim())) {
@@ -182,17 +183,27 @@ function resolveWorkspacePath(p) {
     // Strip the agfile:// scheme AND any leading slashes that follow it, so an
     // agfile:///C:/Users/... URL resolves to the absolute path C:/Users/... directly
     // (fast path 2) instead of falling through to the expensive basename walk.
-    const cleaned = decodeURIComponent(p).replace(/^agfile:\/+/, '').replace(/^\/+/, '').trim();
+    const decoded = decodeURIComponent(p).trim().replace(/^agfile:/, '');
+    const cleaned = decoded.replace(/^\/+/, '').trim();
+    // Ad, iki ayırıcıyı da tanıyan win32.basename ile alınır: telefon Windows
+    // yolu gönderdiğinde köprü macOS/Linux'ta çalışsa da ad doğru çıkar.
+    const nameOf = (x) => path.win32.basename(x);
     let target = null;
     // Fast path 1: config-supplied basename alias (skip the walk entirely).
     if (!target) {
-      const base = path.basename(cleaned).toLowerCase();
-      const alias = FILE_ALIASES[base] || FILE_ALIASES[path.basename(cleaned)];
+      const base = nameOf(cleaned).toLowerCase();
+      const alias = FILE_ALIASES[base] || FILE_ALIASES[nameOf(cleaned)];
       if (alias && fs.existsSync(alias)) target = alias;
     }
     // Fast path 2: absolute Windows path or UNC path.
     if (!target && (/^[a-zA-Z]:[\\/]/.test(cleaned) || cleaned.startsWith('\\\\'))) {
       if (fs.existsSync(cleaned)) target = cleaned;
+    }
+    // Fast path 2b: macOS/Linux'ta '/' ile başlayan mutlak yol (Windows'ta aynı
+    // biçim çalışma alanına göreli sayılmaya devam eder).
+    if (!target && process.platform !== 'win32' && decoded.startsWith('/')) {
+      const abs = '/' + cleaned;
+      if (fs.existsSync(abs) && fs.statSync(abs).isFile()) target = abs;
     }
     // Fast path 3: path relative to a workspace root.
     if (!target) {
@@ -200,10 +211,10 @@ function resolveWorkspacePath(p) {
     }
     // Last resort: bounded recursive basename walk across workspace roots.
     if (!target) {
-      const base = path.basename(cleaned);
+      const base = nameOf(cleaned);
       for (const root of WS_ROOTS) { const acc = { found: null, visited: 0 }; findByBasename(root, base, 4, acc); if (acc.found) { target = acc.found; break; } }
     }
-    if (!target) return { ok: false, error: 'not found', name: path.basename(cleaned) };
+    if (!target) return { ok: false, error: 'not found', name: nameOf(cleaned) };
     return { ok: true, target, name: path.basename(target) };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }

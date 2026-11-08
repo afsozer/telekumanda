@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { zipDirectoryContents } from './zip-dir.mjs';
 
 function projectId(cwd) {
   return crypto.createHash('sha256').update(path.resolve(cwd).toLowerCase()).digest('hex').slice(0, 16);
@@ -84,33 +84,8 @@ export function archiveProjectOutputs(projectPath) {
   const tmpDir = outputsTmpDir();
   fs.mkdirSync(tmpDir, { recursive: true });
   const zipPath = path.join(tmpDir, `${name}-outputs-${stamp}.zip`);
-  // Yollar betiğe gömülmez, ortam değişkeniyle geçer: PowerShell ‘ ’ gibi Unicode
-  // tırnakları da tek tırnak sayar; adında bu işaret olan klasör ("Ahmet’in dosyası")
-  // hem arşivlemeyi bozuyor hem -Command dizgisinden kaçmaya izin veriyordu.
-  const ps = [
-    '$ErrorActionPreference = "Stop";',
-    '$items = Get-ChildItem -LiteralPath $env:TK_ARCHIVE_SRC -Force;',
-    `if (-not $items) { throw 'outputs bos' };`,
-    'Compress-Archive -LiteralPath ($items | ForEach-Object { $_.FullName }) -DestinationPath $env:TK_ARCHIVE_DST -Force;',
-  ].join(' ');
-  return new Promise((resolve) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {
-      windowsHide: true,
-      env: { ...process.env, TK_ARCHIVE_SRC: outputsDir, TK_ARCHIVE_DST: zipPath },
-    });
-    let err = '';
-    child.stderr.on('data', d => { err += d; });
-    const timer = setTimeout(() => { try { child.kill(); } catch {} resolve({ ok: false, error: 'zip timeout' }); }, 120_000);
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0 && fs.existsSync(zipPath)) {
-        resolve({ ok: true, path: zipPath, name: `${name}-teslimatlar.zip`, size: fs.statSync(zipPath).size });
-      } else {
-        resolve({ ok: false, error: (err || `powershell exit ${code}`).trim().slice(0, 300) });
-      }
-    });
-    child.on('error', (e) => { clearTimeout(timer); resolve({ ok: false, error: e.message }); });
-  });
+  return zipDirectoryContents({ srcDir: outputsDir, zipPath, emptyError: 'outputs bos' })
+    .then((r) => (r.ok ? { ok: true, path: zipPath, name: `${name}-teslimatlar.zip`, size: r.size } : r));
 }
 
 function safeArchiveStamp() {

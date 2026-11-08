@@ -122,8 +122,19 @@ export function logWarn(context, msg, meta) {
   try { console.warn(`[${context}] ${msg}`, meta ? JSON.stringify(meta) : ''); } catch {}
 }
 
+// POSIX'te taskkill yok: süreç grup lideriyse (detached spawn) tüm grup,
+// değilse yalnız süreç öldürülür. Olmayan pid (ESRCH) sessizce geçer.
+function killTreePosix(pid) {
+  try { process.kill(-pid, 'SIGKILL'); return; } catch {}
+  try { process.kill(pid, 'SIGKILL'); } catch {}
+}
+
 export function killChildTree(pid) {
-  try { spawn('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }); } catch (e) { logWarn('session-utils', 'killChildTree failed', { pid, error: e.message }); }
+  if (process.platform !== 'win32') return killTreePosix(pid);
+  try {
+    const child = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true });
+    child.on('error', (e) => logWarn('session-utils', 'killChildTree failed', { pid, error: e.message }));
+  } catch (e) { logWarn('session-utils', 'killChildTree failed', { pid, error: e.message }); }
 }
 
 /**
@@ -135,6 +146,7 @@ export function killChildTree(pid) {
  * çıkış anında da çalışıyor; yetim süreç birikmesinin sebebi buydu.
  */
 export function killChildTreeSync(pid) {
+  if (process.platform !== 'win32') return killTreePosix(pid);
   try { spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }); } catch (e) { logWarn('session-utils', 'killChildTreeSync failed', { pid, error: e.message }); }
 }
 

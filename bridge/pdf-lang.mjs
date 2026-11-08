@@ -159,14 +159,15 @@ export async function checkLanguage(text, { cacheDir = CACHE_DIR } = {}) {
   const source = String(text || '').trim();
   if (!source) return { ok: false, reason: 'metin boş' };
   if (source.length > MAX_TEXT) return { ok: false, reason: 'metin tek seferde kontrol için çok uzun' };
-  if (!fs.existsSync(AGY_EXE)) return { ok: false, reason: 'agy kurulu değil' };
 
+  // Önbellekteki cevap modele gitmeden döner; agy'nin kurulu olması gerekmez.
   const cacheFile = path.join(cacheDir, cacheKey(source));
   try {
     if (fs.existsSync(cacheFile)) return JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   } catch {
     // Bozuk önbellek isteği durdurmasın.
   }
+  if (!fs.existsSync(AGY_EXE)) return { ok: false, reason: 'agy kurulu değil' };
 
   const result = await runAgy(buildPrompt(source));
   if (result.error) return { ok: false, reason: result.error };

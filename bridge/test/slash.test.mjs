@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import './helpers/test-config.mjs';
 import { SLASH } from '../server.mjs';
 
 describe('/slash endpoint command lists', () => {
