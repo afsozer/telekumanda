@@ -112,7 +112,7 @@ yukarıda yazılı olmayan dört şey:
 1. **`session/new`'in `cwd`'si araçların göreli yol çözümünü değiştirmiyor.**
    Tek ortak ACP çocuğunu `homedir`'de açıp çalışma dizinini yalnız
    `session/new` parametresiyle geçtim; ajan "bu klasörde dosya oluştur"
-   denince `C:\Users\Sozer\deneme.txt` yazdı. Araçlar SÜREÇ cwd'sini kullanıyor.
+   denince `%USERPROFILE%\deneme.txt` yazdı. Araçlar SÜREÇ cwd'sini kullanıyor.
    Çözüm: süreç havuzu çalışma dizini başına bir çocuk
    (`istemciler: cwd -> istemci`), aynı dizindeki oturumlar paylaşır.
    Bu kusur yalnız canlı uçtan uca denemede göründü; birim testi yakalamazdı.

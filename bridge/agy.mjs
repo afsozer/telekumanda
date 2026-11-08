@@ -59,7 +59,7 @@ const sessions = new Map();
 // Neden tek ortak süreç değil (08.11.2026, canlı ölçüm): tek çocuğu `homedir`'de
 // açıp çalışma dizinini yalnız `session/new`'in `cwd` parametresiyle geçince ajan
 // "bu klasör" dediğinde SÜREÇ cwd'sini kullanıyor ve dosyayı ev dizinine yazdı
-// (`C:\Users\Sozer\deneme.txt`). Yani `session/new.cwd` çalışma alanını bildiriyor
+// (`%USERPROFILE%\deneme.txt`). Yani `session/new.cwd` çalışma alanını bildiriyor
 // ama araçların göreli yol çözümünü değiştirmiyor. Çocuğu hedef dizinde başlatmak
 // ikisini hizalar; aynı dizindeki oturumlar yine tek çocuğu paylaşır.
 const istemciler = new Map();

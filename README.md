@@ -390,7 +390,7 @@ current design are in `docs/acp-gecis-notlari.md`; the load-bearing ones:
   in the client also carries a timeout for that class of mistake.
 - **One child process per working directory.** `session/new` takes a `cwd`, but
   the agent's tools resolve relative paths against the *process* cwd: a single
-  child spawned in the home directory wrote `deneme.txt` into `C:\Users\Sozer`
+  child spawned in the home directory wrote `deneme.txt` into `%USERPROFILE%`
   while the session's cwd was elsewhere (observed). Children are therefore
   pooled by cwd; sessions in the same directory share one.
 - **Turn end is the response, not a heuristic.** `session/prompt` resolves with
