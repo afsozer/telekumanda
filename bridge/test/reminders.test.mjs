@@ -226,7 +226,7 @@ describe('scan', () => {
 
     assert.deepEqual(r.scan(), []); // hiçbiri dönmez
     assert.ok(logLines.some((l) => l.includes('yarim')), 'yarım loglanmalı');
-    assert.ok(logLines.some((l) => l.includes('düz')), 'düz metin loglanmalı');
+    assert.ok(!logLines.some((l) => l.includes('düz')), 'frontmatter\'sız düz not sıradandır, loglanmamalı');
     assert.ok(logLines.some((l) => l.includes('tarih')), 'geçersiz tarih loglanmalı');
 
     // tick de çökmez — bozuk dosyalar turları düşürmez.

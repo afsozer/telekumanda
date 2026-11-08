@@ -189,7 +189,9 @@ export function createReminders({
       }
       const fm = parseFrontmatter(md);
       if (!fm) {
-        log(`reminders: ${e.name} bozuk frontmatter, atlandi`);
+        // Frontmatter'sız düz not sıradandır (tarama tüm notları gezer, her
+        // dakika); yalnız `---` ile açılıp kapanmayan blok gerçekten bozuktur.
+        if (/^---\r?\n/.test(md)) log(`reminders: ${e.name} bozuk frontmatter, atlandi`);
         continue;
       }
       if (fm.data.reminder_at === undefined || fm.data.reminder_at === null || fm.data.reminder_at === '') {
