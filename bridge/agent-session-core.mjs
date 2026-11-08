@@ -8,8 +8,8 @@ const META_KEYS = [
   'permissionMode', 'effort', 'cowork', 'outputs', 'init',
   'interruptStuck', 'choices', 'plan', 'planDraft', 'availableModels',
   'permissionModes', 'commands',
-  // agy'nin onay kartı bu alandan besleniyor. META_KEYS'te olmayan bir alan
-  // delta kipinde HİÇ gönderilmez — agy delta'ya bağlanırken eklendi, yoksa
+  // Onay kartı bu alandan besleniyor. META_KEYS'te olmayan bir alan
+  // delta kipinde HİÇ gönderilmez — delta'ya bağlanırken eklendi, yoksa
   // OAuth/login istemi telefonda hiç görünmezdi.
   'pendingPrompt',
 ];

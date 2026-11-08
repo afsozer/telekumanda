@@ -45,7 +45,7 @@ private val noteAiActions = listOf(
 )
 
 // "AI'a sor" seçenekleri. Cowork sağlayıcılarıyla aynı üçlü; not bir sohbete
-// bağlam olacaksa dosyayı okuyabilen bir ajan gerekiyor, ajansız yollar (agy
+// bağlam olacaksa dosyayı okuyabilen bir ajan gerekiyor, ajansız yollar (tek
 // tek atışlık) burada işe yaramaz.
 private val noteAskProviders = listOf(
     "claude-app" to "Claude",

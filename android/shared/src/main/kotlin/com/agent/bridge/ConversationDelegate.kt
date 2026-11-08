@@ -76,7 +76,6 @@ class ConversationDelegate(
             runCatching { block() }.onSuccess(::apply).onFailure { handleRefreshFailure(showErrors, it) }
         }
         when (current.backend) {
-            Backend.AGY.id -> if (current.agy.sessionId.isNotBlank()) load { client.agyConversation(current.settings, current.agy.sessionId) }
             Backend.COWORK.id -> when (normalizeCoworkProvider(current.cowork.provider)) {
                 Backend.CODEX_APP.id -> if (current.codex.sessionId.isNotBlank()) load { client.codexAppConversation(current.settings, current.codex.sessionId, limit = current.messagePageSize.coerceAtLeast(100)) }
                 Backend.OMP.id -> if (current.omp.sessionId.isNotBlank()) load { client.ompConversation(current.settings, current.omp.sessionId) }
@@ -156,7 +155,7 @@ class ConversationDelegate(
                 return@launch
             }
         }
-        val optimistic = initial.backend in setOf(Backend.AGY.id, Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OMP.id)
+        val optimistic = initial.backend in setOf(Backend.CLAUDE_APP.id, Backend.COWORK.id, Backend.CODEX_APP.id, Backend.OMP.id)
         val clearComposerNow = shouldClearComposerOptimistically(initial)
         update {
             val next = it.copy(sending = true, running = it.running || optimistic, truncateAfterIndex = null)
@@ -172,7 +171,6 @@ class ConversationDelegate(
             return Result.failure(MissingSessionException)
         }
         val result: Result<*> = when (current.backend) {
-            Backend.AGY.id -> if (current.agy.sessionId.isBlank()) missing("Antigravity CLI session yok") else runCatching { client.agyPrompt(current.settings, current.agy.sessionId, text, current.agy.model) }
             Backend.CLAUDE_APP.id -> if (current.claude.sessionId.isBlank()) missing("Claude App session yok") else runCatching { client.claudeAppPrompt(current.settings, current.claude.sessionId, text, current.claude.model, current.claude.permissionMode) }.onSuccess { if (it.optBoolean("cleared", false)) handleClaudeCleared(it) }
             Backend.COWORK.id -> when (normalizeCoworkProvider(current.cowork.provider)) {
                 Backend.CODEX_APP.id -> if (current.codex.sessionId.isBlank()) missing("Codex App session yok") else runCatching { client.codexAppPrompt(current.settings, current.codex.sessionId, text, current.codex.model) }
@@ -279,7 +277,7 @@ class ConversationDelegate(
 
     // Buradan çatalla: orijinal oturuma dokunmadan bu mesajın ÖNCESİNE kadar kopya
     // oturum açtırır; başarıda onForked(backend, yeniSessionId, mesajMetni) çağrılır
-    // (ViewModel yeni sekmede açar). agy'de bridge fork ucu yok.
+    // (ViewModel yeni sekmede açar).
     fun forkFromMessage(index: Int, onForked: (String, String, String) -> Unit) {
         val current = state(); val messages = current.messagesList
         if (index !in messages.indices) return
@@ -358,7 +356,7 @@ class ConversationDelegate(
     /**
      * Sohbet içi arama için TÜM geçmişi belleğe yükler (plan §16: son yüklü sayfayla
      * sınırlama yok). claude/codex sayfalı sağlayıcılarda `before` ile geriye doğru
-     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (omp/agy) transcript'i
+     * exhaust edilene kadar sayfalar; diğer sağlayıcılar (omp) transcript'i
      * zaten tek seferde döndürdüğü için ek iş yapılmaz.
      *
      * Çağrandan ÖNCE hedef oturumun açılıp konuşmasının yüklendiği (messagesList dolu)
@@ -373,7 +371,7 @@ class ConversationDelegate(
             val current = state()
             val count = current.messagesList.size
             if (count >= cap) return FullHistoryLoadResult.Truncated(count)
-            // Sayfalanamayan sağlayıcı (omp/agy) tam transcript'i zaten yükledi.
+            // Sayfalanamayan sağlayıcı (omp) tam transcript'i zaten yükledi.
             val target = ConversationPaging.target(current) ?: return FullHistoryLoadResult.Complete
             val firstBefore = current.messagesList.firstOrNull()?.rowId
             val page = runCatching {

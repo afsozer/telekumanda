@@ -373,8 +373,6 @@ data class KillResult(val ok: Boolean, val killed: List<Int>, val errors: List<A
 // sessionId dönebilir.
 data class RewindResult(val ok: Boolean, val sessionId: String, val partial: Boolean, val error: String)
 data class ProcessListResult(val processes: List<ProcInfo>, val count: Int)
-data class AgyModel(val label: String, val id: String)
-data class AgyDiskSession(val id: String, val cwd: String, val title: String, val lastText: String, val turns: Int, val mtime: Long, val source: String = "", val sourceLabel: String = "")
 // variants: modelin akil yurutme eforu kademeleri.
 // Modele gore degisir — deepseek-flash/pro'da high|max, digerlerinde bos.
 // Sabit liste tutulmaz, kopruden gelir.

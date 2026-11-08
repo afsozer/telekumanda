@@ -537,7 +537,7 @@ fun BridgeClient.openBackendStream(
     return client.newWebSocket(request, listener)
 }
 
-suspend fun BridgeClient.slash(settings: BridgeSettings, backend: String = "antigravity"): SlashResult {
+suspend fun BridgeClient.slash(settings: BridgeSettings, backend: String = "claude-app"): SlashResult {
     val json = getJson(settings, "/slash?backend=${backend}")
     val array = json.optJSONArray("commands")
     val commands = buildList {

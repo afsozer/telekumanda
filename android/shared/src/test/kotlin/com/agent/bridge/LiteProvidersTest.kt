@@ -7,21 +7,20 @@ import kotlinx.coroutines.Dispatchers
 import org.json.JSONObject
 
 class LiteProvidersTest {
-    // 24.10.2026: Codex lite'tan çıkarıldı (kullanıcı isteği). Lite yalnız
-    // Claude ve Antigravity sunar.
+    // 24.10.2026: Codex lite'tan çıkarıldı (kullanıcı isteği), 08.11.2026: agy
+    // backend'i tamamen söküldü. Lite yalnız Claude sunar.
     @Test
-    fun liteYalnizClaudeVeAntigravitySunar() {
-        assertEquals(listOf("claude-app", "agy"), LITE_BACKEND_ORDER)
+    fun liteYalnizClaudeSunar() {
+        assertEquals(listOf("claude-app"), LITE_BACKEND_ORDER)
         val lite = RemoteUiState(liteEdition = true)
         assertFalse(lite.supportsEditionBackend("codex-app"))
         assertFalse(lite.supportsEditionBackend("omp"))
         assertTrue(lite.supportsEditionBackend("claude-app"))
-        assertTrue(lite.supportsEditionBackend("agy"))
     }
 
     @Test
     fun staleVisibilityAndCatalogCannotBringLiteProvidersBack() {
-        val oldOrder = listOf("claude-app", "codex-app", "agy", "omp", "cowork")
+        val oldOrder = listOf("claude-app", "codex-app", "omp", "cowork")
         val state = RemoteUiState(liteEdition = true, backendOrder = oldOrder, visibleBackends = oldOrder.toSet())
         assertEquals(LITE_BACKEND_ORDER, state.availableBackendIds())
         // Tam sürümde kullanıcı ayarı aynen geçerlidir.
@@ -51,7 +50,7 @@ class LiteProvidersTest {
         val delegate = TabsDelegate(
             prefs = prefs, scope = CoroutineScope(Dispatchers.Unconfined), state = { state },
             update = { state = it(state) }, emit = {}, client = BridgeClient(), goToLanding = {},
-            enterAgyMode = {}, enterClaudeAppMode = {}, enterCodexAppMode = {},
+            enterClaudeAppMode = {}, enterCodexAppMode = {},
             enterCoworkMode = {}, singleSession = true,
         )
         delegate.restoreTabs()

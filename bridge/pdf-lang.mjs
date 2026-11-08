@@ -7,7 +7,7 @@
 // karar verir. Ders kitabında ise hata kaynağın kendisindedir ve bulgu doğrudan
 // işe yarar — iki durum için ayrı davranış YOK, ikisi de bulgu.
 //
-// Neden PTY oturumu değil de `agy.exe --print`:
+// Neden tek seferlik `agy.exe --print` (oturum/akış değil):
 // - Oturum PTY'si 120 sütuna sarıyor; uzun satırlar kırılıp JSON'u bozuyor.
 // - `--output-format json --json-schema` şemayı MOTOR TARAFINDA zorluyor,
 //   sonuç `structured_output` alanında ayrıştırılmış geliyor. Etiket arayıp
@@ -18,7 +18,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { AGY_EXE } from './agy.mjs';
+// Antigravity CLI yalnız tek seferlik çıkarım motoru olarak kullanılır.
+const AGY_EXE = path.join(process.env.LOCALAPPDATA || '', 'agy', 'bin', 'agy.exe');
 
 // Önbellek metnin KENDİSİNE bağlı: aynı sayfaya ikinci kez basmak 14 sn daha
 // beklemek ve ikinci kez token harcamak olmasın. Belge yolu anahtara girmez —

@@ -29,14 +29,14 @@ class SettingsModelsTest {
     @Test
     fun settingsProvidersPreserveOrderVisibilityAndCounts() {
         val state = RemoteUiState().copy(
-            backendOrder = listOf("codex-app", "claude-app", "agy"),
-            visibleBackends = setOf("claude-app", "agy"),
+            backendOrder = listOf("codex-app", "claude-app", "omp"),
+            visibleBackends = setOf("claude-app", "omp"),
             backendSessionCounts = mapOf("codex-app" to 2),
-            backendProcessCounts = mapOf("codex-app" to 1, "agy" to 3),
+            backendProcessCounts = mapOf("codex-app" to 1, "omp" to 3),
         )
 
         val providers = state.settingsProviders()
-        assertEquals(listOf("codex-app", "claude-app", "agy"), providers.map { it.id })
+        assertEquals(listOf("codex-app", "claude-app", "omp"), providers.map { it.id })
         assertFalse(providers[0].visible)
         assertEquals(2, providers[0].sessionCount)
         assertEquals(1, providers[0].processCount)
@@ -50,7 +50,7 @@ class SettingsModelsTest {
             healthOk = true,
             protocolCompatible = false,
             device = DeviceUiState(paired = true),
-            backendOrder = listOf("claude-app", "agy", "codex-app"),
+            backendOrder = listOf("claude-app", "omp", "codex-app"),
             visibleBackends = setOf("claude-app", "codex-app"),
         ).settingsSummary()
 

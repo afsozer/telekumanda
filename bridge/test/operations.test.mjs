@@ -66,7 +66,7 @@ test('operations tracker keeps a session when backend listing temporarily fails'
   let fail = false;
   const delivered = [];
   const tracker = createOperationsTracker({
-    modules: { agy: { listSessions: () => {
+    modules: { 'codex-app': { listSessions: () => {
       if (fail) throw new Error('temporary');
       return [{ id: 'still-running', status: 'running' }];
     } } },
@@ -112,7 +112,7 @@ test('operations tracker keeps the updatedAt stamp still while nothing changes',
   let clock = 0;
   const session = { id: 's1', status: 'running', lastText: 'Task A' };
   const tracker = createOperationsTracker({
-    modules: { agy: { listSessions: () => [session] } },
+    modules: { 'codex-app': { listSessions: () => [session] } },
     filePath: path.join(dir, 'operations.json'),
     now: () => new Date(1_700_000_000_000 + clock++ * 1000),
   });
@@ -132,7 +132,7 @@ test('operations tracker prefers real session activity over sample time', () => 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'operations-activity-'));
   const activity = Date.UTC(2026, 7, 2, 17, 38, 15);
   const tracker = createOperationsTracker({
-    modules: { agy: { listSessions: () => [{ id: 's1', status: 'running', lastActivity: activity }] } },
+    modules: { 'codex-app': { listSessions: () => [{ id: 's1', status: 'running', lastActivity: activity }] } },
     filePath: path.join(dir, 'operations.json'),
     now: () => new Date(activity - 60_000),
   });
@@ -175,7 +175,7 @@ test('operations tracker keeps events for backends without an existence check', 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'operations-nocheck-'));
   const session = { id: 's1', status: 'running' };
   const tracker = createOperationsTracker({
-    modules: { agy: { listSessions: () => [session] } },
+    modules: { 'codex-app': { listSessions: () => [session] } },
     filePath: path.join(dir, 'operations.json'),
   });
   try {
@@ -189,7 +189,7 @@ test('operations tracker exposes waiting work before running work', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'operations-order-'));
   const tracker = createOperationsTracker({
     modules: {
-      agy: { listSessions: () => [{ id: 'run', status: 'running' }] },
+      'codex-app': { listSessions: () => [{ id: 'run', status: 'running' }] },
       'claude-app': { listSessions: () => [{ id: 'wait', status: 'running', awaitingApproval: true }] },
     },
     filePath: path.join(dir, 'operations.json'),

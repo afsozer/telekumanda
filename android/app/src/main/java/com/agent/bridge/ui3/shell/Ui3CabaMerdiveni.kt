@@ -210,7 +210,7 @@ internal fun ColumnScope.Ui3CabaMerdiveni(
  * Merdiven bu seçenek listesi için çizilebilir mi?
  *
  * Saf ve teste bağlı: `backendEffortOptions` sağlayıcıya göre bambaşka listeler
- * döndürüyor (codex'te modele göre değişiyor, agy'de hiç yok) ve merdiven ancak
+ * döndürüyor (codex'te modele göre değişiyor) ve merdiven ancak
  * gerçek bir ÖLÇEK varken doğru bileşen.
  */
 internal fun ui3CabaMerdiveniUygun(basamakSayisi: Int): Boolean = basamakSayisi >= EN_AZ_BASAMAK

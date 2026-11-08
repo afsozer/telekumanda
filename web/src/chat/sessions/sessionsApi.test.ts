@@ -324,7 +324,7 @@ describe('çok backend birleştirme', () => {
 
     const { sessions, errors } = await listArchivedSessions([
       { id: 'claude-app', apiBackend: 'claude-app', label: 'Claude', capabilities: { sessionArchive: true } },
-      { id: 'agy', apiBackend: 'agy', label: 'Agy', capabilities: { sessionArchive: false } },
+      { id: 'sinirli', apiBackend: 'sinirli', label: 'Sinirli', capabilities: { sessionArchive: false } },
     ])
 
     expect(errors).toEqual([])

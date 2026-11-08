@@ -73,7 +73,7 @@ export async function globalSearch({ query, limit = 100, projectsStore, modules,
   // Eski hali sağlayıcı başına bir `Promise.race` + `setTimeout`tu. Ölçüldü
   // (18.08): aynı uçtan üç sorgu 41 sn, 48 sn ve 68 sn sürdü ve `warnings`
   // BOŞ döndü — yani zaman aşımı bir kez bile tetiklenmedi. Sebep Node'un tek
-  // iş parçacığı: sağlayıcıların üçü (`claude-app`, `agy`, `omp`) SENKRON
+  // iş parçacığı: sağlayıcıların tamamı (`claude-app`, `codex-app`, `omp`) SENKRON
   // fonksiyon; `mod.searchDiskSessions(...)` daha race kurulmadan, çağrı
   // satırında baştan sona çalışıyor. Event loop bloke olduğu için `setTimeout`
   // sırasını hiç alamıyor. Dışarıdan sayaç tutmak, işi yapan kodun kendisi

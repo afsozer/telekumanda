@@ -453,7 +453,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         emit = { msg -> _messages.emit(msg) },
         client = client,
         goToLanding = { goToLanding() },
-        enterAgyMode = { enterAgyMode() },
         enterClaudeAppMode = { enterClaudeAppMode() },
         enterCodexAppMode = { enterCodexAppMode() },
         enterOmpMode = { enterOmpMode() },
@@ -463,23 +462,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             if (!BuildConfig.IS_LITE) maintenanceDelegate.warmOpenTabsNow()
         },
         singleSession = BuildConfig.IS_LITE,
-    )
-    private val agyDelegate = AgyDelegate(
-        client = client,
-        scope = viewModelScope,
-        state = { _uiState.value },
-        update = { mutator -> _uiState.update(mutator) },
-        emit = { msg -> _messages.emit(msg) },
-        thoughtDetails = _thoughtDetails,
-        openSocket = { sid -> streamManager.open("agy", sid, _uiState.value.settings) },
-        closeSocket = { streamManager.close() },
-        loadWorkerDirs = { root -> loadWorkerDirs(root) },
-        refreshConversation = { showErrors -> refreshConversation(showErrors) },
-        refreshSession = { refreshSession() },
-        applyConversation = { c -> applyConversation(c) },
-        refreshAll = { refreshAll() },
-        syncActiveTab = { backend, provider, sid, title -> tabsDelegate.syncActiveTab(backend, provider, sid, title) },
-        displayName = if (BuildConfig.IS_LITE) "Antigravity" else "Antigravity CLI",
     )
     private val providerLifecycleDelegate: ProviderLifecycleDelegate = ProviderLifecycleDelegate(
         client = client,
@@ -875,7 +857,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     // Used by the system back button so users return to the agent picker instead of exiting.
     fun goToLanding() {
         when (_uiState.value.backend) {
-            "agy" -> exitAgyMode()
             "claude-app", "cowork" -> exitClaudeAppMode()
             "codex-app" -> exitCodexAppMode()
             "omp" -> exitOmpMode()
@@ -897,7 +878,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         if (target == _uiState.value.backend) return
         goToLanding()
         when (target) {
-            "agy" -> enterAgyMode()
             "claude-app" -> enterClaudeAppMode()
             "codex-app" -> enterCodexAppMode()
             "omp" -> enterOmpMode()
@@ -1102,10 +1082,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 id = resumeId, cwd = operation.cwd, title = operation.summary,
                 lastText = operation.summary, turns = 0, mtime = 0L,
             ))
-            "agy" -> resumeAgyDiskSession(AgyDiskSession(
-                id = resumeId, cwd = operation.cwd, title = operation.summary,
-                lastText = operation.summary, turns = 0, mtime = 0L,
-            ))
         }
     }
 
@@ -1229,7 +1205,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             "claude-app" -> _uiState.value.claude.sessionId
             "codex-app" -> _uiState.value.codex.sessionId
             "omp" -> _uiState.value.omp.sessionId
-            "agy" -> _uiState.value.agy.sessionId
             else -> ""
         }
 
@@ -1300,9 +1275,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 "omp" -> {
                     startOmpSession(request.projectPath, request.model)
                 }
-                "agy" -> {
-                    startAgySession(request.projectPath, request.model)
-                }
                 else -> null
             }
         }
@@ -1315,7 +1287,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 "claude-app" -> _uiState.value.claude.sessionId
                 "codex-app" -> _uiState.value.codex.sessionId
                 "omp" -> _uiState.value.omp.sessionId
-                    "agy" -> _uiState.value.agy.sessionId
                 else -> ""
             }
             val success = newSessionId.isNotEmpty() && newSessionId != previousSessionId
@@ -1704,7 +1675,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             Backend.CLAUDE_APP.id -> resumeClaudeAppDiskSession(ClaudeDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
             Backend.CODEX_APP.id -> resumeCodexAppDiskSession(CodexDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
             Backend.OMP.id -> resumeOmpDiskSession(AppDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
-            Backend.AGY.id -> resumeAgyDiskSession(AgyDiskSession(id = hit.sessionId, cwd = hit.projectPath, title = hit.title, lastText = "", turns = 0, mtime = hit.mtime))
         }
     }
 
@@ -1715,7 +1685,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             Backend.CLAUDE_APP.id -> s.claude.sessionId
             Backend.CODEX_APP.id -> s.codex.sessionId
             Backend.OMP.id -> s.omp.sessionId
-            Backend.AGY.id -> s.agy.sessionId
             else -> ""
         }
         return provider to sid
@@ -2063,7 +2032,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
      * Çağrı MODELİ BEKLER (~15 sn). Sheet hemen kapanır ve bekleme arka planda
      * sürer; kullanıcı bu sırada uygulamayı kullanabilir, sonuç mesaj olarak
      * düşer. Çok dosyada tek tek işlenir — model çağrıları paralel gitse köprü
-     * tarafında aynı agy örneğini yarıştırırdı.
+     * tarafında aynı CLI örneğini yarıştırırdı.
      */
     fun savePendingShareAsNote() = viewModelScope.launch {
         val files = _pendingShare.value?.files.orEmpty()
@@ -4042,7 +4011,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             state.backend == "cowork" && state.coworkProvider == "claude-app" && state.claudeAppSessionId.isNotBlank() -> runCatching { client.claudeAppThought(state.settings, state.claudeAppSessionId, index) }
             state.backend == "codex-app" && state.codexAppSessionId.isNotBlank() -> runCatching { client.codexAppThought(state.settings, state.codexAppSessionId, index) }
             state.backend == "omp" && state.ompSessionId.isNotBlank() -> runCatching { client.ompThought(state.settings, state.ompSessionId, index) }
-            state.backend == "agy" && state.agySessionId.isNotBlank() -> runCatching { client.agyThought(state.settings, state.agySessionId, index) }
             else -> Result.success("")
         }
         result
@@ -4062,16 +4030,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun selectModel(name: String) = viewModelScope.launch {
         _uiState.update { it.copy(model = name) }
     }
-
-    fun enterAgyMode() = agyDelegate.enterAgyMode()
-    fun cancelAgySetup() = agyDelegate.cancelAgySetup()
-    fun showAgySessionPicker() = agyDelegate.showAgySessionPicker()
-    fun startAgySession(cwd: String, model: String) = agyDelegate.startAgySession(cwd, model)
-    fun setAgyModel(id: String) = agyDelegate.setAgyModel(id)
-    fun loadAgyDiskSessions() = agyDelegate.loadAgyDiskSessions()
-    fun resumeAgyDiskSession(session: AgyDiskSession) = agyDelegate.resumeAgyDiskSession(session)
-    fun exitAgyMode() = agyDelegate.exitAgyMode()
-    fun agyOpenAntigravity() = agyDelegate.agyOpenAntigravity()
 
     // ── Claude App (kalıcı çift-yönlü) ──────────────────────────────────────
     fun enterClaudeAppMode() = claudeAppDelegate.enterClaudeAppMode()
@@ -4145,7 +4103,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                     "claude-app" -> loadClaudeAppDiskSessions()
                     "codex-app" -> loadCodexAppDiskSessions()
                     "omp" -> loadOmpDiskSessions()
-                    "agy" -> loadAgyDiskSessions()
                 }
             }
             .onFailure { reportError("Oturum silinemedi", it) }
@@ -4367,7 +4324,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             if (state.backend == "cowork") normalizeCoworkProvider(state.coworkProvider)
             else state.backend.orEmpty()
         val sessionId = when (hedefBackend) {
-            "agy" -> state.agySessionId
             "claude-app" -> state.claudeAppSessionId
             "codex-app" -> state.codexAppSessionId
             "omp" -> state.ompSessionId
@@ -4381,10 +4337,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 refreshConversation(showErrors = false)
             }
             .onFailure { reportError("Stop failed", it) }
-    }
-
-    private fun openAgySocket(sessionId: String) {
-        streamManager.open("agy", sessionId, _uiState.value.settings)
     }
 
     private fun openClaudeAppSocket(sessionId: String) {
@@ -4416,7 +4368,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     private fun applyConversation(c: ConversationResult) = conversationDelegate.apply(c)
 
     override fun onCleared() {
-        agyDelegate.cancelPolling()
         claudeAppDelegate.cancelPolling()
         providerLifecycleDelegate.cancelAllPolling()
         streamManager.close()

@@ -35,7 +35,6 @@ describe('normalizeCapabilities', () => {
     expect(caps.efforts).toBe(true)
     expect(caps.interrupt).toBe(true)
     expect(normalizeCapabilities({}, 'codex-app').sessionArchive).toBe(true)
-    expect(normalizeCapabilities({}, 'agy').sessionDelete).toBe(true)
   })
 
   it('köprü açıkça false dediyse gömülü tabloyu EZMEZ', () => {
@@ -98,10 +97,10 @@ describe('fetchBackends', () => {
 
   it('kimliksiz girdiler elenir', async () => {
     vi.stubGlobal('fetch', () =>
-      Promise.resolve(json({ backends: [{ label: 'kimliksiz' }, { id: 'agy', label: 'Agy' }] })),
+      Promise.resolve(json({ backends: [{ label: 'kimliksiz' }, { id: 'sinirli', label: 'Sinirli' }] })),
     )
     const list = await fetchBackends()
-    expect(list.map((b) => b.id)).toEqual(['agy'])
+    expect(list.map((b) => b.id)).toEqual(['sinirli'])
   })
 
   it('köprüden gelse bile omp ve runpod girdileri elenir', async () => {
@@ -131,8 +130,5 @@ describe('gömülü yedek tablo', () => {
     // /interrupt yalnız claude-app’te.
     expect(caps('claude-app').interrupt).toBe(true)
     expect(caps('codex-app').interrupt).toBe(false)
-    // agy oturum bağlamı taşımıyor.
-    expect(caps('agy').context).toBe(false)
-    expect(caps('agy').approvals).toBe(false)
   })
 })

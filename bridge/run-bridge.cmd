@@ -42,9 +42,9 @@ echo. >> bootstrap.log
 echo ===== bridge start %DATE% %TIME% ===== >> bootstrap.log
 REM Optional local settings can be supplied by the environment before launching.
 set CHATGPT_PLANNER_AUTO_OPEN=
-REM Pinned to Node 22 LTS: node-pty 1.1.0's ConPTY console-list agent crashes
-REM ("AttachConsole failed") on Node v25, taking the whole bridge down. Node 22 is
-REM the supported runtime for this node-pty version.
+REM Pinned to Node 22 LTS: the tested runtime for this bridge. (The original
+REM reason was node-pty's ConPTY crash on Node v25; node-pty left with the agy
+REM backend on 08.11.2026, but the pin stays until Node 25 is verified here.)
 "%NODE_EXE%" "%~dp0server.mjs" >> bootstrap.log 2>&1
 echo ===== bridge exited (code %ERRORLEVEL%) %DATE% %TIME% ===== >> bootstrap.log
 REM brief pause so a tight crash-loop doesn't spin the CPU

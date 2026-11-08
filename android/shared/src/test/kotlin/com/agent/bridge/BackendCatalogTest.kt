@@ -18,7 +18,7 @@ class BackendCatalogTest {
                 .put("capabilities", JSONObject().put("approvals", true).put("userInput", true)
                     .put("permissionModes", true).put("context", true).put("plan", true)
                     .put("outputs", false)))
-            .put(JSONObject().put("id", "agy").put("apiBackend", "agy").put("label", "Agy")
+            .put(JSONObject().put("id", "omp").put("apiBackend", "omp").put("label", "OMP")
                 .put("capabilities", JSONObject().put("context", false))))
 
     @Test
@@ -29,7 +29,7 @@ class BackendCatalogTest {
         assertEquals(1, catalog.contractVersion)
         assertTrue(catalog.loaded)
         assertTrue(catalog.entries.getValue("codex-app").plan)
-        assertFalse(catalog.entries.getValue("agy").context)
+        assertFalse(catalog.entries.getValue("omp").context)
     }
 
     @Test

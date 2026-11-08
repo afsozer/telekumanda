@@ -792,109 +792,6 @@ async function claudeUsage(force = false) {
   };
 }
 
-// ── Antigravity (agy) usage via language_server gRPC-web ────────────────────
-//
-// The Antigravity IDE starts a language_server.exe child process that exposes a
-// gRPC-web endpoint on a random local port. We call RetrieveUserQuotaSummary
-// directly (no CDP required) and cache the result indefinitely so the card
-// persists when the IDE is closed, marked with stale:true.
-
-const AGY_USAGE_CACHE_FILE = path.join(os.tmpdir(), 'agtest-agy-usage.json');
-const AGY_USAGE_TTL = 5 * 60 * 1000; // live re-fetch every 5 min
-let agyCache = { at: 0, data: null };
-try { const d = JSON.parse(fs.readFileSync(AGY_USAGE_CACHE_FILE, 'utf8')); if (d?.data) agyCache = d; } catch {}
-
-const _sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function fetchAgyUsage() {
-  const now = Date.now();
-  const cacheStale = { groups: agyCache.data?.groups || [], stale: true };
-
-  // 1. Find language_server.exe process + CSRF token + listening ports via PowerShell.
-  const psScript =
-    '$p=Get-CimInstance Win32_Process -Filter "Name=\'language_server.exe\'";' +
-    'if(!$p){exit(1)}' +
-    '$csrf=if($p.CommandLine -match \'--csrf_token ([a-z0-9-]+)\'){$Matches[1]}else{""};' +
-    '$ports=Get-NetTCPConnection -OwningProcess $p.ProcessId -State Listen|Select-Object -ExpandProperty LocalPort;' +
-    'Write-Output "$($p.ProcessId)|$csrf|$($ports -join \',\')"';
-  const ps = await spawnAsync('powershell.exe', ['-NoProfile', '-Command', psScript], {
-    timeout: 10000,
-  });
-  if (ps.status !== 0 || !ps.stdout) return cacheStale;
-  const parts = (ps.stdout || '').trim().split('|');
-  if (parts.length < 3) return cacheStale;
-  const [, csrfToken, portsStr] = parts;
-  const ports = (portsStr || '').split(',').map(p => parseInt(p, 10)).filter(p => p);
-  if (!csrfToken || !ports.length) return cacheStale;
-
-  // 2. Build gRPC-web frame: 5-byte header (0,0,0,0,2) + JSON "{}" for empty request.
-  const bodyPath = path.join(os.tmpdir(), 'agtest-grpc-body.bin');
-  try {
-    const header = Buffer.alloc(5);
-    header.writeUInt32BE(2, 1);
-    fs.writeFileSync(bodyPath, Buffer.concat([header, Buffer.from('{}')]));
-  } catch { return cacheStale; }
-
-  // 3. Try each port with https then http until one succeeds.
-  let raw = '';
-  for (const port of ports) {
-    for (const scheme of ['https', 'http']) {
-      const url = `${scheme}://127.0.0.1:${port}/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary`;
-      const r = await spawnAsync('curl.exe', [
-        '-s', '--max-time', '8', '--insecure',
-        '-X', 'POST',
-        '-H', 'content-type: application/grpc-web+json',
-        '-H', 'x-grpc-web: 1',
-        '-H', 'x-user-agent: CONNECT_ES_USER_AGENT',
-        '-H', `x-codeium-csrf-token: ${csrfToken}`,
-        '--data-binary', `@${bodyPath}`,
-        url,
-      ], { encoding: 'latin1', timeout: 12000 });
-      if (r.status === 0 && r.stdout && r.stdout.length > 6) { raw = r.stdout; break; }
-    }
-    if (raw) break;
-  }
-  try { fs.unlinkSync(bodyPath); } catch {}
-
-  if (!raw) return cacheStale;
-
-  // 4. Parse the gRPC-web response.
-  let jsonStr = '';
-  let offset = 0;
-  while (offset + 5 <= raw.length) {
-    const flag = raw.charCodeAt(offset);
-    const len = (raw.charCodeAt(offset + 1) << 24) | (raw.charCodeAt(offset + 2) << 16) |
-                (raw.charCodeAt(offset + 3) << 8) | raw.charCodeAt(offset + 4);
-    offset += 5;
-    if (flag === 0 && len > 0 && offset + len <= raw.length) {
-      jsonStr = raw.slice(offset, offset + len);
-      break;
-    }
-    offset += len;
-  }
-
-  let parsed;
-  try { parsed = JSON.parse(jsonStr); } catch { return cacheStale; }
-  const resp = parsed.response || parsed;
-  const groups = (resp.groups || []).map(g => ({
-    name: g.displayName || '',
-    description: g.description || '',
-    buckets: (g.buckets || []).map(b => ({
-      id: b.bucketId || '',
-      label: b.displayName || '',
-      window: b.window || '',
-      description: b.description || '',
-      remainingFraction: typeof b.remainingFraction === 'number' ? b.remainingFraction : 0,
-      resetTime: b.resetTime || '',
-    })),
-  }));
-  if (!groups.length) return cacheStale;
-  const data = { groups, stale: false };
-  agyCache = { at: now, data };
-  try { fs.writeFileSync(AGY_USAGE_CACHE_FILE, JSON.stringify({ at: now, data })); } catch {}
-  return data;
-}
-
 const USAGE_GROUPS_CACHE_FILE = path.join(os.tmpdir(), 'agtest-usage-groups.json');
 const USAGE_GROUPS_TTL = 60 * 1000;
 const USAGE_RESPONSE_BUDGET_MS = 3500;
@@ -921,7 +818,6 @@ try {
 export function arrangeUsageGroups({
   codex,
   claude,
-  agy,
   openRouter,
   nanoGpt,
   deepSeek,
@@ -934,17 +830,13 @@ export function arrangeUsageGroups({
   if (openRouter) groups.push(openRouter);
   if (nanoGpt) groups.push(nanoGpt);
   if (deepSeek) groups.push(deepSeek);
-  if (agy && agy.groups.length) {
-    groups.push(...agy.groups.map(g => ({ ...g, source: 'antigravity', stale: agy.stale })));
-  }
   return groups;
 }
 
 async function refreshExternalUsageGroups(force = false) {
-  const [codex, claude, agy, openRouter, nanoGpt, deepSeek] = await Promise.all([
+  const [codex, claude, openRouter, nanoGpt, deepSeek] = await Promise.all([
     codexUsage(force),
     claudeUsage(force),
-    fetchAgyUsage(),
     fetchOpenRouterUsage(),
     fetchNanoGptUsage(),
     fetchDeepSeekUsage(),
@@ -952,7 +844,7 @@ async function refreshExternalUsageGroups(force = false) {
   // Claude kartı en üstte; sonra diğerleri. `source` Android/Web tarafinda kart
   // siralama ve ayirt etme icin kanonik kimliktir, etiketten tahmin edilmemeli.
   const groups = arrangeUsageGroups({
-    codex, claude, agy, openRouter, nanoGpt, deepSeek,
+    codex, claude, openRouter, nanoGpt, deepSeek,
   });
   usageGroupsCache = { at: Date.now(), groups };
   try { fs.writeFileSync(USAGE_GROUPS_CACHE_FILE, JSON.stringify(usageGroupsCache)); } catch {}

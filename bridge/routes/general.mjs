@@ -333,7 +333,7 @@ export function register(router, {
   });
 
   router.get('/slash', async (req, res) => {
-    const backend = new URL(req.url, 'http://x').searchParams.get('backend') || 'antigravity';
+    const backend = new URL(req.url, 'http://x').searchParams.get('backend') || 'claude-app';
     // Canlı katalog veren backend'lerde (omp) liste oradan gelir; sağlayıcı
     // düşerse statik tabloya geri düşülür ki menü hiç boş kalmasın.
     const dynamic = dynamicSlash[backend];

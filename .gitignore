@@ -22,7 +22,6 @@ android/local.properties
 # Node / Bridge
 node_modules/
 bridge/pi-tmp/
-bridge/agy-tmp/
 bridge/chatgpt-planner-tmp/
 bridge/claude-tmp/
 bridge/codex-tmp/

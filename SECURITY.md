@@ -53,10 +53,9 @@ further than they should. For example:
 - **MCP servers added from a client are persistent.** The MCP screens write the
   command you enter into the agent CLIs' own configuration files, so it keeps
   running from the desktop CLIs even after the device that added it is revoked.
-- **Some agents run without per-tool approval.** Antigravity (`agy`) always runs
-  with permission prompts disabled, and sessions adopted from disk start in
-  the most permissive mode their backend offers; choose a stricter mode in the
-  app if you need approvals.
+- **Some agents run without per-tool approval.** Sessions adopted from disk
+  start in the most permissive mode their backend offers; choose a stricter
+  mode in the app if you need approvals.
 
 ### Known risks we have accepted for now
 
@@ -93,8 +92,8 @@ Android app (`android/`) and the browser UI (`web/`).
 
 Out of scope:
 
-- vulnerabilities in the agent CLIs the bridge drives (Claude Code, Codex,
-  Antigravity), which should be reported to their vendors;
+- vulnerabilities in the agent CLIs the bridge drives (Claude Code, Codex),
+  which should be reported to their vendors;
 - installations that expose the bridge to the public internet, contrary to the
   README's guidance to keep it on a private network;
 - publicly known vulnerabilities in third-party dependencies, unless

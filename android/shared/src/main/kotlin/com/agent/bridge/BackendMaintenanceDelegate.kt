@@ -54,7 +54,7 @@ class BackendMaintenanceDelegate(
     }
 
     fun loadAllBackendSessionCounts() = scope.launch {
-        val backends = listOf("agy", "claude-app", "codex-app", "omp", "cowork")
+        val backends = listOf("claude-app", "codex-app", "omp", "cowork")
         backends.forEach { backend ->
             launch {
                 runCatching { client.listBackendSessionsCount(state().settings, backend) }

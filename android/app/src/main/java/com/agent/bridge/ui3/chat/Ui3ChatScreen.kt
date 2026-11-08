@@ -433,7 +433,7 @@ internal fun Ui3ChatScreen(
 
     // Çatallama yalnız köprünün fork ucu olan backend'lerde (cowork'te de
     // sağlayıcısı bunlardansa). ui2'deki `forkSupported`'ın aynısı — OMP'de
-    // native `branch` RPC'si, agy'de hiç yok.
+    // native `branch` RPC'si.
     val catalDestekli = when (uiState.backend) {
         "claude-app", "codex-app", "omp" -> true
         "cowork" -> normalizeCoworkProvider(uiState.coworkProvider) in
@@ -705,7 +705,7 @@ internal fun Ui3ChatScreen(
                                 // delege görünümü yerel olarak geri sarıyor.
                                 onDon = { actions.returnToMessage(satir.index) },
                                 // Çatallama YOK ise tuş hiç çizilmez — köprünün fork
-                                // ucu agy'de bulunmuyor.
+                                // ucu her backend'de bulunmuyor.
                                 onCatalla = if (catalDestekli) ({ actions.forkFromMessage(satir.index) }) else null,
                             )
                         }

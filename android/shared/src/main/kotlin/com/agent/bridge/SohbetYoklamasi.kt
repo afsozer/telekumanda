@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.first
 
 // Sohbet yoklamasının (açık konuşmayı 2,5 sn'de bir baştan çeken döngüler)
 // ortak kapısı. 21.10.2026 ölçümü: döngüler arka planda ve ekran kapalıyken de
-// dönüyordu, her turda tüm konuşma (OMP/Agy'de sınırsız) iniyordu;
+// dönüyordu, her turda tüm konuşma (OMP'de sınırsız) iniyordu;
 // telefon 10 saatte mobil veride 247 MB çekti. İki kural:
 //  - uygulama görünür değilken döngü uyur: istek atmaz, radyoyu uyandırmaz;
 //  - akış soketi bağlıyken istek atılmaz: aynı konuşma soketten delta olarak

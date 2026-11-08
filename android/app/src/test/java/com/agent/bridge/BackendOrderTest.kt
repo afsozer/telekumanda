@@ -16,8 +16,8 @@ import org.junit.Test
 class BackendOrderTest {
     // 24.10.2026: Codex lite'tan çıktı, tam sürümde kalıyor.
     @Test
-    fun liteYalnizClaudeVeAntigravitySunar() {
-        assertEquals(listOf("claude-app", "agy"), BACKEND_LITE_ORDER)
+    fun liteYalnizClaudeSunar() {
+        assertEquals(listOf("claude-app"), BACKEND_LITE_ORDER)
         assertTrue("codex-app" in BACKEND_DEFAULT_ORDER)
     }
 

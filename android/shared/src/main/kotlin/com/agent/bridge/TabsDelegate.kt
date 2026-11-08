@@ -14,7 +14,6 @@ class TabsDelegate(
     private val emit: suspend (String) -> Unit,
     private val client: BridgeClient,
     private val goToLanding: () -> Unit,
-    private val enterAgyMode: () -> Unit,
     private val enterClaudeAppMode: () -> Unit,
     private val enterCodexAppMode: () -> Unit,
     private val enterOmpMode: () -> Unit = {},
@@ -300,15 +299,6 @@ class TabsDelegate(
                     omp = state.omp.copy(lastSessionId = tab.sessionId),
                     pendingBindBackend = "omp", pendingBindSessionId = tab.sessionId,
                 )
-                // 25.08.2026: agy de aynı kurala geçti — `enterAgyMode` artık yalnız
-                // pendingBind hedefine bağlanıyor. Bu dal pendingBind yazmasaydı
-                // sekmeye dokunmak oturumu geri getirmez, kurulum ekranına düşerdi.
-                // `lastAgySessionId` duruyor (çıkışta "en son neredeydik" hafızası)
-                // ama otomatik bağlanma kaynağı değil.
-                "agy" -> state.copy(
-                    lastAgySessionId = tab.sessionId,
-                    pendingBindBackend = "agy", pendingBindSessionId = tab.sessionId,
-                )
                 else -> state
             }
         }
@@ -316,7 +306,6 @@ class TabsDelegate(
         // goToLanding sonrası backend=null; hedefe landing'den girilir. Aynı ve
         // farklı backend geçişleri böylece tek kod yolunda birleşir.
         when (tab.backend) {
-            "agy" -> enterAgyMode()
             "claude-app" -> enterClaudeAppMode()
             "codex-app" -> enterCodexAppMode()
             "omp" -> enterOmpMode()

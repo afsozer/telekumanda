@@ -15,7 +15,6 @@ import {
 import * as claudeApp from '../claude-app.mjs';
 import * as codexApp from '../codex-app.mjs';
 import * as omp from '../omp-app.mjs';
-import * as agy from '../agy.mjs';
 import * as cowork from '../cowork.mjs';
 
 // Testin bildiği gerçek modüller. Katalogdaki her id burada bulunmalı; eksikse
@@ -24,7 +23,6 @@ const MODULES = {
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
-  'agy': agy,
   'cowork': cowork,
 };
 
@@ -60,12 +58,10 @@ describe('backend contract catalog', () => {
     assert.equal(caps['claude-app'].efforts, true);
     assert.equal(caps['codex-app'].efforts, true);
     assert.equal(caps['omp'].efforts, true);
-    assert.equal(caps['agy'].efforts, false);
 
     // /interrupt: yalnız claude-app. (/stop hepsinde var, o ayrı.)
     assert.equal(caps['claude-app'].interrupt, true);
     assert.equal(caps['codex-app'].interrupt, false);
-    assert.equal(caps['agy'].interrupt, false);
 
     // GET /<b>/diff: "Değişiklikler" görünümü. Kaynak codex'te akan fileChange
     // item'ları; Claude/OMP'de karşılığı yok, ilan da edilmiyor.
@@ -79,12 +75,11 @@ describe('backend contract catalog', () => {
       'sessionCommands', 'agentsInit', 'sessionInstructions', 'savedPermissions']) {
       assert.equal(alan in CAPABILITY_SCHEMA, false, alan);
     }
-    assert.deepEqual(Object.keys(BACKENDS).sort(), ['agy', 'claude-app', 'codex-app', 'cowork', 'omp']);
+    assert.deepEqual(Object.keys(BACKENDS).sort(), ['claude-app', 'codex-app', 'cowork', 'omp']);
 
     assert.equal(caps['claude-app'].sessionPin, true);
     assert.equal(caps['codex-app'].sessionArchive, true);
     assert.equal(caps.omp.sessionDelete, true);
-    assert.equal(caps.agy.sessionDelete, true);
   });
 
   // Tur sürerken gönderim iki ayrı uç: /steer (süren tura enjeksiyon) ve
@@ -103,7 +98,6 @@ describe('backend contract catalog', () => {
     assert.equal(caps['codex-app'].userInputQueue, false);
     assert.equal(caps['claude-app'].userInputSteer, false);
     assert.equal(caps['claude-app'].userInputQueue, false);
-    assert.equal(caps.agy.userInputQueue, false);
   });
 
   it('derives cowork capabilities from the selected provider plus shared outputs', () => {

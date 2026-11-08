@@ -8,7 +8,6 @@ import { spawnSync } from 'node:child_process';
 const HARNESS_TMP = {
   codex:    'codex-tmp',
   claude:   'claude-tmp',
-  agy:      'agy-tmp',
 };
 
 // ── CIM ile powershell.exe process'lerini çek ────────────────────────────

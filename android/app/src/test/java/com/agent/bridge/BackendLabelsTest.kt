@@ -12,8 +12,6 @@ class BackendLabelsTest {
 
         assertEquals("Claude", lite.userFacingBackendLabel("claude-app"))
         assertEquals("Codex", lite.userFacingBackendLabel("codex-app"))
-        assertEquals("Antigravity", lite.userFacingBackendLabel("agy"))
-        assertEquals("A", lite.userFacingProviderMonogram("agy"))
         assertEquals("Claude App", RemoteUiState().userFacingBackendLabel("claude-app"))
     }
 

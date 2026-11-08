@@ -68,7 +68,6 @@ const APP_AGENT = { approvals: true, userInput: true, permissionModes: true, con
 // yalnız adapter-backed modülleri denetler, katalog ise hepsini yayınlar.
 export const BACKENDS = {
   'claude-app': { apiBackend: 'claude-app', label: 'Claude', adapterBacked: true, capabilities: { ...APP_AGENT, efforts: true, interrupt: true, sessionRewind: true, sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
-  'agy': { apiBackend: 'agy', label: 'Agy', adapterBacked: true, capabilities: { context: false, sessionDelete: true } },
   // codex-app'te /codex-app/steer VAR ama /follow-up YOK; üstelik telefonda
   // kendi eski "steer kipi" yolunu kullanıyor (CodexAppActionsDelegate), ortak
   // tur-içi composer'ı DEĞİL. userInputQueue=false onu ortak kipin dışında tutar.

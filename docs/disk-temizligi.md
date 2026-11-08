@@ -13,7 +13,6 @@ ve gerekçelerini toplar.
 |---|---|---|---|
 | Paylaşılan içeriğin kopyası (`~/.agentbridge/share-notes`) | 3 gün | `noteExtract.retentionDays` | klasör yaşı |
 | Çıkarımın agy artığı (`~/.gemini/agentbridge-screenshot-notes`) | 3 gün | `noteExtract.retentionDays` | klasör yaşı |
-| agy CLI oturumları (`~/.gemini/antigravity-cli`) | 7 gün | `agy.sessionRetentionDays` | klasör yaşı |
 | claude / codex oturumları | 7 gün | `sessionPrune.retentionDays` | oturum listesi + backend'in kendi silme yolu |
 
 Her biri `0` ile kapatılır. Budama açılıştan 60 sn sonra bir kez, sonra 6
@@ -30,10 +29,9 @@ okunuyor ve telefonun ilk isteği o taramanın arkasında beklerdi.
 
 ## Neden iki farklı mekanizma
 
-**Klasör yaşı** (`disk-prune.mjs`) basit: `mtime` eskiyse gir, sil. agy'nin
+**Klasör yaşı** (`disk-prune.mjs`) basit: `mtime` eskiyse gir, sil. Çıkarım
 artığı için doğru olan bu, çünkü orada birikenin hepsi oturum değil — `brain/`
-ve `log/` de var — ve CLI/IDE ayrımı dosya sistemi seviyesinde bir gerçek,
-oturum kaydında değil.
+ve `log/` de var — ve bu klasör bütünüyle köprünün ürettiği bir yan üründür.
 
 **Oturum listesi** (`session-prune.mjs`) claude/codex için gerekli,
 çünkü oradaki "bir oturum" ≠ "bir dosya":
@@ -159,6 +157,7 @@ codex kaydı 83'ten 20'ye indi, bekleyen 0.
 ## Kapsam dışı
 
 - **omp** — kapsam yalnız claude ve codex.
-- **Masaüstü Antigravity IDE home'u** (`~/.gemini/antigravity`) — bu köprüye ait
-  değil; budamak kullanıcının editöründeki geçmişi silmek olurdu. Kodda bu
-  gerekçe yorumla yazılı ki sonradan "simetri olsun" diye eklenmesin.
+- **Antigravity home'ları** (`~/.gemini/antigravity`, `~/.gemini/antigravity-cli`)
+  — agy backend'i söküldükten sonra köprünün orada hiçbir işi yok; budama da
+  kaldırıldı (eskiden CLI home'u 7 günde bir budanıyordu).
+  Not çıkarımının kendi home'u (`agentbridge-screenshot-notes`) ayrı ve budanıyor.

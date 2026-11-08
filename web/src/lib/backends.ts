@@ -72,8 +72,6 @@ export const FALLBACK_BACKENDS: BackendInfo[] = [
   { id: 'codex-app', apiBackend: 'codex-app', label: 'Codex', adapterBacked: true,
     capabilities: { ...DEFAULT_CAPABILITIES, ...APP_AGENT, plan: true, efforts: true,
       sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
-  { id: 'agy', apiBackend: 'agy', label: 'Agy', adapterBacked: true,
-    capabilities: { ...DEFAULT_CAPABILITIES, context: false, sessionDelete: true } },
 ]
 
 /**

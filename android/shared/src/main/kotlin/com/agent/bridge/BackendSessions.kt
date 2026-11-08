@@ -30,16 +30,6 @@ fun <T> Iterable<T>.sortedBySessionPriority(
 fun RemoteUiState.backendDiskSessions(id: String): List<BackendDiskSessionUi> {
     if (!supportsEditionBackend(id)) return emptyList()
     val sessions = when (id) {
-    "agy" -> agyDiskSessions.map {
-        BackendDiskSessionUi(
-            id = it.id,
-            cwd = it.cwd,
-            title = it.title,
-            lastText = it.lastText,
-            turns = it.turns,
-            mtime = it.mtime,
-        )
-    }
     "claude-app" -> claudeAppDiskSessions.map {
         BackendDiskSessionUi(
             id = it.id,

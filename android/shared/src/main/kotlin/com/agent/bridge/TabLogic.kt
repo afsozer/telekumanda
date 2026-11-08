@@ -22,7 +22,6 @@ fun generateTabTitle(backend: String, provider: String, cwd: String, model: Stri
             "codex-app" -> "Codex"
             "cowork" -> "Cowork"
             "omp" -> "OMP"
-            "agy" -> "Antigravity"
             else -> backend
         }
     }

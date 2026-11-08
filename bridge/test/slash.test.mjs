@@ -3,15 +3,8 @@ import assert from 'node:assert/strict';
 import { SLASH } from '../server.mjs';
 
 describe('/slash endpoint command lists', () => {
-  it('agy backend returns 5 commands', () => {
-    const cmds = SLASH['agy'] ?? [];
-    assert.equal(cmds.length, 5);
-    assert.equal(cmds[0].name, 'goal');
-    assert.equal(cmds[4].name, 'plan');
-  });
-
   it('removed CLI backends return empty arrays', () => {
-    for (const backend of ['claude', 'codex']) {
+    for (const backend of ['claude', 'codex', 'agy']) {
       assert.deepEqual(SLASH[backend] ?? [], []);
     }
   });
@@ -22,7 +15,7 @@ describe('/slash endpoint command lists', () => {
   });
 
   it('every remaining command has name and desc strings', () => {
-    for (const backend of ['agy', 'claude-app', 'codex-app']) {
+    for (const backend of ['claude-app', 'codex-app']) {
       const cmds = SLASH[backend] ?? [];
       for (const cmd of cmds) {
         assert.equal(typeof cmd.name, 'string');

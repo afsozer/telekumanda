@@ -19,8 +19,7 @@ export function registerBackend(router, name, mod, opts = {}) {
 
   router.post(pfx + '/new', async (req, res) => {
     const b = await body(req);
-    // home: yalnız agy'de anlamlı (cli/ide paylaşımlı depo); diğer backend'ler yok sayar.
-    const r = mod.newSession({ cwd: b.cwd, model: b.model, permissionMode: b.permissionMode, effort: b.effort, cowork: b.cowork, home: b.home });
+    const r = mod.newSession({ cwd: b.cwd, model: b.model, permissionMode: b.permissionMode, effort: b.effort, cowork: b.cowork });
     json(res, r.ok ? 200 : 400, r);
   });
 
@@ -65,9 +64,9 @@ export function registerBackend(router, name, mod, opts = {}) {
 
   router.post(pfx + '/adopt', async (req, res) => {
     const b = await body(req);
-    // cowork bayrağı yalnız claude-app'te anlamlı; home yalnız agy'de (cli/ide);
+    // cowork bayrağı yalnız claude-app'te anlamlı;
     // diğer backend'ler destructure'da yok sayar.
-    const r = await mod.adoptSession({ id: b.id, cwd: b.cwd, cowork: !!b.cowork, home: b.home });
+    const r = await mod.adoptSession({ id: b.id, cwd: b.cwd, cowork: !!b.cowork });
     json(res, r.ok ? 200 : 400, r);
   });
 

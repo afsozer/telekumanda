@@ -54,13 +54,15 @@ const CATALOG = {
     { id: 'codex-app', apiBackend: 'codex-app', label: 'Codex', adapterBacked: true,
       capabilities: { approvals: true, userInput: true, permissionModes: true, context: true,
         plan: true, outputs: false, efforts: true, interrupt: false } },
-    { id: 'agy', apiBackend: 'agy', label: 'Agy', adapterBacked: true,
+    { id: 'sinirli', apiBackend: 'sinirli', label: 'Sinirli', adapterBacked: true,
       capabilities: { approvals: false, userInput: false, permissionModes: false, context: false,
         plan: false, outputs: false, efforts: false, interrupt: false } },
   ],
 }
 
-const AGY_SESSIONS = [{ ...SESSIONS[0], id: 'agy1', title: 'Agy oturumu' }]
+// Yetenekleri kisitli bir backend: arayuzun desteklenmeyen kontrolleri
+// cizmedigini dogrulamak icin katalogda duran sahte girdi.
+const SINIRLI_SESSIONS = [{ ...SESSIONS[0], id: 'sinirli1', title: 'Sinirli oturumu' }]
 
 // Yalnız DİSKTE duran oturum: köprüde canlı kabuğu yok, açılırken adopt edilir.
 const DISK_SESSIONS = [
@@ -94,7 +96,7 @@ beforeEach(() => {
     }
     if (path === '/backends') return Promise.resolve(json(CATALOG))
     if (path === '/claude-app/sessions') return Promise.resolve(json({ sessions: SESSIONS }))
-    if (path === '/agy/sessions') return Promise.resolve(json({ sessions: AGY_SESSIONS }))
+    if (path === '/sinirli/sessions') return Promise.resolve(json({ sessions: SINIRLI_SESSIONS }))
     if (path === '/claude-app/disk-sessions')
       return Promise.resolve(json({ ok: true, sessions: DISK_SESSIONS }))
     if (path === '/claude-app/disk-sessions-search' && parsed.searchParams.get('archived') === 'true')
@@ -222,7 +224,7 @@ describe('ChatScreen — çok backend (M3)', () => {
     const picker = await screen.findByLabelText('Ajan')
     await waitFor(() =>
       expect([...(picker as HTMLSelectElement).options].map((o) => o.textContent)).toEqual([
-        'Tümü', 'Claude', 'Codex', 'Agy',
+        'Tümü', 'Claude', 'Codex', 'Sinirli',
       ]),
     )
   })
@@ -233,32 +235,32 @@ describe('ChatScreen — çok backend (M3)', () => {
     fireEvent.click(screen.getByText('Proje'))
     await waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0))
 
-    fireEvent.change(await screen.findByLabelText('Ajan'), { target: { value: 'agy' } })
+    fireEvent.change(await screen.findByLabelText('Ajan'), { target: { value: 'sinirli' } })
 
     // Filtre yalnız kenar listesini daraltır; açık çalışma sekmesini kapatmaz.
     expect(screen.queryByText(/Soldan bir oturum seç/)).toBeNull()
     expect(screen.getByRole('tab', { name: /Proje/ })).toHaveAttribute('aria-selected', 'true')
     // Yeni backend’in oturumları geldi.
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
   })
 
   it('akış YENİ backend’in ucuna bağlanır', async () => {
     render(<ChatScreen />)
     await screen.findByLabelText('Ajan')
-    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'agy' } })
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
-    fireEvent.click(screen.getByText('Agy oturumu'))
+    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'sinirli' } })
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Sinirli oturumu'))
 
     await waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0))
-    expect(new URL(socket().url).pathname).toBe('/agy/stream')
+    expect(new URL(socket().url).pathname).toBe('/sinirli/stream')
   })
 
-  it('desteklenmeyen kontroller ÇİZİLMEZ — agy’de izin kipi, çaba ve kesme yok', async () => {
+  it('desteklenmeyen kontroller ÇİZİLMEZ — izin kipi, çaba ve kesme yok', async () => {
     render(<ChatScreen />)
     await screen.findByLabelText('Ajan')
-    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'agy' } })
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
-    fireEvent.click(screen.getByText('Agy oturumu'))
+    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'sinirli' } })
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Sinirli oturumu'))
     await waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0))
     socket().onopen?.()
     socket().emit({ type: 'snapshot', seq: 1, messages: [], running: true })
@@ -317,41 +319,42 @@ describe('ChatScreen — çok backend (M3)', () => {
 describe('ChatScreen — ajan seçimi zorunlu değil', () => {
   it('varsayılan "Tümü": bütün backendlerin oturumları tek listede', async () => {
     render(<ChatScreen />)
-    // claude-app ve agy oturumları YAN YANA — ajan seçmeden.
+    // claude-app ve kisitli backend oturumları YAN YANA — ajan seçmeden.
     await waitFor(() => expect(screen.getByText('Proje')).toBeInTheDocument())
-    expect(screen.getByText('Agy oturumu')).toBeInTheDocument()
+    // Kisitli backend'in listesi claude-app'ten SONRA cozuluyor; bekle.
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
     expect((screen.getByLabelText('Ajan') as HTMLSelectElement).value).toBe('*')
   })
 
   it('karışık listede satır kendi ucuna bağlanır', async () => {
     render(<ChatScreen />)
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
 
     // Aktif "seçili ajan" YOK; uç oturumun kendi sahibinden okunmalı.
-    fireEvent.click(screen.getByText('Agy oturumu'))
+    fireEvent.click(screen.getByText('Sinirli oturumu'))
     await waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0))
-    expect(new URL(socket().url).pathname).toBe('/agy/stream')
+    expect(new URL(socket().url).pathname).toBe('/sinirli/stream')
   })
 
   it('karışık listede ajan rozeti çizilir, tek ajan seçilince kaybolur', async () => {
     render(<ChatScreen />)
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
-    expect(screen.getAllByTitle('Ajan: Agy').length).toBe(1)
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
+    expect(screen.getAllByTitle('Ajan: Sinirli').length).toBe(1)
 
-    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'agy' } })
+    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'sinirli' } })
     await waitFor(() => expect(screen.queryByText('Proje')).toBeNull())
-    expect(screen.queryByTitle('Ajan: Agy')).toBeNull()
+    expect(screen.queryByTitle('Ajan: Sinirli')).toBeNull()
   })
 
   it('ajan daraltmak AÇIK oturumu kapatmaz — oturum o ajana aitse', async () => {
     render(<ChatScreen />)
-    await waitFor(() => expect(screen.getByText('Agy oturumu')).toBeInTheDocument())
-    fireEvent.click(screen.getByText('Agy oturumu'))
+    await waitFor(() => expect(screen.getByText('Sinirli oturumu')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Sinirli oturumu'))
     await waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0))
 
-    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'agy' } })
+    fireEvent.change(screen.getByLabelText('Ajan'), { target: { value: 'sinirli' } })
 
-    // Filtre daraldı ama oturum agy'nin: kapanmamalı.
+    // Filtre daraldı ama oturum öteki backend'in: kapanmamalı.
     await waitFor(() => expect(screen.queryByText('Proje')).toBeNull())
     expect(screen.queryByText(/Soldan bir oturum seç/)).toBeNull()
   })

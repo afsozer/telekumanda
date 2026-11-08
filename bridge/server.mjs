@@ -18,7 +18,6 @@ import * as codexApp from './codex-app.mjs';
 import * as cowork from './cowork.mjs';
 import * as omp from './omp-app.mjs';
 import { readUiPins, writeUiPinScope } from './ui-pins.mjs';
-import * as agy from './agy.mjs';
 import * as mcp from './mcp.mjs';
 import * as claudeMcp from './claude-mcp.mjs';
 import * as codexMcp from './codex-mcp.mjs';
@@ -102,13 +101,6 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP']) {
 }
 
 export const SLASH = {
-  agy: [
-    { name: 'goal', desc: 'Hedefe ulaşana kadar çalış' },
-    { name: 'review', desc: 'Kod incelemesi yap' },
-    { name: 'think', desc: 'Adım adım düşünerek plan yap' },
-    { name: 'compact', desc: 'Bağlamı sıkıştır, token tasarrufu yap' },
-    { name: 'plan', desc: 'Önce plan yap, sonra uygula' },
-  ],
   'claude-app': [
     { name: 'bro', desc: 'Son cevabı jargonsuz, sade anlat' }, // claude-app.mjs PROMPT_MACROS ile eş
     { name: 'devret', desc: 'İşi dış ajana worktree içinde yaptır, diff olarak getir' },
@@ -237,20 +229,17 @@ function readWorkspaceFile(p) {
 
 // ── Active state helper ───────────────────────────────────────────────────
 const CLI_MODULES = {
-  agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
 };
 const MODULE_LABELS = {
-  agy: 'Antigravity CLI',
   'claude-app': 'Claude App',
   'codex-app': 'Codex App',
   'omp': 'OMP',
 };
 
 const OPERATIONS_MODULES = {
-  agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
@@ -294,23 +283,6 @@ const NOTE_PRUNE_DIRS = [
   path.join(extractHome, 'log'),
 ];
 
-// agy'nin KENDI oturumlari — yukaridaki cikarim artigindan tamamen ayri bir sey
-// ve ayri bir sure hak ediyor: bunlar kullanicinin telefondan actigi, uygulamada
-// listelenen, devam ettirilebilir sohbetler. Silmek geri alinamaz.
-//
-// YALNIZ CLI home'u budanir. Masaustu Antigravity IDE'nin gecmisi (`ide` home)
-// bu kopruye ait degil; oraya dokunmak kullanicinin editorundeki gecmisi silmek
-// olurdu. Kural kullaniciyla kararlastirildi (19.08.2026): 7 gun.
-const AGY_RETENTION_DAYS = Number.isFinite(cfg.agy?.sessionRetentionDays)
-  ? cfg.agy.sessionRetentionDays
-  : 7;
-const agyCliHome = path.join(os.homedir(), '.gemini', 'antigravity-cli');
-const AGY_PRUNE_DIRS = [
-  path.join(agyCliHome, 'brain'),
-  path.join(agyCliHome, 'conversations'),
-  path.join(agyCliHome, 'log'),
-];
-
 function pruneNoteJunk() {
   // 0 = budama kapali. Her iki tur da ayri ayri kapatilabilir.
   if (NOTE_RETENTION_DAYS > 0) {
@@ -322,15 +294,6 @@ function pruneNoteJunk() {
       console.log(`not artigi budandi: ${r.removed} girdi, ${(r.freedBytes / 1048576).toFixed(1)} MB`);
     }
   }
-  if (AGY_RETENTION_DAYS > 0) {
-    const r = pruneAll(AGY_PRUNE_DIRS, {
-      maxAgeMs: AGY_RETENTION_DAYS * GUN_MS,
-      log: (msg) => console.warn(msg),
-    });
-    if (r.removed) {
-      console.log(`agy oturumu budandi: ${r.removed} girdi, ${(r.freedBytes / 1048576).toFixed(1)} MB`);
-    }
-  }
 }
 
 // ── Backend oturum budamasi ─────────────────────────────────────────────────
@@ -338,10 +301,7 @@ function pruneNoteJunk() {
 // session-prune.mjs'te; burada yalniz her backend'in kendi liste ve silme
 // yolunun baglanmasi var. Neyin nasil silinecegini backend biliyor —
 // depolari birbirine hic benzemiyor (jsonl havuzu / rollout dosyalari).
-//
-// agy AYRI kaldi (yukarida, klasor yasina gore): oradaki birikim yalniz oturum
-// degil, `brain/` ve `log/` de var; ayrica CLI/IDE ayrimi dosya sistemi
-// seviyesinde bir gercek, oturum kaydinda degil.
+
 //
 // omp kapsam DISI: kullanicinin istegi uc backend'di.
 const SESSION_RETENTION_DAYS = Number.isFinite(cfg.sessionPrune?.retentionDays)
@@ -567,8 +527,8 @@ function getActiveState() {
 
     if (typeof mod.listLiveProcesses === 'function') {
       try {
-        // Şekil farkı: agy { processes, count } nesnesi, diğerleri düz dizi
-        // döndürür — normalize etmeden .length kontrolü agy'yi hep atlıyordu.
+        // Şekil farkı: bazı modüller { processes, count } nesnesi, diğerleri
+        // düz dizi döndürür; normalize etmeden .length kontrolü yanlış sayar.
         const raw = mod.listLiveProcesses();
         const procList = Array.isArray(raw) ? raw
           : (raw && Array.isArray(raw.processes)) ? raw.processes : [];
@@ -609,7 +569,6 @@ const BACKEND_MODULES = {
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
-  'agy': agy,
   'cowork': cowork,
 };
 
@@ -635,27 +594,6 @@ registerGeneral(router, {
   recordFileEvent: projectsStore.recordFileEvent,
   getCoworkRoot: () => claudeApp.coworkRoot(),
   getLiteRoot: () => path.join(os.homedir(), 'Telekumanda-Lite'),
-});
-registerBackend(router, 'agy', agy, {
-  extras: [
-    { method: 'POST', pattern: '/open', handler: async (req, res) => {
-      const r = await agy.openAntigravity();
-      json(res, r.ok ? 200 : 400, r);
-    }},
-    { method: 'GET', pattern: '/thought', handler: (req, res) => {
-      const sid = new URL(req.url, 'http://x').searchParams.get('sessionId') || '';
-      const i = parseInt(new URL(req.url, 'http://x').searchParams.get('i') || '0', 10);
-      json(res, 200, agy.getThought(sid, i));
-    }},
-    // B2: Respond to an agy permission/OAuth prompt (e.g., "Allow connection? [y/N]").
-    // The phone renders an approval card with Yes/No buttons; the selected answer
-    // is POSTed here and forwarded to agy's stdin.
-    { method: 'POST', pattern: '/respond', handler: async (req, res) => {
-      const b = await body(req);
-      const r = agy.respond(b.sessionId, b.answer);
-      json(res, r.ok ? 200 : 400, r);
-    }},
-  ],
 });
 
 router.get('/operations', (req, res) => {
@@ -1356,10 +1294,6 @@ registerBackend(router, 'omp', omp, {
 registerMcp(router, { mcp });
 registerUpdate(router);
 
-// agy runs as agy.exe under a PTY (no powershell wrapper). The bridge owns the PTY
-// handles in the session map, so list/kill from there instead of the wrapper scan.
-router.get('/agy/processes', (req, res) => json(res, 200, agy.listLiveProcesses()));
-router.post('/agy/kill-all', (req, res) => json(res, 200, agy.killAllSessions()));
 router.get('/codex-app/processes', (req, res) => json(res, 200, codexApp.listLiveProcesses()));
 router.post('/codex-app/kill-all', (req, res) => json(res, 200, codexApp.killAllSessions()));
 router.get('/claude-app/processes', (req, res) => json(res, 200, claudeApp.listLiveProcesses()));
@@ -1473,7 +1407,6 @@ const WS_SECENEKLERI = { noServer: true, perMessageDeflate: { threshold: 1024 } 
 const wssCodexApp = new WebSocketServer(WS_SECENEKLERI);
 const wssClaudeApp = new WebSocketServer(WS_SECENEKLERI);
 const wssOmp = new WebSocketServer(WS_SECENEKLERI);
-const wssAgy = new WebSocketServer(WS_SECENEKLERI);
 
 // Akış el sıkışması kimliği bağlantı kurulmadan doğrulanır: başlıktaki token
 // (Android) ya da tek kullanımlık bilet (tarayıcı). Bilet burada harcandığı için
@@ -1513,8 +1446,6 @@ server.on('upgrade', (req, socket, head) => {
     wssClaudeApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssClaudeApp.emit('connection', sock, req); });
   } else if (u.pathname === '/omp/stream') {
     wssOmp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssOmp.emit('connection', sock, req); });
-  } else if (u.pathname === '/agy/stream') {
-    wssAgy.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssAgy.emit('connection', sock, req); });
   } else {
     socket.destroy();
   }
@@ -1541,16 +1472,9 @@ wssOmp.on('connection', (sock, req) => {
 });
 
 
-
-wssAgy.on('connection', (sock, req) => {
-  if (!auth(req)) { sock.close(1008, 'unauthorized'); return; }
-  const params = new URL(req.url, 'http://x').searchParams;
-  agy.subscribe(params.get('session') || '', sock, { since: params.get('since'), delta: params.get('delta') === '1' });
-});
-
 // ── Startup ───────────────────────────────────────────────────────────────
 if (import.meta.main) {
-  try { codexApp.cleanupTmp(); agy.cleanupTmp(); } catch (e) { console.warn('[server] startup cleanup failed:', e); }
+  try { codexApp.cleanupTmp(); } catch (e) { console.warn('[server] startup cleanup failed:', e); }
 
   // bridge.log rotasyonu (madde 14): açılışta bir kez, sonra her 10 dakikada
   // bir boyut kontrolü. 5 MB üzeri → .1'e taşı, en fazla 3 nesil (~15 MB tavan).

@@ -3271,7 +3271,7 @@ async function hydrateFromThread(s) {
 // No-op kept for parity with the other backend modules' startup cleanup hook.
 export function cleanupTmp() { /* no temp scripts in this backend */ }
 
-// ── Process admin (agy paritesi) ────────────────────────────────────────────
+// ── Process admin ───────────────────────────────────────────────────────────
 export function listLiveProcesses() {
   const out = [];
   if (appServer && !appServer.exitCode) out.push({ pid: appServer.pid, kind: 'app-server' });
@@ -3279,7 +3279,7 @@ export function listLiveProcesses() {
 }
 // Kalici app-server'i ve kosan turlari kapatir. Testler de bunu after() icinde
 // cagirir — child pipe'lari event loop'u tutmasin, node --test temiz cikssin.
-// Bellekteki oturum kayitlari da temizlenir (agy ile ayni sozlesme):
+// Bellekteki oturum kayitlari da temizlenir:
 // gecmis codex'in kendi thread deposunda durur, drawer listDiskSessions'tan dolar.
 export function killAllSessions() {
   const killed = [];

@@ -12,7 +12,6 @@ fun RemoteViewModel.enterBackend(id: String) {
 
 fun RemoteViewModel.exitBackend(id: String) {
     when (id) {
-        "agy" -> exitAgyMode()
         "claude-app" -> exitClaudeAppMode()
         "codex-app" -> exitCodexAppMode()
         "omp" -> exitOmpMode()
@@ -22,7 +21,6 @@ fun RemoteViewModel.exitBackend(id: String) {
 
 fun RemoteViewModel.setBackendModel(id: String, model: String) {
     when (id) {
-        "agy" -> setAgyModel(model)
         "claude-app" -> setClaudeAppModel(model)
         "codex-app" -> setCodexAppModel(model)
         "omp" -> setOmpModel(model)
@@ -124,7 +122,6 @@ fun RemoteViewModel.loadBackendDiff(id: String) {
 
 fun RemoteViewModel.loadBackendDiskSessions(id: String) {
     when (id) {
-        "agy" -> loadAgyDiskSessions()
         "claude-app" -> loadClaudeAppDiskSessions()
         "codex-app" -> loadCodexAppDiskSessions()
         "omp" -> loadOmpDiskSessions()

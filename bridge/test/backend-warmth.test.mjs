@@ -12,7 +12,7 @@ describe('open-tab backend warmth', () => {
         // Tanınmayan bir backend kimliği (eski istemci) yok sayılmalı.
         { backend: 'taninmayan-app', sessionId: 'h1' },
         { backend: 'claude-app', sessionId: 'cl1' },
-        { backend: 'agy', sessionId: 'a1' },
+        { backend: 'omp', sessionId: 'a1' },
         { backend: 'codex-app', sessionId: '' },
       ]),
       [

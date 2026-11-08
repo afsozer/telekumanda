@@ -104,19 +104,6 @@ data class DeviceUiState(
     val devicesLoading: Boolean = false,
 )
 
-/** Antigravity CLI'ye ait oturum, model ve disk kayıtları. */
-@androidx.compose.runtime.Immutable
-data class AgyUiState(
-    val sessionId: String = "",
-    val models: List<AgyModel> = emptyList(),
-    val cwd: String = "",
-    val model: String = "gemini-3.8-flash-high",
-    val setupPending: Boolean = false,
-    val diskSessions: List<AgyDiskSession> = emptyList(),
-    val diskLoading: Boolean = false,
-    val opening: Boolean = false,
-)
-
 /** Cowork workspace, sağlayıcı, teslimat ve içe aktarma durumu. */
 @androidx.compose.runtime.Immutable
 data class CoworkUiState(
@@ -381,14 +368,12 @@ data class RemoteUiState(
     val openTabs: List<AppTab> = emptyList(),
     val activeTabId: String = "",
     val tabStatuses: Map<String, TabStatus> = emptyMap(),
-    val agy: AgyUiState = AgyUiState(),
     val claude: ClaudeUiState = ClaudeUiState(),
     // Backend değiştirince (exit) hangi oturumdaydık — geri dönünce ona yeniden bağlanmak için.
     // Cowork ve claude-app AYNI backend'i (claude-app) paylaşır; bu yüzden son-oturum
     // hafızası mod başına AYRI tutulur, aksi halde claude-app cowork workspace'ine bağlanır.
     val lastCoworkSessionId: String = "",
     val lastCoworkProvider: String = "",
-    val lastAgySessionId: String = "",
     // TEK ATIMLIK bağlanma hedefi (claude-app/codex-app/omp): sekme
     // etkinleştirme, bildirim/operasyon ve fork akışları enter*Mode'dan hemen önce
     // yazar; enter* okuyup tüketir. Hedef BOŞKEN enter* hiçbir canlı oturuma
@@ -424,8 +409,8 @@ data class RemoteUiState(
     val omp: OmpUiState = OmpUiState(),
     // Dosya gezgini + indirilenler, ayrı aile olarak taşındı.
     val files: FilesUiState = FilesUiState(),
-    val visibleBackends: Set<String> = setOf("claude-app", "agy", "codex-app", "omp", "cowork"),
-    val backendOrder: List<String> = listOf("claude-app","agy","codex-app","omp","cowork"),
+    val visibleBackends: Set<String> = setOf("claude-app", "codex-app", "omp", "cowork"),
+    val backendOrder: List<String> = listOf("claude-app","codex-app","omp","cowork"),
     val search: SearchUiState = SearchUiState(),
     val chatSearch: ChatSearchState = ChatSearchState(),
     val projectDelete: ProjectDeleteUiState = ProjectDeleteUiState(),
@@ -539,14 +524,6 @@ val RemoteUiState.deviceAuthLoading get() = device.authLoading
  * kabuğu yerine eşleştirme ekranı gösterilir. Kimlik APK'ya gömülmüyor.
  */
 val RemoteUiState.liteEslestirmeGerekli: Boolean get() = liteEdition && settings.token.isBlank()
-val RemoteUiState.agySessionId get() = agy.sessionId
-val RemoteUiState.agyModels get() = agy.models
-val RemoteUiState.agyCwd get() = agy.cwd
-val RemoteUiState.agyModel get() = agy.model
-val RemoteUiState.agySetupPending get() = agy.setupPending
-val RemoteUiState.agyDiskSessions get() = agy.diskSessions
-val RemoteUiState.agyDiskLoading get() = agy.diskLoading
-val RemoteUiState.agyOpening get() = agy.opening
 val RemoteUiState.coworkOutputs get() = cowork.outputs
 val RemoteUiState.coworkWorkspaces get() = cowork.workspaces
 val RemoteUiState.coworkWorkspacesLoading get() = cowork.workspacesLoading

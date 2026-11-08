@@ -4,7 +4,7 @@ import org.junit.Test
 import org.junit.Assert.assertEquals
 
 class BridgeBackendFilterTest {
-    private val order = listOf("claude-app", "agy", "codex-app", "omp", "cowork")
+    private val order = listOf("claude-app", "codex-app", "omp", "cowork")
     private val all = order.toSet()
     private fun catalog(vararg ids: String) =
         BackendCatalogInfo(1, ids.associateWith { BackendCapabilities() })
@@ -31,7 +31,7 @@ class BridgeBackendFilterTest {
     @Test fun siraKorunur() {
         assertEquals(
             listOf("omp", "claude-app"),
-            availableBackendIds(listOf("omp", "agy", "claude-app"), all, catalog("claude-app", "omp")),
+            availableBackendIds(listOf("omp", "claude-app"), all, catalog("claude-app", "omp")),
         )
     }
 }

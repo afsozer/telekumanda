@@ -52,7 +52,7 @@ test('projects registry remains visible after live sessions disappear', async ()
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'projects-persist-'));
   let sessions = [{ id: 's1', cwd: root, status: 'idle' }];
   const store = createProjectsStore({
-    modules: { agy: { listSessions: () => sessions } },
+    modules: { 'codex-app': { listSessions: () => sessions } },
     filePath: path.join(root, 'registry.json'),
     cacheTtl: 0,
   });
@@ -470,10 +470,11 @@ test('bulkSessionAction verifies cwd, routes to correct delegate, and handles un
       },
     };
 
-    const agy = {
+    // Sahte modul: deleteDiskSession ve archive/unarchive TANIMSIZ birakildi,
+    // boylece "deletion unsupported" yolu test edilebiliyor.
+    const silmesizMod = {
       listSessions: () => [{ id: 's3', cwd: root }],
       listDiskSessions: () => ({ sessions: [{ id: 's3', cwd: root }] }),
-      // deleteDiskSession and archive/unarchive are undefined
     };
 
     const coworkModule = {
@@ -489,7 +490,7 @@ test('bulkSessionAction verifies cwd, routes to correct delegate, and handles un
     };
 
     const store = createProjectsStore({
-      modules: { 'claude-app': claude, agy },
+      modules: { 'claude-app': claude, 'codex-app': silmesizMod },
       coworkModule,
       filePath: path.join(root, 'registry.json'),
       cacheTtl: 0,
@@ -506,7 +507,7 @@ test('bulkSessionAction verifies cwd, routes to correct delegate, and handles un
       sessions: [
         { backend: 'claude-app', sessionId: 's1', nativeSessionId: 'native-s1', container: 'direct' }, // ok
         { backend: 'claude-app', sessionId: 's2', container: 'direct' }, // outside path -> fail
-        { backend: 'agy', sessionId: 's3', container: 'direct' }, // deletion unsupported -> fail
+        { backend: 'codex-app', sessionId: 's3', container: 'direct' }, // deletion unsupported -> fail
         { backend: 'claude-app', sessionId: 'cw1', container: 'cowork' }, // cowork ok
       ]
     });
@@ -529,7 +530,7 @@ test('bulkSessionAction verifies cwd, routes to correct delegate, and handles un
       action: 'archive',
       sessions: [
         { backend: 'claude-app', sessionId: 's1', nativeSessionId: 'native-s1', container: 'direct' }, // ok
-        { backend: 'agy', sessionId: 's3', container: 'direct' }, // unsupported -> fail
+        { backend: 'codex-app', sessionId: 's3', container: 'direct' }, // unsupported -> fail
       ]
     });
     assert.equal(r2.succeeded, 1);

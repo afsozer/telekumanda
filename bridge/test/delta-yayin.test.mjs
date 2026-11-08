@@ -1,7 +1,7 @@
 // Delta yayınının backend KAPSAMI. Protokolün kendisi agent-session-core
 // testlerinde; buradaki soru şu: hangi backend'ler onu gerçekten kullanıyor?
 //
-// Kapsam boşluğu canlıda pahalıya patladı: omp ve agy `subscribe` içinde opts'u
+// Kapsam boşluğu canlıda pahalıya patladı: omp `subscribe` içinde opts'u
 // yutuyordu, dolayısıyla `delta=1` isteyen istemciye (Android 07.08'den beri,
 // web de öyle) HER karede tam transkript gidiyordu. Bu dosya bir backend
 // eklendiğinde ya da subscribe imzası bozulduğunda uyarır.
@@ -17,7 +17,6 @@ process.env.AGENTBRIDGE_OMP_ROOT = process.env.AGENTBRIDGE_OMP_ROOT || root;
 const claudeApp = await import('../claude-app.mjs');
 const codexApp = await import('../codex-app.mjs');
 const omp = await import('../omp-app.mjs');
-const agy = await import('../agy.mjs');
 
 function fakeWs() {
   const ws = {
@@ -36,7 +35,6 @@ const BACKENDS = [
   { name: 'claude-app', mod: claudeApp },
   { name: 'codex-app', mod: codexApp },
   { name: 'omp', mod: omp },
-  { name: 'agy', mod: agy },
 ];
 
 // Bu üçü canlıda opts'u yutuyordu. Arity'ye BAKMA: `opts = {}` varsayılanı
@@ -44,7 +42,6 @@ const BACKENDS = [
 // olabilir (bu dosyada bir kez yaşandı). Ölçüt ws._deltaMode.
 const FIXED = [
   { name: 'omp', mod: omp, drop: id => omp.__ompAppTest.removeSession(id) },
-  { name: 'agy', mod: agy, drop: () => {} },
 ];
 
 describe('delta yayını backend kapsamı', () => {
@@ -77,10 +74,10 @@ describe('delta yayını backend kapsamı', () => {
     });
   }
 
-  it('agy onay istemi (pendingPrompt) delta ile taşınabilir alanlar arasında', async () => {
+  it('onay istemi (pendingPrompt) delta ile taşınabilir alanlar arasında', async () => {
     // pendingPrompt META_KEYS'te değilse delta kipinde HİÇ gönderilmez ve
-    // OAuth/login kartı telefonda hiç görünmez. agy'ye özgü alan olduğu için
-    // core'a eklenmesi kolayca unutulur.
+    // onay/login kartı telefonda hiç görünmez. Tek bir backend'e özgü alan
+    // olduğunda core'a eklenmesi kolayca unutulur.
     const { diffSnapshots } = await import('../agent-session-core.mjs');
     const prev = { messages: [], pendingPrompt: null };
     const next = { messages: [], pendingPrompt: { prompt: 'Continue?', options: ['Yes', 'No'] } };

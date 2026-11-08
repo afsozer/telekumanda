@@ -44,7 +44,7 @@ Kesin kurallar:
   (bridge kataloğuna alan eklenir), string-switch yazılmaz.
 - Jenerik sheet'ler: model seçici, effort seçici, izin modu seçici, oturum
   bilgisi, hesap seçici. Hepsi tek implementasyon, veri parametrik.
-- Kalan backend seti: claude-app, codex-app, agy, omp, cowork.
+- Kalan backend seti: claude-app, codex-app, omp, cowork.
 
 ## 4. Tasarım dili
 

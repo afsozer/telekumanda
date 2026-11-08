@@ -4,7 +4,7 @@ type: software
 title: "Telekumanda"
 abstract: >-
   Remote control for the AI coding agents running on a desktop computer:
-  Claude Code, Codex and Antigravity sessions are started, followed
+  Claude Code and Codex sessions are started, followed
   and approved from an Android phone or a browser. It consists of a Kotlin and
   Jetpack Compose Android app and a Node.js bridge server that runs on the PC,
   authenticates requests with a bearer token or per-device key, and connects

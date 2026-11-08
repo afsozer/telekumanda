@@ -30,7 +30,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -51,7 +50,7 @@ class TabsDelegateTest {
     @Test
     fun singleSessionModeIgnoresLateSyncFromPreviousBackend() = runBlocking {
         val fakePrefs = FakeKeyValueStore()
-        var uiState = RemoteUiState(backend = "agy")
+        var uiState = RemoteUiState(backend = "omp")
         val delegate = TabsDelegate(
             prefs = fakePrefs,
             scope = CoroutineScope(Dispatchers.Unconfined),
@@ -60,24 +59,23 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
             singleSession = true,
         )
 
-        delegate.syncActiveTab("agy", "", "agy-1", "Gemini")
+        delegate.syncActiveTab("omp", "", "omp-1", "OMP")
         delegate.syncActiveTab("claude-app", "", "claude-late", "Claude")
 
         assertEquals(1, uiState.visibleTabs.size)
-        assertEquals("agy", uiState.visibleTabs.single().backend)
-        assertEquals("agy-1", uiState.visibleTabs.single().sessionId)
+        assertEquals("omp", uiState.visibleTabs.single().backend)
+        assertEquals("omp-1", uiState.visibleTabs.single().sessionId)
         val persisted = JSONObject(fakePrefs.getString("app_tabs")!!)
             .getJSONArray("tabs")
             .getJSONObject(0)
-        assertEquals("agy", persisted.getString("backend"))
-        assertEquals("agy-1", persisted.getString("sessionId"))
+        assertEquals("omp", persisted.getString("backend"))
+        assertEquals("omp-1", persisted.getString("sessionId"))
     }
 
     @Test
@@ -95,7 +93,6 @@ class TabsDelegateTest {
             emit = { msg -> emitted.add(msg) },
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -126,7 +123,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -161,7 +157,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -206,7 +201,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -238,7 +232,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -296,7 +289,6 @@ class TabsDelegateTest {
                     claudeAppSessionId = "",
                 )
             },
-            enterAgyMode = {},
             enterClaudeAppMode = {
                 enterClaudeAppModeCalled = true
                 uiState = uiState.copy(backend = "claude-app", claudeAppSessionId = uiState.lastClaudeAppSessionId)
@@ -357,7 +349,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -419,7 +410,6 @@ class TabsDelegateTest {
                     codexAppSessionId = "",
                 )
             },
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {
                 attachedSession = uiState.lastCodexAppSessionId
@@ -644,7 +634,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -671,7 +660,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -715,7 +703,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -753,7 +740,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -789,7 +775,6 @@ class TabsDelegateTest {
             emit = { emitted.add(it) },
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -813,7 +798,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -849,7 +833,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -891,7 +874,6 @@ class TabsDelegateTest {
             emit = {},
             client = fakeClient,
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {}
@@ -945,7 +927,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = { landingCalled = true },
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -988,7 +969,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -1015,7 +995,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = {},
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -1112,7 +1091,6 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = { uiState = uiState.copy(backend = null) },
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
@@ -1141,11 +1119,11 @@ class TabsDelegateTest {
     }
 
     @Test
-    fun agySekmesiTekAtimlikBaglanmaHedefiYazar() = runBlocking {
-        // Regresyon (25.08.2026): agy son backend'di ki hala `lastAgySessionId`
-        // uzerinden baglaniyordu. `enterAgyMode` pendingBind kuralina gecince bu
-        // dal hedefi yazmasaydi sekmeye dokunmak oturumu geri getirmez, kurulum
-        // ekranina duserdi (hermes'te aynen bu yasandi). Bilincli devralma yolu.
+    fun sekmeTekAtimlikBaglanmaHedefiYazar() = runBlocking {
+        // Regresyon (25.08.2026): backend'ler `last*SessionId` uzerinden
+        // baglaniyordu. pendingBind kuralina gecince bu dal hedefi yazmasaydi
+        // sekmeye dokunmak oturumu geri getirmez, kurulum ekranina duserdi
+        // (hermes'te aynen bu yasandi). Bilincli devralma yolu.
         val fakePrefs = FakeKeyValueStore()
         var uiState = RemoteUiState()
         val delegate = TabsDelegate(
@@ -1156,22 +1134,21 @@ class TabsDelegateTest {
             emit = {},
             client = FakeBridgeClient(),
             goToLanding = { uiState = uiState.copy(backend = null) },
-            enterAgyMode = {},
             enterClaudeAppMode = {},
             enterCodexAppMode = {},
             enterCoworkMode = {},
         )
 
-        delegate.syncActiveTab("agy", "", "agy-1", "Antigravity")
-        val agySekmesi = uiState.activeTabId
+        delegate.syncActiveTab("omp", "", "omp-1", "OMP")
+        val ompSekmesi = uiState.activeTabId
         delegate.newTab()
         val bosSekme = uiState.activeTabId
 
-        delegate.activateTab(agySekmesi, notifyIfDead = false)
-        assertEquals("agy", uiState.pendingBindBackend)
-        assertEquals("agy-1", uiState.pendingBindSessionId)
+        delegate.activateTab(ompSekmesi, notifyIfDead = false)
+        assertEquals("omp", uiState.pendingBindBackend)
+        assertEquals("omp-1", uiState.pendingBindSessionId)
         // "En son neredeydik" hafizasi da yazilmaya devam eder.
-        assertEquals("agy-1", uiState.lastAgySessionId)
+        assertEquals("omp-1", uiState.omp.lastSessionId)
 
         // BOS sekmeye gecis hedef YAZMAZ: yeni-oturum ekrani acik kalmali.
         uiState = uiState.copy(pendingBindBackend = "", pendingBindSessionId = "")

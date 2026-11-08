@@ -61,7 +61,7 @@ class HubModelsTest {
     @Test
     fun hubSummaryCombinesCountsAndDetectsUnseenEvent() {
         val operations = OperationsResult(
-            events = listOf(OperationEvent("e2", "completed", "done", "agy", "Agy", "s", "C:/p", "m", "ok", "now")),
+            events = listOf(OperationEvent("e2", "completed", "done", "omp", "OMP", "s", "C:/p", "m", "ok", "now")),
             counts = OperationCounts(running = 2, waiting = 1, failed = 3),
         )
         val state = RemoteUiState().copy(
@@ -106,7 +106,7 @@ class HubModelsTest {
 
     @Test
     fun matchingLastSeenEventIsNotUnseen() {
-        val event = OperationEvent("e1", "completed", "done", "agy", "Agy", "s", "", "", "", "")
+        val event = OperationEvent("e1", "completed", "done", "omp", "OMP", "s", "", "", "", "")
         val summary = RemoteUiState().copy(
             operations = OperationsResult(events = listOf(event)),
             lastSeenOperationEventId = "e1",

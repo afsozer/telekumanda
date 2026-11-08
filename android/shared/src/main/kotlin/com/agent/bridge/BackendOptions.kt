@@ -6,7 +6,6 @@ data class BackendOption(val id: String, val label: String, val detail: String =
 
 
 fun RemoteUiState.backendModelOptions(id: String): List<BackendOption> = when (id) {
-    "agy" -> agyModels.map { BackendOption(it.id, it.label) }
     "claude-app" -> claudeModels.map { BackendOption(it.id, it.label) }
     "codex-app" -> codexModels.map { BackendOption(it.id, it.label) }
     "omp" -> omp.availableModels.map { BackendOption(it.id, it.label) }
@@ -16,7 +15,6 @@ fun RemoteUiState.backendModelOptions(id: String): List<BackendOption> = when (i
 }
 
 fun RemoteUiState.backendPermissionModeOptions(id: String): List<BackendOption> = when (id) {
-    "agy" -> emptyList()
     "claude-app" -> {
         val modes = claudeAppInfo?.permissionModes?.ifEmpty { null } ?: listOf("", "auto", "plan", "acceptEdits", "bypassPermissions")
         modes.map { BackendOption(it, permissionModeLabel(it)) }
@@ -80,7 +78,7 @@ fun RemoteUiState.backendEffortOptions(id: String): List<BackendOption> = when (
  * "Degisiklikler" gorunumu var mi — GET /<b>/diff kayitli mi.
  *
  * Bugun yalniz codex-app (kaynagi akan fileChange item'lari).
- * claude-app/omp/agy'de karsiligi yok.
+ * claude-app/omp'de karsiligi yok.
  * Cowork dali skill dallariyla AYNI: cowork bir sunum katmani, ucu secili
  * saglayicinin ucu.
  */
@@ -142,12 +140,11 @@ fun RemoteUiState.backendSkillOptions(id: String): List<BackendOption> {
 // dokunulacak yer burasi olsun — bugun her zaman bos doner.
 fun RemoteUiState.backendSkillGroups(id: String): Map<String, String> = emptyMap()
 
-// agy'de Agent Skills yok; pill hiç çizilmez.
 fun RemoteUiState.backendSkillsSupported(id: String): Boolean = when (id) {
     // omp: skill envanteri RPC'nin get_available_commands çıktısından geliyor
     // (12 Ağu 2026); liste dolduğu hâlde çip gate'e takılıp görünmez kalıyordu.
     "claude-app", "codex-app", "omp" -> true
-    "cowork" -> normalizeCoworkProvider(coworkProvider) != "agy"
+    "cowork" -> true
     else -> false
 }
 

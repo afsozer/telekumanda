@@ -128,7 +128,7 @@ class BackendSessionsTest {
         assertTrue(backendSessionRenameSupported("omp"))
         assertTrue(backendSessionArchiveSupported("claude-app"))
         assertTrue(backendSessionArchiveSupported("codex-app"))
-        assertFalse(backendSessionPinSupported("agy"))
+        assertFalse(backendSessionPinSupported("bilinmeyen"))
         assertFalse(backendSessionRenameSupported("cowork"))
     }
 
@@ -137,7 +137,7 @@ class BackendSessionsTest {
         assertTrue(backendUsesWorkspaces("cowork"))
         assertFalse(backendUsesWorkspaces("claude-app"))
         assertFalse(backendUsesWorkspaces("codex-app"))
-        assertFalse(backendUsesWorkspaces("agy"))
+        assertFalse(backendUsesWorkspaces("bilinmeyen"))
     }
 
     @Test
@@ -152,7 +152,7 @@ class BackendSessionsTest {
                 AppTab("claude", "claude-app", sessionId = "cl1", bridgeProfileId = "bridge-a"),
                 AppTab("other-bridge", "codex-app", sessionId = "h2", bridgeProfileId = "bridge-b"),
                 // Isıtma yalnız codex-app'i kapsar: başka backend'in sekmesi hedef üretmez.
-                AppTab("agy", "agy", sessionId = "a1", bridgeProfileId = "bridge-a"),
+                AppTab("omp", "omp", sessionId = "a1", bridgeProfileId = "bridge-a"),
                 AppTab("landing", "", sessionId = "", bridgeProfileId = "bridge-a"),
             ),
             activeTabId = "active",
@@ -190,7 +190,7 @@ class BackendSessionsTest {
         client.warmOpenTabBackends(
             BridgeSettings("http://localhost", "token"),
             listOf(
-                BackendWarmTarget("agy", "h1"),
+                BackendWarmTarget("omp", "h1"),
                 BackendWarmTarget("codex-app", "c1", "C:\\work"),
             ),
         )
@@ -199,7 +199,7 @@ class BackendSessionsTest {
         assertEquals("POST", request.method)
         assertEquals("/backends/warm", request.path)
         val targets = request.body!!.getJSONArray("targets")
-        assertEquals("agy", targets.getJSONObject(0).getString("backend"))
+        assertEquals("omp", targets.getJSONObject(0).getString("backend"))
         assertEquals("h1", targets.getJSONObject(0).getString("sessionId"))
         assertEquals("codex-app", targets.getJSONObject(1).getString("backend"))
         assertEquals("c1", targets.getJSONObject(1).getString("sessionId"))

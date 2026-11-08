@@ -2,12 +2,12 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23603803.svg)](https://doi.org/10.5281/zenodo.23603803)
 
-Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code, Codex and Antigravity sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
+Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code and Codex sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
 
 - A Kotlin / Jetpack Compose Android app in `android/`
 - A Node.js bridge server in `bridge/`
 
-The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, Antigravity CLI, MCP management, usage tracking, and OTA update delivery.
+The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, MCP management, usage tracking, and OTA update delivery.
 
 There is also a browser UI in `web/` that the bridge itself serves at `/ui` —
 see "Web UI" below.
@@ -18,7 +18,6 @@ The phone app provides a mobile control surface for multiple agent backends:
 
 - Claude Code CLI (Claude App)
 - Codex CLI (Codex App)
-- Antigravity CLI (`agy.exe`)
 - Cowork Mode (multi-agent workspace coordination; a presentation layer that
   runs on top of the Claude App endpoints and can drive any provider)
 - Fleet Health Panel (real-time process monitoring & direct kill controls across all active backends)
@@ -134,7 +133,7 @@ The bridge is a Node.js server in `bridge/server.mjs`. It exposes REST endpoints
 Main bridge responsibilities:
 
 - Authenticate phone requests with the token from `bridge/config.json`
-- Start and manage CLI-backed sessions for Claude, Codex, and Agy
+- Start and manage CLI-backed sessions for Claude and Codex
 - Stream conversation updates over WebSocket
 - List and resume disk sessions
 - Read selected workspace files for the phone UI
@@ -146,7 +145,6 @@ Main bridge responsibilities:
 Important WebSocket channels:
 
 ```text
-/agy/stream
 /claude-app/stream
 /codex-app/stream
 ```
@@ -175,7 +173,6 @@ Important REST areas:
 /slash                              (fetch command shortcuts per backend)
 /cowork/*                           (projects, import, matters, session switching)
 /cowork/notes, /cowork/note/*       (text notes, rename, attach, AI actions)
-/agy/*                              (Antigravity CLI actions and thought retrieval)
 /claude-app/*                       (Claude Code app workspaces, MCP, thoughts, quota suggest)
 /codex-app/*                        (Codex app fork, compact, efforts, approve, rewind)
 /update/*                           (delivery of OTA Android APK packages)
@@ -189,7 +186,6 @@ already be installed and logged in on the host machine:
 - **Node.js 22 LTS** — required, not optional (see "Running The Bridge")
 - **Claude Code CLI** (`claude`) — for the Claude App and Cowork backends
 - **Codex CLI** (`codex`) — for the Codex App backend
-- **Antigravity CLI** (`agy.exe`) — for the Agy backend
 - **JDK 17+ and the Android SDK** — only to build the app
 
 Backends whose CLI is missing simply fail when you start a session; the bridge
@@ -278,9 +274,9 @@ npm install
 node server.mjs
 ```
 
-The bridge requires Node.js 22 LTS. This is intentional: `node-pty` is pinned to
-a runtime known to work reliably with the Windows ConPTY integration used by the
-agent backends.
+The bridge requires Node.js 22 LTS: that is the runtime it is developed and
+tested on. (The original reason was `node-pty`, which left together with the
+PTY-driven Antigravity backend; the pin stays until a newer Node is verified.)
 
 There is also a Windows supervisor script:
 
@@ -362,7 +358,6 @@ bridge/web-ui.mjs        Serves web/dist at /ui (before auth; see the note in th
 web/                     Browser UI (React + TypeScript, built with Vite)
 bridge/claude-app.mjs    Claude Code backend (+ claude-app-adapter.mjs)
 bridge/codex-app.mjs     Codex backend (+ codex-app-adapter.mjs)
-bridge/agy.mjs           Antigravity CLI (agy.exe) backend, PTY-driven
 bridge/cowork.mjs        Cowork workspaces, leases, handoff
 bridge/projects.mjs      Persistent project envelopes
 bridge/operations.mjs    Cross-provider operations inbox
@@ -374,23 +369,6 @@ bridge/config.example.json  Template for the git-ignored bridge/config.json
 bridge/test/             Unit tests (node:test)
 docs/                    Design notes, roadmaps, and phase instructions (Turkish)
 ```
-
-## Agy Backend — PTY Interactive Mode
-
-`bridge/agy.mjs` drives `agy.exe` through a **pseudo-terminal (node-pty)**, not plain pipes. This is required and was arrived at after testing; the reasoning is recorded here so it is not undone by accident:
-
-- **Why PTY, not `spawn`/pipe.** `agy -i` (`--prompt-interactive`) only processes a prompt when stdin reaches EOF. With a persistent open pipe (needed for a live session) agy processes nothing and every prompt hangs forever. Run under a PTY, agy behaves as a real interactive TUI and processes input normally.
-- **Why not `-p`/`--print`.** Print mode is single-shot and does not reliably carry multi-step tasks (edit → long build → summarize) through to a final reply.
-- **Initial prompt as argument.** The first prompt must be passed as an argument: `pty.spawn(agy, ['-i', firstPrompt, '--dangerously-skip-permissions', ...])`. An empty `-i` TUI hangs.
-- **Trust prompt.** On the first open of a directory, agy shows `Do you trust the contents of this project?`. `--dangerously-skip-permissions` does **not** skip it — this was the original "agent says it's working then never replies" hang. The bridge detects this in the PTY output and auto-answers `1` (Yes).
-- **Content source is the transcript, not the PTY.** PTY output is a noisy TUI render (spinners, ANSI). All chat content is read from `~/.gemini/antigravity-cli/brain/<conversationId>/.system_generated/logs/transcript.jsonl`. The PTY stream is used only for prompt detection (trust / approval).
-- **Turn-end is deterministic.** A turn is complete when the transcript's last meaningful entry (ignoring `CONVERSATION_HISTORY` / `CHECKPOINT`) is a non-empty `PLANNER_RESPONSE`. There is **no absolute turn cap** — only a 60-minute no-activity idle timeout — so long builds (`flutter build apk`, 10+ min) are never killed mid-run.
-- **Background-task guard.** agy runs long shell commands (`flutter analyze/build`) as **async background tasks**: the `RUN_COMMAND` entry reads "Tool is running as a background task" and the model emits an intermediate prose ("started it, will act on the result") that looks like a final reply. When the task finishes, agy injects a `SYSTEM_MESSAGE` that re-prompts the model to continue. To avoid the phone showing "finished" while work continues for minutes, a turn is held open while a background task is in flight. The reliable signal is **order, not count** (there can be extra `SYSTEM_MESSAGE` entries): a task is in flight iff the last background-task launch has no `SYSTEM_MESSAGE` after it (`lastBgIdx > lastSysIdx`).
-- **Conversation id discovery.** `last_conversations.json` is written late, so the bridge instead scans the brain directory for the newest conversation created after spawn (`discoverBrainConversation`).
-- **Multi-turn = kill + respawn.** Writing a second prompt into the live TUI is unreliable, so each follow-up message kills the PTY and respawns with `--conversation=<id>` to resume the same conversation (history is preserved by agy in the brain dir).
-- **B2 (in-app approval) is partial.** Only the trust prompt is auto-handled. Generic OAuth/login prompts are matched conservatively (line-ending `[y/n]` / `(yes/no)` only, to avoid false positives on model prose) and surfaced to the phone via `awaitingApproval` / `pendingPrompt`; `POST /agy/respond` writes the answer back to the PTY. The exact OAuth prompt format has not yet been observed live.
-- **Process admin is PTY-aware.** Other backends are killed via `process-admin.mjs`, which scans for `powershell.exe` wrappers by `\<name>-tmp\` CommandLine signature. agy has no such wrapper anymore, so `/agy/processes` and `/agy/kill-all` are served by `agy.listLiveProcesses()` / `agy.killAllSessions()` (operating on the PTY handles in the session map). `killAllSessions()` also clears the session map so "active sessions" drops to 0.
-- **Known cosmetic issue.** On each PTY `kill()` (every multi-turn message), node-pty's Windows ConPTY helper may log `AttachConsole failed` to stderr. It is harmless — the turn still completes and no process is leaked — but it adds noise to `bridge.log`.
 
 ## Notes
 

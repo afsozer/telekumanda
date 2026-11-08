@@ -9,7 +9,6 @@ private fun RemoteUiState.activeQueueProvider(): String =
     if (backend == Backend.COWORK.id) normalizeCoworkProvider(cowork.provider) else ""
 
 private fun RemoteUiState.activeQueueSessionId(): String = when (backend) {
-    Backend.AGY.id -> agy.sessionId
     Backend.CLAUDE_APP.id -> claude.sessionId
     Backend.CODEX_APP.id -> codex.sessionId
     Backend.COWORK.id -> when (activeQueueProvider()) {

@@ -8,7 +8,7 @@
 // ediyordu. Tarayici 19.08.2026'da sokuldu (297 goruntu -> 3 not); zincirin
 // bas tarafi artik paylas menusundeki "Not ekle".
 //
-// Gercek agy YOK: runCommand enjekte edilir.
+// Gercek CLI YOK: runCommand enjekte edilir.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

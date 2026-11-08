@@ -39,7 +39,6 @@ fun providerMonogram(backendId: String): String = when (backendId) {
     "claude-app" -> "C"
     "codex-app" -> "X"
     "omp" -> "P"
-    "agy" -> "A"
     "cowork" -> "W"
     else -> "?"
 }

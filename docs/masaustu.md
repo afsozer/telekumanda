@@ -3,7 +3,7 @@
 `scripts/masaustu.ps1` — Windows oturumunu görsel olarak sürer: ekran görüntüsü
 al, pencere yakala, fareyle tıkla, klavyeyle yaz. CLI'ı olmayan GUI
 uygulamaları için. **Her ajan çağırabilir** (claude-app, codex-app,
-agy, omp); hepsi bu makinede kabuk erişimiyle çalışıyor.
+omp); hepsi bu makinede kabuk erişimiyle çalışıyor.
 
 Aşağıdaki tuzaklar canlı testte bulundu. Okumadan kullanma; her biri sessiz
 başarısızlık üretiyor.

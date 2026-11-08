@@ -10,10 +10,6 @@ fun RemoteViewModel.resumeBackendDiskSession(backend: String, sessionId: String)
     val state = uiState.value
     if (!state.supportsEditionBackend(backend)) return
     when (backend) {
-        "agy" -> {
-            val session = state.agyDiskSessions.find { it.id == sessionId }
-            if (session != null) resumeAgyDiskSession(session)
-        }
         "claude-app" -> {
             val session = state.claudeAppDiskSessions.find { it.id == sessionId }
             if (session != null) resumeClaudeAppDiskSession(session)
@@ -65,7 +61,6 @@ fun RemoteViewModel.startBackendSession(backend: String, cwd: String) {
     if (!uiState.value.supportsEditionBackend(backend)) return
     val model = uiState.value.backendSession(backend).model
     when (backend) {
-        "agy" -> startAgySession(cwd, model)
         "claude-app" -> startClaudeAppSession(cwd, model)
         "codex-app" -> startCodexAppSession(cwd, model)
         "omp" -> startOmpSession(cwd, model)
@@ -86,6 +81,6 @@ fun RemoteViewModel.deleteBackendDiskSession(backend: String, sessionId: String)
                 .find { it.sessionId == sessionId }?.cwd.orEmpty()
             deleteCoworkSession(recordCwd.ifBlank { uiState.value.selectedCoworkWorkspace }, sessionId)
         }
-        "agy", "claude-app", "codex-app", "omp" -> deleteDiskSession(backend, sessionId)
+        "claude-app", "codex-app", "omp" -> deleteDiskSession(backend, sessionId)
     }
 }

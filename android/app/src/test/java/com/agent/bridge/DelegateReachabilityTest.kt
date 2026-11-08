@@ -146,7 +146,7 @@ class DelegateReachabilityTest {
     /**
      * Tüm dosyalardaki temiz kodda `val/var x: Sınıf` ve `val/var x = Sınıf(`
      * bildirimlerini bulup sınıf adı -> alıcı değişken adları eşlemesini kurar.
-     * Delege sınıfının adı dosya adıyla aynıdır (AgyDelegate.kt -> AgyDelegate).
+     * Delege sınıfının adı dosya adıyla aynıdır (OmpDelegate.kt -> OmpDelegate).
      */
     private fun buildReceiverMap(
         files: List<File>,
@@ -303,7 +303,7 @@ class DelegateReachabilityTest {
                 receivers: Map<String, Set<String>>
             ): UsagePatterns {
                 val name = Pattern.quote(method.name)
-                // Delege sınıfı dosyayla aynı adı taşır (AgyDelegate.kt -> AgyDelegate).
+                // Delege sınıfı dosyayla aynı adı taşır (OmpDelegate.kt -> OmpDelegate).
                 val cls = method.file.name.removeSuffix(".kt")
                 val defPrefix = Pattern.compile("^\\s*fun\\s+" + name + "\\s*\\(")
                 // Yalın çağrı: ad( — öncesinde tanımlayıcı ya da nokta olmamalı

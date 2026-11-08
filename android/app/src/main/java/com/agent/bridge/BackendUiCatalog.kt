@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Terminal
 internal data class BackendInfo(val id: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 internal val BACKEND_CATALOG: List<BackendInfo> = listOf(
     BackendInfo("claude-app", "Claude App", Icons.Default.Terminal),
-    BackendInfo("agy", "Antigravity CLI", Icons.Default.Terminal),
     BackendInfo("codex-app", "Codex App", Icons.Default.Code),
     BackendInfo("omp", "OMP", Icons.Default.Terminal),
     BackendInfo("cowork", "Cowork", Icons.Default.Description),

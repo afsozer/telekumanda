@@ -846,7 +846,7 @@ fun ChatRootScreen(
                                 else Modifier
 
                             // Buradan çatalla claude-app/codex-app/omp'de (cowork'te
-                            // sağlayıcısı bunlardansa): bridge fork ucu agy'de yok.
+                            // sağlayıcısı bunlardansa).
                             // OMP çatallaması native `branch` RPC'sine dayanır (/omp/fork-from).
                             val forkSupported = when (uiState.backend) {
                                 "claude-app", "codex-app", "omp" -> true
@@ -1113,7 +1113,7 @@ fun ChatRootScreen(
 
                             // Skill çipi: hangi skill'lerin kurulu olduğunu gösterir
                             // (cowork'te aktif sağlayıcının, normal sohbetlerde backend'in
-                            // kendi listesi). Salt görüntü; agy gibi Agent Skills'i
+                            // kendi listesi). Salt görüntü; Agent Skills'i
                             // olmayan backend'lerde hiç çizilmez.
                             if (uiState.backendSkillsSupported(backendId)) {
                                 StatusBadge(

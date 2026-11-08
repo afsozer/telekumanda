@@ -15,7 +15,6 @@ class Ui2ShellTest {
         assertEquals("C", providerMonogram("claude-app"))
         assertEquals("X", providerMonogram("codex-app"))
         assertEquals("P", providerMonogram("omp"))
-        assertEquals("A", providerMonogram("agy"))
         assertEquals("W", providerMonogram("cowork"))
     }
 
@@ -28,8 +27,8 @@ class Ui2ShellTest {
     fun activeTabScrollIndexTracksActiveTabIdentity() {
         val tabs = listOf(
             SessionTabUi("one", "codex-app", "Bir"),
-            SessionTabUi("two", "agy", "Iki"),
-            SessionTabUi("three", "agy", "Uc"),
+            SessionTabUi("two", "omp", "Iki"),
+            SessionTabUi("three", "omp", "Uc"),
         )
 
         assertEquals(1, activeTabScrollIndex(tabs, "two"))

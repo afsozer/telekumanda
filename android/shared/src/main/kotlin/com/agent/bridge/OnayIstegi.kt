@@ -21,7 +21,7 @@ fun bayatOnayHatasi(hata: Throwable): Boolean =
     hata is BridgeHttpException && hata.code == 409 &&
         hata.serverMessage.contains("stale approval", ignoreCase = true)
 
-/** Onay gövdesine kimliği ekler; kimlik bilinmiyorsa (agy, eski köprü) alan hiç yazılmaz. */
+/** Onay gövdesine kimliği ekler; kimlik bilinmiyorsa (eski köprü) alan hiç yazılmaz. */
 internal fun org.json.JSONObject.onayKimligiEkle(requestId: String): org.json.JSONObject {
     if (requestId.isNotBlank()) put("requestId", requestId)
     return this

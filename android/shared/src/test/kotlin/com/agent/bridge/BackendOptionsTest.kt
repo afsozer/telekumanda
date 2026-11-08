@@ -49,15 +49,6 @@ class BackendOptionsTest {
     }
 
     @Test
-    fun testAgyOptionsEmpty() {
-        val state = RemoteUiState()
-        val efforts = state.backendEffortOptions("agy")
-        val modes = state.backendPermissionModeOptions("agy")
-        assertTrue(efforts.isEmpty())
-        assertTrue(modes.isEmpty())
-    }
-
-    @Test
     fun testEffortSupportDoesNotDependOnOptionsBeingLoaded() {
         val emptyState = RemoteUiState()
         assertTrue(emptyState.backendEffortSupported("claude-app"))
@@ -157,7 +148,7 @@ class BackendOptionsTest {
         assertTrue(state.backendDiffSupported("codex-app"))
         assertTrue(!state.backendDiffSupported("claude-app"))
         assertTrue(!state.backendDiffSupported("omp"))
-        assertTrue(!state.backendDiffSupported("agy"))
+        assertTrue(!state.backendDiffSupported("bilinmeyen"))
         assertTrue(!state.copy(cowork = CoworkUiState(provider = "claude-app")).backendDiffSupported("cowork"))
         assertTrue(state.copy(cowork = CoworkUiState(provider = "codex-app")).backendDiffSupported("cowork"))
     }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 // Claude App (kalıcı çift-yönlü) backend oturum yaşam döngüsü — RemoteViewModel'den
-// ayrılan delege (madde 11.6b). AgyDelegate'den sonraki ikinci backend delegesi.
+// ayrılan delege (madde 11.6b).
 //
 // Kapsam: enterClaudeAppMode, cancelClaudeAppSetup, startClaudeAppSession,
 // setClaudeAppModel, setClaudeAppPermissionMode, loadClaudeAppEfforts,
@@ -25,7 +25,7 @@ import org.json.JSONObject
 // top-level fonksiyon olduğu için delege doğrudan çağırır (callback gerekmez).
 // claudeAppPollJob delege içinde; onCleared cancelPolling() ile.
 //
-// Kalıp AgyDelegate ile aynı.
+// Kalıp diğer backend delegeleriyle aynı.
 class ClaudeAppDelegate(
     private val client: BridgeClient,
     private val scope: CoroutineScope,
