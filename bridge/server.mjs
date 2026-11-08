@@ -13,6 +13,7 @@ import { registerBackend, reconcilePromptRequests } from './routes/backend.mjs';
 import { warmOpenTabBackends } from './backend-warmth.mjs';
 import { register as registerMcp } from './routes/mcp.mjs';
 import { register as registerUpdate } from './routes/update.mjs';
+import * as agy from './agy.mjs';
 import * as claudeApp from './claude-app.mjs';
 import * as codexApp from './codex-app.mjs';
 import * as cowork from './cowork.mjs';
@@ -229,17 +230,20 @@ function readWorkspaceFile(p) {
 
 // ── Active state helper ───────────────────────────────────────────────────
 const CLI_MODULES = {
+  agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
 };
 const MODULE_LABELS = {
+  agy: 'Antigravity',
   'claude-app': 'Claude App',
   'codex-app': 'Codex App',
   'omp': 'OMP',
 };
 
 const OPERATIONS_MODULES = {
+  agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
@@ -566,6 +570,7 @@ function getActiveState() {
 // Backend id → modül. Katalog conformance raporu ve onay taraması bunu tek kaynak
 // olarak kullanır; backend-özel listeler server.mjs içine dağılmaz (Faz 4).
 const BACKEND_MODULES = {
+  'agy': agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
@@ -590,6 +595,8 @@ registerGeneral(router, {
   SLASH,
   dynamicSlash: {
     omp: () => omp.getSlashCommands(),
+    // agy komutlari ACP'nin available_commands_update bildiriminden gelir.
+    agy: () => agy.getSlashCommands(),
   },
   recordFileEvent: projectsStore.recordFileEvent,
   getCoworkRoot: () => claudeApp.coworkRoot(),
@@ -1218,6 +1225,40 @@ registerBackend(router, 'codex-app', codexApp, {
     }},
   ],
 });
+registerBackend(router, 'agy', agy, {
+  getModels: () => agy.getModels(),
+  defaultModel: () => agy.defaultModel(),
+  extras: [
+    // Dusunce ve arac detayi: satir indeksiyle okunur (claude/codex/omp ile ayni).
+    { method: 'GET', pattern: '/thought', handler: (req, res) => {
+      const url = new URL(req.url, 'http://x');
+      json(res, 200, agy.getThought(url.searchParams.get('sessionId') || '', parseInt(url.searchParams.get('i') || '0', 10)));
+    }},
+    // ACP izin istegi: tur cevap gelene kadar BEKLER, bu yuzden uc hizli donmeli.
+    { method: 'POST', pattern: '/respond', handler: async (req, res) => {
+      const b = await body(req);
+      const r = agy.respond(b.sessionId, b.answer);
+      json(res, r.ok ? 200 : 400, r);
+    }},
+    { method: 'POST', pattern: '/approve', handler: async (req, res) => {
+      const b = await body(req);
+      const r = agy.respond(b.sessionId, b.allow === true ? 'yes' : 'no');
+      json(res, r.ok ? 200 : 400, r);
+    }},
+    { method: 'POST', pattern: '/model', handler: async (req, res) => {
+      const b = await body(req);
+      const r = await agy.setModel({ sessionId: b.sessionId, model: b.model });
+      json(res, r.ok ? 200 : 400, r);
+    }},
+    { method: 'POST', pattern: '/permission-mode', handler: async (req, res) => {
+      const b = await body(req);
+      const r = await agy.setPermissionMode({ sessionId: b.sessionId, permissionMode: b.permissionMode });
+      json(res, r.ok ? 200 : 400, r);
+    }},
+    { method: 'GET', pattern: '/permission-modes', handler: (req, res) => json(res, 200, { modes: agy.PERMISSION_MODES }) },
+  ],
+});
+
 registerBackend(router, 'omp', omp, {
   getModels: () => omp.getModels(),
   defaultModel: () => omp.defaultModel(),
@@ -1294,6 +1335,10 @@ registerBackend(router, 'omp', omp, {
 registerMcp(router, { mcp });
 registerUpdate(router);
 
+// agy tek bir `agy acp` cocugu calistirir (oturumlar onu paylasir); wrapper
+// taramasi yerine istemcinin kendi kaydi bildirilir.
+router.get('/agy/processes', (req, res) => json(res, 200, agy.listLiveProcesses()));
+router.post('/agy/kill-all', (req, res) => json(res, 200, agy.killAllSessions()));
 router.get('/codex-app/processes', (req, res) => json(res, 200, codexApp.listLiveProcesses()));
 router.post('/codex-app/kill-all', (req, res) => json(res, 200, codexApp.killAllSessions()));
 router.get('/claude-app/processes', (req, res) => json(res, 200, claudeApp.listLiveProcesses()));
@@ -1407,6 +1452,7 @@ const WS_SECENEKLERI = { noServer: true, perMessageDeflate: { threshold: 1024 } 
 const wssCodexApp = new WebSocketServer(WS_SECENEKLERI);
 const wssClaudeApp = new WebSocketServer(WS_SECENEKLERI);
 const wssOmp = new WebSocketServer(WS_SECENEKLERI);
+const wssAgy = new WebSocketServer(WS_SECENEKLERI);
 
 // Akış el sıkışması kimliği bağlantı kurulmadan doğrulanır: başlıktaki token
 // (Android) ya da tek kullanımlık bilet (tarayıcı). Bilet burada harcandığı için
@@ -1446,6 +1492,8 @@ server.on('upgrade', (req, socket, head) => {
     wssClaudeApp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssClaudeApp.emit('connection', sock, req); });
   } else if (u.pathname === '/omp/stream') {
     wssOmp.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssOmp.emit('connection', sock, req); });
+  } else if (u.pathname === '/agy/stream') {
+    wssAgy.handleUpgrade(req, socket, head, sock => { trackSocket(sock, identity); wssAgy.emit('connection', sock, req); });
   } else {
     socket.destroy();
   }
@@ -1469,6 +1517,12 @@ wssOmp.on('connection', (sock, req) => {
   if (!auth(req)) { sock.close(1008, 'unauthorized'); return; }
   const params = new URL(req.url, 'http://x').searchParams;
   omp.subscribe(params.get('session') || '', sock, { since: params.get('since'), delta: params.get('delta') === '1' });
+});
+
+wssAgy.on('connection', (sock, req) => {
+  if (!auth(req)) { sock.close(1008, 'unauthorized'); return; }
+  const params = new URL(req.url, 'http://x').searchParams;
+  agy.subscribe(params.get('session') || '', sock, { since: params.get('since'), delta: params.get('delta') === '1' });
 });
 
 

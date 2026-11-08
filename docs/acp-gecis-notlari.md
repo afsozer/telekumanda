@@ -101,3 +101,52 @@ etme" heuristiğiydi; ACP'de daha sağlam bir kilide çevrilebilir).
 - `screenshot-extract.mjs` ve `pdf-lang.mjs` agy'yi tek seferlik `--print`
   çıkarım motoru olarak kullanmaya devam ediyor (not çıkarma, PDF dil tespiti).
   Bunlar backend değil; `AGY_EXE` yolu pdf-lang içine gömüldü.
+
+
+## Köprüye bağlandı (08.11.2026, aynı gün)
+
+Yukarıdaki plan uygulandı: `bridge/acp-client.mjs` (taşıma) + `bridge/agy.mjs`
+(backend) yazıldı, `server.mjs`'e kaydedildi. Uygulama sırasında ÖLÇÜLEN,
+yukarıda yazılı olmayan dört şey:
+
+1. **`session/new`'in `cwd`'si araçların göreli yol çözümünü değiştirmiyor.**
+   Tek ortak ACP çocuğunu `homedir`'de açıp çalışma dizinini yalnız
+   `session/new` parametresiyle geçtim; ajan "bu klasörde dosya oluştur"
+   denince `C:\Users\Sozer\deneme.txt` yazdı. Araçlar SÜREÇ cwd'sini kullanıyor.
+   Çözüm: süreç havuzu çalışma dizini başına bir çocuk
+   (`istemciler: cwd -> istemci`), aynı dizindeki oturumlar paylaşır.
+   Bu kusur yalnız canlı uçtan uca denemede göründü; birim testi yakalamazdı.
+
+2. **`session/cancel` bildirimdir.** İstek olarak gönderilirse yanıt hiç
+   gelmiyor ve çağıran sonsuza kadar bekliyor. Bu yüzden istemcideki her
+   isteğin zaman aşımı var.
+
+3. **Olay döngüsü dengesi.** Çocuk + stdio boruları döngüyü tutuyor:
+   `node --test` 5 sn yerine 100 sn'de zorla kapandı. Hepsini unref edince
+   ters kusur çıktı: bekleyen tek iş bir ACP isteği olduğunda Node "yapacak iş
+   yok" deyip çıkıyor ve istek yarıda kalıyor (`newSession` "ACP istemcisi
+   kapatildi" döndü). Doğrusu ikisinin arası: **bekleyen istek varken ref'li,
+   boşta unref'li.** Ayrıca boşta kalan çocuk 5 dk sonra biçiliyor ve çıkış
+   kancası yetim `agy.exe` bırakmıyor.
+
+4. **`session/set_config_option` eşlenemedi.** `id` / `configOptionId` /
+   `optionId` üç ad da `-32602 Unknown config option: ` veriyor (parametre adı
+   boş geliyor, yani beklenen alan başka). Düşünme seviyesi (thought_level) bu
+   yüzden değiştirilemiyor; model `session/set_model`, kip `session/set_mode`
+   ile çalışıyor.
+
+### Canlı doğrulama (uçtan uca, gerçek ajan)
+
+23 kontrol: oturum açma, model kataloğunun protokolden gelmesi, basit tur
+(cevap + token sayacı), dosya yazma turunda **onay kartının çıkması ve
+`respond('yes')` ile çözülmesi**, dosyanın gerçekten yazılması, araç satırı +
+detay, `session/list` (30 oturum), eski oturumun `session/load` ile
+devralınması ve geçmişinin yüklenmesi, izin kipi/model değiştirme, slash
+komutlarının protokolden gelmesi, kapatma. Hepsi geçti.
+
+### Sırada ne var
+
+Köprü tarafı bitti. Kalan: **Android ve web istemcilerini yeniden bağlamak**
+(backend kataloğu `/backends`'ten geldiği için kontroller kendiliğinden
+çizilir, ama `Backend.AGY`, delege, oturum ekranları ve MCP hedef eşlemesi
+silinmişti). Bu turda yapılmadı.

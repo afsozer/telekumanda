@@ -12,6 +12,7 @@ import {
   verifyAdapter,
 } from '../backend-contract.mjs';
 
+import * as agy from '../agy.mjs';
 import * as claudeApp from '../claude-app.mjs';
 import * as codexApp from '../codex-app.mjs';
 import * as omp from '../omp-app.mjs';
@@ -20,6 +21,7 @@ import * as cowork from '../cowork.mjs';
 // Testin bildiği gerçek modüller. Katalogdaki her id burada bulunmalı; eksikse
 // katalog gerçek koddan sapmış demektir (aşağıdaki bütünlük testi yakalar).
 const MODULES = {
+  'agy': agy,
   'claude-app': claudeApp,
   'codex-app': codexApp,
   'omp': omp,
@@ -75,7 +77,15 @@ describe('backend contract catalog', () => {
       'sessionCommands', 'agentsInit', 'sessionInstructions', 'savedPermissions']) {
       assert.equal(alan in CAPABILITY_SCHEMA, false, alan);
     }
-    assert.deepEqual(Object.keys(BACKENDS).sort(), ['claude-app', 'codex-app', 'cowork', 'omp']);
+    assert.deepEqual(Object.keys(BACKENDS).sort(), ['agy', 'claude-app', 'codex-app', 'cowork', 'omp']);
+
+    // agy (ACP): onay ve izin kipi VAR; efforts/interrupt/diff yok, context yok
+    // (ACP usage toplami veriyor, pencere boyutu vermiyor).
+    assert.equal(caps.agy.approvals, true);
+    assert.equal(caps.agy.permissionModes, true);
+    assert.equal(caps.agy.efforts, false);
+    assert.equal(caps.agy.interrupt, false);
+    assert.equal(caps.agy.context, false);
 
     assert.equal(caps['claude-app'].sessionPin, true);
     assert.equal(caps['codex-app'].sessionArchive, true);

@@ -73,6 +73,10 @@ export const BACKENDS = {
   // tur-içi composer'ı DEĞİL. userInputQueue=false onu ortak kipin dışında tutar.
   'codex-app': { apiBackend: 'codex-app', label: 'Codex', adapterBacked: true, capabilities: { ...APP_AGENT, userInputSteer: true, plan: true, efforts: true, sessionDiff: true, sessionRewind: true, sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
   'omp': { apiBackend: 'omp', label: 'OMP', adapterBacked: true, capabilities: { ...APP_AGENT, userInputSteer: true, userInputQueue: true, efforts: true, sessionPin: true, sessionArchive: true, sessionRename: true, sessionDelete: true } },
+  // ACP ile baglandi (08.11.2026): onaylar protokolden geliyor, izin kipleri
+  // default/accept-edits/plan. context=false: ACP usage toplami veriyor ama
+  // pencere boyutu bildirmiyor, dolayisiyla doluluk cubugu cizilemez.
+  'agy': { apiBackend: 'agy', label: 'Antigravity', adapterBacked: true, capabilities: { approvals: true, userInput: false, permissionModes: true, context: false, sessionDelete: false } },
   'cowork': { apiBackend: 'claude-app', label: 'Cowork', adapterBacked: false, capabilities: { ...APP_AGENT, efforts: true, interrupt: true, outputs: true } },
 };
 

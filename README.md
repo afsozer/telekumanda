@@ -2,12 +2,12 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23603803.svg)](https://doi.org/10.5281/zenodo.23603803)
 
-Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code and Codex sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
+Telekumanda is a remote control for the coding agents running on your computer: you start and follow Claude Code, Codex and Antigravity sessions from an Android phone or a browser, approve their tool calls, and pick up their results without sitting at the desk. The name is the old Turkish word for a TV remote. The repository contains two main parts:
 
 - A Kotlin / Jetpack Compose Android app in `android/`
 - A Node.js bridge server in `bridge/`
 
-The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, MCP management, usage tracking, and OTA update delivery.
+The Android app talks to the bridge over HTTP and WebSocket. The bridge runs on the PC, authenticates requests with a bearer token or per-device key, and connects the phone UI to Claude Code, Codex, Antigravity, MCP management, usage tracking, and OTA update delivery.
 
 There is also a browser UI in `web/` that the bridge itself serves at `/ui` —
 see "Web UI" below.
@@ -18,6 +18,7 @@ The phone app provides a mobile control surface for multiple agent backends:
 
 - Claude Code CLI (Claude App)
 - Codex CLI (Codex App)
+- Antigravity CLI (`agy acp`, over the Agent Client Protocol)
 - Cowork Mode (multi-agent workspace coordination; a presentation layer that
   runs on top of the Claude App endpoints and can drive any provider)
 - Fleet Health Panel (real-time process monitoring & direct kill controls across all active backends)
@@ -133,7 +134,7 @@ The bridge is a Node.js server in `bridge/server.mjs`. It exposes REST endpoints
 Main bridge responsibilities:
 
 - Authenticate phone requests with the token from `bridge/config.json`
-- Start and manage CLI-backed sessions for Claude and Codex
+- Start and manage CLI-backed sessions for Claude, Codex and Antigravity
 - Stream conversation updates over WebSocket
 - List and resume disk sessions
 - Read selected workspace files for the phone UI
@@ -145,6 +146,7 @@ Main bridge responsibilities:
 Important WebSocket channels:
 
 ```text
+/agy/stream
 /claude-app/stream
 /codex-app/stream
 ```
@@ -173,6 +175,7 @@ Important REST areas:
 /slash                              (fetch command shortcuts per backend)
 /cowork/*                           (projects, import, matters, session switching)
 /cowork/notes, /cowork/note/*       (text notes, rename, attach, AI actions)
+/agy/*                              (Antigravity ACP sessions, approvals, modes, thoughts)
 /claude-app/*                       (Claude Code app workspaces, MCP, thoughts, quota suggest)
 /codex-app/*                        (Codex app fork, compact, efforts, approve, rewind)
 /update/*                           (delivery of OTA Android APK packages)
@@ -186,6 +189,7 @@ already be installed and logged in on the host machine:
 - **Node.js 22 LTS** — required, not optional (see "Running The Bridge")
 - **Claude Code CLI** (`claude`) — for the Claude App and Cowork backends
 - **Codex CLI** (`codex`) — for the Codex App backend
+- **Antigravity CLI** (`agy.exe`) — for the Antigravity backend (driven as `agy acp`)
 - **JDK 17+ and the Android SDK** — only to build the app
 
 Backends whose CLI is missing simply fail when you start a session; the bridge
@@ -358,6 +362,8 @@ bridge/web-ui.mjs        Serves web/dist at /ui (before auth; see the note in th
 web/                     Browser UI (React + TypeScript, built with Vite)
 bridge/claude-app.mjs    Claude Code backend (+ claude-app-adapter.mjs)
 bridge/codex-app.mjs     Codex backend (+ codex-app-adapter.mjs)
+bridge/agy.mjs           Antigravity backend over ACP (+ acp-client.mjs transport)
+bridge/acp-client.mjs    Generic Agent Client Protocol client (stdio JSON-RPC)
 bridge/cowork.mjs        Cowork workspaces, leases, handoff
 bridge/projects.mjs      Persistent project envelopes
 bridge/operations.mjs    Cross-provider operations inbox
@@ -369,6 +375,44 @@ bridge/config.example.json  Template for the git-ignored bridge/config.json
 bridge/test/             Unit tests (node:test)
 docs/                    Design notes, roadmaps, and phase instructions (Turkish)
 ```
+
+## Antigravity Backend — ACP (Agent Client Protocol)
+
+`bridge/agy.mjs` drives `agy acp`: the Antigravity CLI's ACP server, speaking
+JSON-RPC 2.0 over stdio. This replaced a PTY-driven adapter on 08.11.2026 (the
+CLI used to offer no usable non-interactive mode). Measurements behind the
+current design are in `docs/acp-gecis-notlari.md`; the load-bearing ones:
+
+- **Framing is line based.** One JSON message per line, no `Content-Length`
+  headers. `bridge/acp-client.mjs` is agent-agnostic and only does transport.
+- **`session/cancel` is a NOTIFICATION, not a request.** Sent as a request it
+  never gets a reply and the caller waits forever (observed). Every ACP request
+  in the client also carries a timeout for that class of mistake.
+- **One child process per working directory.** `session/new` takes a `cwd`, but
+  the agent's tools resolve relative paths against the *process* cwd: a single
+  child spawned in the home directory wrote `deneme.txt` into `C:\Users\Sozer`
+  while the session's cwd was elsewhere (observed). Children are therefore
+  pooled by cwd; sessions in the same directory share one.
+- **Turn end is the response, not a heuristic.** `session/prompt` resolves with
+  `stopReason` plus a `usage` block (input/output/cached/thought tokens). No
+  transcript scraping, no idle-timeout guessing, no kill+respawn per turn.
+- **Approvals come through the protocol.** The agent sends a
+  `session/request_permission` REQUEST and the turn blocks until it is answered.
+  The bridge surfaces it as an approval card (`awaitingApproval` + `approval`)
+  and `POST /agy/respond` (or `/approve`) resolves it. A permission request for
+  an unknown session is denied rather than left hanging.
+- **Sessions are protocol objects.** `session/list` enumerates past
+  conversations and `session/load` replays their history as notifications, so
+  the old "scan the brain directory" code is gone. The session id we expose IS
+  the ACP session id. Note: `cwd` in `session/list` output reflects the client's
+  cwd, not where the session was created, so it is not trusted.
+- **Event loop policy.** The child and its stdio pipes are unref'd while idle
+  (otherwise `node --test` took 100 s instead of 5 s) and ref'd again while a
+  request is in flight (otherwise Node exits mid-request). Idle children are
+  reaped after 5 minutes; an exit hook kills them so no orphan `agy.exe` is left.
+- **Not yet mapped.** `session/set_config_option` (thinking level) rejects every
+  parameter name tried so far; model and mode are set with `session/set_model`
+  and `session/set_mode`, which work.
 
 ## Notes
 
